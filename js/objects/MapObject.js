@@ -1,4 +1,4 @@
-export class MapObject extends THREE.Object3D {
+export default class MapObject extends THREE.Object3D {
   constructor(geolocation) {
     super();
 

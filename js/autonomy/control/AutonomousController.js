@@ -1,6 +1,6 @@
-import { Car } from "../../physics/car.js"
+import Car from "../../physics/Car.js"
 
-export class AutonomousController {
+export default class AutonomousController {
   constructor(path) {
     this.path = path;
     this.nextIndex = 1;
@@ -9,7 +9,7 @@ export class AutonomousController {
     this.prevPhiError = 0;
   }
 
-  control(pose, wheelAngle, dt) {
+  control(pose, wheelAngle, speed, dt) {
     const pathPoses = this.path.poses;
     const frontAxlePos = Car.getFrontAxlePosition(pose.pos, pose.rot);
     const [nextIndex, progress] = this.findNextIndex(frontAxlePos);
@@ -34,12 +34,16 @@ export class AutonomousController {
     const headingError = Math.wrapAngle(pathPoses[nextIndex].rot - desiredHeading);
 
     // phi is the desired wheel deflection
-    const phi = -headingError + Math.atan(k * dir * crossTrackError);
+    const phi = -headingError + Math.atan(k * dir * crossTrackError / speed);
     const phiError = phi - wheelAngle;
+    /*
     const dPhiError = (phiError - this.prevPhiError) / dt;
     this.prevPhiError = phiError;
     
-    const steer = Math.clamp(8 * phiError + 0.8 * dPhiError, -1, 1);
+    const steer = Math.clamp(12 * phiError + 0.8 * dPhiError, -1, 1);
+    */
+
+    const steer = Math.clamp(phiError / dt / Car.MAX_STEER_SPEED, -1, 1);
     const gas = 0;
     const brake = 0;
 

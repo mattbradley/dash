@@ -1,6 +1,6 @@
-import { Car } from "../physics/car.js";
+import Car from "../physics/Car.js";
 
-export class CarObject extends THREE.Object3D {
+export default class CarObject extends THREE.Object3D {
   constructor(car) {
     super();
 

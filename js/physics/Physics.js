@@ -1,6 +1,6 @@
-import { Car } from "./car.js"
+import Car from "./Car.js"
 
-export class Physics {
+export default class Physics {
   constructor() {
     this.world = new Box2D.b2World(new Box2D.b2Vec2(0, 0));
   }

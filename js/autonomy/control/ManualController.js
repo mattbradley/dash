@@ -1,4 +1,4 @@
-export class ManualController {
+export default class ManualController {
   constructor() {
     this.carKeys = { forward: false, backward: false, left: false, right: false, brake: false };
 

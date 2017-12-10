@@ -1,30 +1,7 @@
-export class Car {
-  constructor(world, position = [0, 0], rotation = 0) {
-    const bd = new Box2D.b2BodyDef();
-    bd.set_type(Box2D.b2_dynamicBody);
-    bd.set_position(new Box2D.b2Vec2(position[0], position[1]));
-    bd.set_angle(rotation);
-    this.body = world.CreateBody(bd);
-    this.body.SetAngularDamping(Car.ANGULAR_DAMPING);
-
-    const shape = new Box2D.b2PolygonShape();
-    shape.SetAsBox(Car.HALF_CAR_LENGTH, Car.HALF_CAR_WIDTH);
-
-    const fd = new Box2D.b2FixtureDef();
-    fd.set_shape(shape);
-    fd.set_density(Car.CHASSIS_DENSITY);
-    fd.set_friction(Car.FRICTION);
-    fd.set_restitution(Car.RESTITUTION);
-    this.body.CreateFixture(fd);
-
-    this.leftFrontWheel = createFrontWheel.call(this, world, new Box2D.b2Vec2(Car.FRONT_AXLE_POS, Car.WHEEL_LATERAL_POS));
-    this.rightFrontWheel = createFrontWheel.call(this, world, new Box2D.b2Vec2(Car.FRONT_AXLE_POS, -Car.WHEEL_LATERAL_POS));
-    this.leftRearWheel = createRearWheel.call(this, world, new Box2D.b2Vec2(Car.REAR_AXLE_POS, Car.WHEEL_LATERAL_POS));
-    this.rightRearWheel = createRearWheel.call(this, world, new Box2D.b2Vec2(Car.REAR_AXLE_POS, -Car.WHEEL_LATERAL_POS));
-
-    Box2D.destroy(bd);
-    Box2D.destroy(shape);
-    Box2D.destroy(fd);
+export default class Car {
+  constructor(world, x = 0, y = 0, rotation = 0) {
+    this.world = world;
+    this.setPose(x, y, rotation);
   }
 
   static getFrontAxlePosition(pos, rot) {
@@ -66,7 +43,70 @@ export class Car {
   }
 
   get wheelAngle() {
-    return this.leftFrontWheel.joint.GetJointAngle();
+    return Math.wrapAngle(this.leftFrontWheel.joint.GetJointAngle());
+  }
+
+  setPose(x, y, rotation) {
+    this.destroyBodies();
+
+    x -= Car.REAR_AXLE_POS * Math.cos(rotation);
+    y -= Car.REAR_AXLE_POS * Math.sin(rotation);
+
+    const pos = new Box2D.b2Vec2(x, y);
+    const bd = new Box2D.b2BodyDef();
+    bd.set_type(Box2D.b2_dynamicBody);
+    bd.set_position(pos);
+    bd.set_angle(rotation);
+    this.body = this.world.CreateBody(bd);
+    this.body.SetAngularDamping(Car.ANGULAR_DAMPING);
+
+    const shape = new Box2D.b2PolygonShape();
+    shape.SetAsBox(Car.HALF_CAR_LENGTH, Car.HALF_CAR_WIDTH);
+
+    const fd = new Box2D.b2FixtureDef();
+    fd.set_shape(shape);
+    fd.set_density(Car.CHASSIS_DENSITY);
+    fd.set_friction(Car.FRICTION);
+    fd.set_restitution(Car.RESTITUTION);
+    this.body.CreateFixture(fd);
+
+    const lfPos = new Box2D.b2Vec2(Car.FRONT_AXLE_POS, Car.WHEEL_LATERAL_POS);
+    const rfPos = new Box2D.b2Vec2(Car.FRONT_AXLE_POS, -Car.WHEEL_LATERAL_POS);
+    const lrPos = new Box2D.b2Vec2(Car.REAR_AXLE_POS, Car.WHEEL_LATERAL_POS);
+    const rrPos = new Box2D.b2Vec2(Car.REAR_AXLE_POS, -Car.WHEEL_LATERAL_POS);
+
+    this.leftFrontWheel = createFrontWheel.call(this, lfPos, pos, rotation);
+    this.rightFrontWheel = createFrontWheel.call(this, rfPos, pos, rotation);
+    this.leftRearWheel = createRearWheel.call(this, lrPos, pos, rotation);
+    this.rightRearWheel = createRearWheel.call(this, rrPos, pos, rotation);
+
+    Box2D.destroy(pos);
+    Box2D.destroy(bd);
+    Box2D.destroy(shape);
+    Box2D.destroy(fd);
+    Box2D.destroy(lfPos);
+    Box2D.destroy(rfPos);
+    Box2D.destroy(lrPos);
+    Box2D.destroy(rrPos);
+  }
+
+  destroyBodies() {
+    if (this.body) {
+      this.world.DestroyBody(this.body);
+      this.body = null;
+
+      this.world.DestroyBody(this.leftFrontWheel.body);
+      this.leftFrontWheel = null;
+
+      this.world.DestroyBody(this.rightFrontWheel.body);
+      this.rightFrontWheel = null;
+
+      this.world.DestroyBody(this.leftRearWheel.body);
+      this.leftRearWheel = null;
+
+      this.world.DestroyBody(this.rightRearWheel.body);
+      this.rightRearWheel = null;
+    }
   }
 
   update(controls, dt) {
@@ -151,12 +191,17 @@ export class Car {
   }
 }
 
-function createWheel(world, position) {
+function createWheel(offset, carPosition, rotation) {
+  const cosRot = Math.cos(rotation);
+  const sinRot = Math.sin(rotation);
+  const position = new Box2D.b2Vec2(cosRot * offset.get_x() - sinRot * offset.get_y() + carPosition.get_x(), sinRot * offset.get_x() + cosRot * offset.get_y() + carPosition.get_y());
+
   const bd = new Box2D.b2BodyDef();
   bd.set_type(Box2D.b2_dynamicBody);
   bd.set_position(position);
+  bd.set_angle(rotation);
 
-  const body = world.CreateBody(bd);
+  const body = this.world.CreateBody(bd);
   const shape = new Box2D.b2PolygonShape();
   shape.SetAsBox(Car.HALF_WHEEL_LENGTH, Car.HALF_WHEEL_WIDTH);
 
@@ -167,31 +212,41 @@ function createWheel(world, position) {
   fd.set_restitution(Car.RESTITUTION);
   body.CreateFixture(fd);
 
+  Box2D.destroy(position);
+  Box2D.destroy(bd);
+  Box2D.destroy(shape);
+  Box2D.destroy(fd);
+
   return body;
 }
 
-function createRearWheel(world, position) {
-  const body = createWheel(world, position);
+function createRearWheel(offset, carPosition, rotation) {
+  const body = createWheel.call(this, offset, carPosition, rotation);
+  const zero = new Box2D.b2Vec2(0, 0);
 
   const jd = new Box2D.b2WeldJointDef();
   jd.set_bodyA(this.body);
   jd.set_bodyB(body);
-  jd.set_localAnchorA(position);
-  jd.set_localAnchorB(new Box2D.b2Vec2(0, 0));
+  jd.set_localAnchorA(offset);
+  jd.set_localAnchorB(zero);
 
-  const joint = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WeldJoint);
+  const joint = Box2D.castObject(this.world.CreateJoint(jd), Box2D.b2WeldJoint);
+
+  Box2D.destroy(zero);
+  Box2D.destroy(jd);
 
   return { body, joint };
 }
 
-function createFrontWheel(world, position) {
-  const body = createWheel(world, position);
+function createFrontWheel(offset, carPosition, rotation) {
+  const body = createWheel.call(this, offset, carPosition, rotation);
+  const zero = new Box2D.b2Vec2(0, 0);
 
   const jd = new Box2D.b2RevoluteJointDef();
   jd.set_bodyA(this.body);
   jd.set_bodyB(body);
-  jd.set_localAnchorA(position);
-  jd.set_localAnchorB(new Box2D.b2Vec2(0, 0));
+  jd.set_localAnchorA(offset);
+  jd.set_localAnchorB(zero);
   jd.set_enableMotor(true);
   jd.set_motorSpeed(0);
   jd.set_maxMotorTorque(Car.MAX_WHEEL_MOTOR_TORQUE);
@@ -199,7 +254,10 @@ function createFrontWheel(world, position) {
   jd.set_lowerAngle(-Car.MAX_WHEEL_ANGLE);
   jd.set_upperAngle(Car.MAX_WHEEL_ANGLE);
 
-  const joint = Box2D.castObject(world.CreateJoint(jd), Box2D.b2RevoluteJoint);
+  const joint = Box2D.castObject(this.world.CreateJoint(jd), Box2D.b2RevoluteJoint);
+
+  Box2D.destroy(zero);
+  Box2D.destroy(jd);
 
   return { body, joint };
 }
