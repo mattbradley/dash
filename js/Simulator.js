@@ -1,6 +1,7 @@
 import Physics from "./physics/Physics.js";
 import Car from "./physics/Car.js";
 import Path from "./autonomy/Path.js";
+import CubicPathOptimizer from "./autonomy/path_finding/CubicPathOptimizer.js";
 import AutonomousController from "./autonomy/control/AutonomousController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
@@ -13,7 +14,7 @@ const savedPoints = [[-631.6930144348489,-33.67084242671334],[-593.9903716035712
 
 let follow = false;
 
-export class Simulator {
+export default class Simulator {
   constructor(geolocation, domElement) {
     this.geolocation = geolocation;
 
@@ -140,11 +141,11 @@ function render(timestamp) {
   const carPosition = this.car.position;
   const carRotation = this.car.rotation;
   if (follow) {
-    this.camera.position.set(carPosition[0] - 20 * Math.cos(carRotation), 8, carPosition[1] - 20 * Math.sin(carRotation));
+    this.camera.position.set(carPosition[0] - 0.20 * Math.cos(carRotation), 30, carPosition[1] - 0.20 * Math.sin(carRotation));
     this.camera.lookAt(carPosition[0], 0, carPosition[1]);
   }
 
-  this.dashboard.update();
+  this.dashboard.update(controls);
   
   this.renderer.render(this.scene, this.camera);
 }

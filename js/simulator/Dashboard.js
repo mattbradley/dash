@@ -12,35 +12,42 @@ export default class Dashboard {
     this.wheelPieDom = document.getElementById('wheel-pie');
     this.wheelPieLeftDom = document.getElementById('wheel-pie-left');
     this.wheelPieRightDom = document.getElementById('wheel-pie-right');
+    this.gearDom = document.getElementById('gear');
+    this.gasDom = document.getElementById('gas');
+    this.brakeDom = document.getElementById('brake');
   }
 
-  update() {
-    if (this.wheelDom) {
-      const wheelTurn = Math.clamp(this.car.wheelAngle / Car.MAX_WHEEL_ANGLE * 0.95, -1, +1);
+  update(controls) {
+    if (!this.wheelDom) return;
 
-      this.wheelDom.style.transform = `rotate(${wheelTurn}turn)`;
+    const wheelTurn = Math.clamp(this.car.wheelAngle / Car.MAX_WHEEL_ANGLE * 0.95, -1, +1);
 
-      if (wheelTurn >= 0) {
-        this.wheelPieRightDom.style.transform = `rotate(${wheelTurn}turn)`;
+    this.wheelDom.style.transform = `rotate(${wheelTurn}turn)`;
 
-        if (wheelTurn <= 0.5) {
-          this.wheelPieDom.style.clipPath = "inset(0 0 0 50%)";
-          this.wheelPieLeftDom.style.transform = "rotate(0)";
-        } else {
-          this.wheelPieDom.style.clipPath = "inset(0 0 0 0)";
-          this.wheelPieLeftDom.style.transform = "rotate(0.5turn)";
-        }
+    if (wheelTurn >= 0) {
+      this.wheelPieRightDom.style.transform = `rotate(${wheelTurn}turn)`;
+
+      if (wheelTurn <= 0.5) {
+        this.wheelPieDom.style.clipPath = "inset(0 0 0 50%)";
+        this.wheelPieLeftDom.style.transform = "rotate(0)";
       } else {
-        this.wheelPieRightDom.style.transform = `rotate(${0.5 + wheelTurn}turn)`;
+        this.wheelPieDom.style.clipPath = "inset(0 0 0 0)";
+        this.wheelPieLeftDom.style.transform = "rotate(0.5turn)";
+      }
+    } else {
+      this.wheelPieRightDom.style.transform = `rotate(${0.5 + wheelTurn}turn)`;
 
-        if (wheelTurn >= -0.5) {
-          this.wheelPieDom.style.clipPath = "inset(0 50% 0 0)";
-          this.wheelPieLeftDom.style.transform = "rotate(0.5turn)";
-        } else {
-          this.wheelPieDom.style.clipPath = "inset(0 0 0 0)";
-          this.wheelPieLeftDom.style.transform = "rotate(0)";
-        }
+      if (wheelTurn >= -0.5) {
+        this.wheelPieDom.style.clipPath = "inset(0 50% 0 0)";
+        this.wheelPieLeftDom.style.transform = "rotate(0.5turn)";
+      } else {
+        this.wheelPieDom.style.clipPath = "inset(0 0 0 0)";
+        this.wheelPieLeftDom.style.transform = "rotate(0)";
       }
     }
+
+    this.gearDom.innerText = controls.gas < 0 ? 'R' : 'D';
+    this.brakeDom.style.clipPath = `inset(50% 50% 0 ${50 - controls.brake * 25}%)`;
+    this.gasDom.style.clipPath = `inset(50% ${50 - Math.abs(controls.gas) * 25}% 0 50%)`;
   }
 }

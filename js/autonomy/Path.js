@@ -1,7 +1,7 @@
 import Car from "../physics/Car.js"
 
-// input pose: { pos: Vector2, dir: 1 | -1 (forward | reverse) }
-// pose: { pos: Vector2, dir: 1 | -1 (forward | reverse), frontPos: Vector2, fakePos: Vector2, rot: radian }
+// input pose: { pos: Vector2 }
+// pose: { pos: Vector2, frontPos: Vector2, fakePos: Vector2, rot: radian }
 export default class Path {
   constructor(poses, startRotation, goalRotation) {
     this.poses = poses;

@@ -16,6 +16,46 @@
                 margin: 8px;
             }
 
+            #controls {
+                position: relative;
+                padding: 8px;
+                overflow: hidden;
+            }
+
+            #gear {
+                position: absolute;
+                color: #aaa;
+                font-family: sans-serif;
+                font-weight: bold;
+                font-size: 13px;
+                top: 50%;
+                margin-top: -7px;
+                text-align: center;
+                width: 100%;
+                margin-left: -8px;
+            }
+
+            #brake, #gas {
+                position: absolute;
+                border: 63px solid;
+                border-radius: 100%;
+                width: 200%;
+                height: 200%;
+                bottom: -50%;
+                box-sizing: border-box;
+                clip-path: inset(50% 50% 0 50%);
+            }
+
+            #brake {
+                left: -50%;
+                border-color: red;
+            }
+
+            #gas {
+                right: -50%;
+                border-color: green;
+            }
+
             #wheel-wrapper {
                 position: relative;
                 width: 100px;
@@ -29,18 +69,18 @@
                 mask-size: contain;
                 -webkit-mask-image: url('images/wheel.png');
                 -webkit-mask-size: contain;
-                background-color: #999;
+                background-color: #666;
             }
 
             #wheel-marker {
                 height: 4px;
-                width: 2px;
+                width: 3px;
                 border-radius: 1px;
                 background: #ff8000;
                 position: absolute;
                 top: 4px;
                 left: 50%;
-                margin-left: -px;
+                margin-left: -1.5px;
             }
 
             #wheel-pie {
@@ -76,13 +116,18 @@
         <script src="js/Dash.js" type="module"></script>
         <div id="container">
             <div id="dashboard">
-                <div id="wheel-wrapper">
-                    <div id="wheel">
-                        <div id="wheel-marker"></div>
-                    </div>
-                    <div id="wheel-pie">
-                        <div id="wheel-pie-left"></div>
-                        <div id="wheel-pie-right"></div>
+                <div id="controls">
+                    <div id="brake"></div>
+                    <div id="gas"></div>
+                    <div id="gear"></div>
+                    <div id="wheel-wrapper">
+                        <div id="wheel">
+                            <div id="wheel-marker"></div>
+                        </div>
+                        <div id="wheel-pie">
+                            <div id="wheel-pie-left"></div>
+                            <div id="wheel-pie-right"></div>
+                        </div>
                     </div>
                 </div>
             </div>
