@@ -1,4 +1,4 @@
-const SIMPSONS_INTERVALS = 8;
+const SIMPSONS_INTERVALS = 16;
 const DESCENT_ITERATIONS = 16;
 const CONVERGENCE_ERROR = 0.01;
 
@@ -24,7 +24,7 @@ export default class CubicPathOptimizer {
   }
 
   guessInitialParams() {
-    const relaxationIterations = 100;
+    const relaxationIterations = 32;
     const originalGoal = this.goal;
     const dStartCurv = this.start.curv / relaxationIterations;
     const dGoalY = originalGoal.y / relaxationIterations;
@@ -54,11 +54,14 @@ export default class CubicPathOptimizer {
       this.goal.curv += dGoalCurv;
       this.iterate();
     }
+
+    this.goal = originalGoal;
   }
 
-  solve() {
+  optimize() {
     for (let i = 0; i < DESCENT_ITERATIONS; i++) {
       this.iterate();
+
       if (Math.abs(this.delta.x) + Math.abs(this.delta.y) + Math.abs(this.delta.rot) < CONVERGENCE_ERROR)
         return true;
     }

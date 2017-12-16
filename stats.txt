@@ -1,0 +1,2 @@
+Cubic spiral:
+2012 MBP, Original JS: ~3500 curves per second
