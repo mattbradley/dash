@@ -59,8 +59,32 @@ export default class Simulator {
       this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
     });
 
-
     requestAnimationFrame(render.bind(this));
+
+    for (let x = 40; x <= 40; x += 49/15) {
+      for (let y = 0; y <= 0; y += 100/15) {
+        for (let r = 0*-Math.PI / 2; r <= 0*Math.PI / 2; r += Math.PI/15) {
+          for (let k0 = -0.19; k0 <= 0.19; k0 += 0.38 / 15) {
+            for (let k1 = -0.19; k1 <= 0.19; k1 += 0.38 / 15) {
+              const start = { x: 0, y: 0, rot: 0, curv: k0 };
+              const end = { x: x, y: y, rot: r, curv: k1 };
+              const optimizer = new CubicPathOptimizer(start, end);
+              const converged = optimizer.solve();
+              const cubicPath = optimizer.buildPath(100);
+
+              const pathGeometry = new THREE.Geometry();
+              pathGeometry.setFromPoints(cubicPath.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
+              const pathLine = new MeshLine();
+              pathLine.setGeometry(pathGeometry);
+
+              const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: converged ? new THREE.Color(0x40aaff) : new THREE.Color(0xffaa40), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+              pathObject.renderOrder = 1;
+              this.scene.add(pathObject);
+            }
+          }
+        }
+      }
+    }
   }
 
   enableEditor() {
@@ -146,6 +170,6 @@ function render(timestamp) {
   }
 
   this.dashboard.update(controls);
-  
+
   this.renderer.render(this.scene, this.camera);
 }

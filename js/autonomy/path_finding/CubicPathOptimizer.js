@@ -1,4 +1,6 @@
-const simpsonsIntervals = 8;
+const SIMPSONS_INTERVALS = 8;
+const DESCENT_ITERATIONS = 16;
+const CONVERGENCE_ERROR = 0.01;
 
 // Alternate reference implementation: https://github.com/ApolloAuto/apollo/blob/master/modules/planning/math/spiral_curve/cubic_spiral_curve.cc
 export default class CubicPathOptimizer {
@@ -18,20 +20,55 @@ export default class CubicPathOptimizer {
       curv: end.curv
     };
 
+    this.guessInitialParams();
+  }
+
+  guessInitialParams() {
+    const relaxationIterations = 100;
+    const originalGoal = this.goal;
+    const dStartCurv = this.start.curv / relaxationIterations;
+    const dGoalY = originalGoal.y / relaxationIterations;
+    const dGoalRot = originalGoal.rot / relaxationIterations;
+    const dGoalCurv = originalGoal.curv / relaxationIterations;
+
+    this.goal = {
+      x: originalGoal.x,
+      y: 0,
+      rot: 0,
+      curv: 0
+    };
+
     this.params = {
-      p0: start.curv,
+      p0: 0,
       p1: 0,
       p2: 0,
-      p3: end.curv,
-      sG: (this.goal.rot * this.goal.rot / 5 + 1) * Math.sqrt(this.goal.x * this.goal.x + this.goal.y * this.goal.y)
+      p3: 0,
+      sG: originalGoal.x
     };
+
+    for (let i = 0; i < relaxationIterations; i++) {
+      this.params.p0 += dStartCurv;
+      this.params.p3 += dGoalCurv;
+      this.goal.y += dGoalY;
+      this.goal.rot += dGoalRot;
+      this.goal.curv += dGoalCurv;
+      this.iterate();
+    }
+  }
+
+  solve() {
+    for (let i = 0; i < DESCENT_ITERATIONS; i++) {
+      this.iterate();
+      if (Math.abs(this.delta.x) + Math.abs(this.delta.y) + Math.abs(this.delta.rot) < CONVERGENCE_ERROR)
+        return true;
+    }
+
+    return false;
   }
 
   iterate() {
-    const { p1, p2, sG } = this.params;
-
     const jacobian = this.jacobian();
-    const guess = this.guessGoal();
+    const guess = this.calculateGoal();
     const delta = {
       x: this.goal.x - guess.x,
       y: this.goal.y - guess.y,
@@ -76,7 +113,7 @@ export default class CubicPathOptimizer {
     return path;
   }
 
-  guessGoal() {
+  calculateGoal() {
     const { p0, p1, p2, p3, sG } = this.params;
 
     const curv = kappa(p0, p1, p2, p3, sG, sG);
@@ -92,7 +129,6 @@ export default class CubicPathOptimizer {
     const sG_squared = sG * sG;
     const sG_cubed = sG_squared * sG;
     const sG_fourth = sG_cubed * sG;
-    const simpsonsIntervals = 16;
 
     const [dX_p1, dY_p1] = simpsons_dPosition(dTheta_p1);
     const [dX_p2, dY_p2] = simpsons_dPosition(dTheta_p2);
@@ -113,15 +149,15 @@ export default class CubicPathOptimizer {
       let sumX = 0;
       let sumY = 0;
 
-      for (let i = 0; i <= simpsonsIntervals; i++) {
-        const coeff = i == 0 || i == simpsonsIntervals ? 1 : i % 2 == 0 ? 2 : 4;
-        const s = sG * i / simpsonsIntervals;
+      for (let i = 0; i <= SIMPSONS_INTERVALS; i++) {
+        const coeff = i == 0 || i == SIMPSONS_INTERVALS ? 1 : i % 2 == 0 ? 2 : 4;
+        const s = sG * i / SIMPSONS_INTERVALS;
         const t = theta(p0, p1, p2, p3, sG, s);
         sumX += coeff * -Math.sin(t) * dTheta_p(s);
         sumY += coeff * Math.cos(t) * dTheta_p(s);
       }
 
-      const hOver3 = sG / simpsonsIntervals / 3;
+      const hOver3 = sG / SIMPSONS_INTERVALS / 3;
       return [sumX * hOver3, sumY * hOver3];
     }
 
@@ -164,19 +200,18 @@ export default class CubicPathOptimizer {
 }
 
 function position(p0, p1, p2, p3, sG, s) {
-  const simpsonsIntervals = 8;
   let sumX = 0;
   let sumY = 0;
 
-  for (let i = 0; i <= simpsonsIntervals; i++) {
-    const coeff = i == 0 || i == simpsonsIntervals ? 1 : i % 2 == 0 ? 2 : 4;
-    const sInterval = s * i / simpsonsIntervals;
+  for (let i = 0; i <= SIMPSONS_INTERVALS; i++) {
+    const coeff = i == 0 || i == SIMPSONS_INTERVALS ? 1 : i % 2 == 0 ? 2 : 4;
+    const sInterval = s * i / SIMPSONS_INTERVALS;
     const t = theta(p0, p1, p2, p3, sG, sInterval);
     sumX += coeff * Math.cos(t);
     sumY += coeff * Math.sin(t);
   }
 
-  const hOver3 = s / simpsonsIntervals / 3;
+ const hOver3 = s / SIMPSONS_INTERVALS / 3;
   return [sumX * hOver3, sumY * hOver3];
 }
 
