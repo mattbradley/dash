@@ -85,6 +85,7 @@ export default class Simulator {
               pathObject.renderOrder = 1;
               this.scene.add(pathObject);
               */
+
               count++;
               if (!converged) failed++;
               if (count % 10000 == 0) {
