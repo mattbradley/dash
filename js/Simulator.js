@@ -73,9 +73,9 @@ export default class Simulator {
               const end = { x: x, y: y, rot: r, curv: k1 };
               const optimizer = new CubicPathOptimizer(start, end);
               const converged = optimizer.optimize();
+              /*
               const cubicPath = optimizer.buildPath(100);
 
-              /*
               const pathGeometry = new THREE.Geometry();
               pathGeometry.setFromPoints(cubicPath.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
               const pathLine = new MeshLine();

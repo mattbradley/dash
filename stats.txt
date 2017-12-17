@@ -1,2 +1,6 @@
 Cubic spiral:
 2012 MBP, Original JS: ~3500 curves per second
+2012 MBP, Optimized JS: ~26000 curves per second
+
+Old: 1048576 (473018 failed) in 303.713 seconds
+New: 1048576 (473021 failed) in 39.733 seconds
