@@ -60,6 +60,8 @@ export default class Simulator {
     });
 
     requestAnimationFrame(render.bind(this));
+
+    /*
     let count = 0;
     let failed = 0;
     const startDate = +new Date;
@@ -84,7 +86,6 @@ export default class Simulator {
               const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: converged ? new THREE.Color(0x40aaff) : new THREE.Color(0xffaa40), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
               pathObject.renderOrder = 1;
               this.scene.add(pathObject);
-              */
 
               count++;
               if (!converged) failed++;
@@ -97,6 +98,7 @@ export default class Simulator {
       }
     }
     console.log(`Final count: ${count} (${failed} failed) in ${((+new Date) - startDate) / 1000} seconds`);
+              */
   }
 
   enableEditor() {
