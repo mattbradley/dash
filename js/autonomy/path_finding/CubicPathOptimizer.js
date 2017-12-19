@@ -1,7 +1,7 @@
 const SIMPSONS_INTERVALS = 16;
 const NEWTON_ITERATIONS = 16;
-const CONVERGENCE_ERROR = 0.01;
 const RELAXATION_ITERATIONS = 32;
+const CONVERGENCE_ERROR = 0.01;
 
 const jacobian = new THREE.Matrix3();
 const invJacobian = new THREE.Matrix3();

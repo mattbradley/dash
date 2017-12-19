@@ -22,14 +22,15 @@ const positionBuffer = newBuffer([-1, -1, 1, -1, 1, 1, -1, 1]);
 const textureBuffer = newBuffer([0, 0, 1, 0, 1, 1, 0, 1]);
 const indexBuffer = newBuffer([1, 2, 0, 3, 0, 2], Uint16Array, gl.ELEMENT_ARRAY_BUFFER);
 
-const vertexShaderCode = `
-  attribute vec2 position;
-  varying vec2 pos;
-  attribute vec2 texture;
-  void main(void) {
-    pos = texture;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-  }
+const vertexShaderCode = `#version 300 es
+in vec2 position;
+in vec2 texture;
+out vec2 gpgpuPos;
+
+void main(void) {
+  gpgpuPos = texture;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
 `;
 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertexShader, vertexShaderCode);
@@ -80,100 +81,115 @@ function createTexture(data, size, width) {
   return texture;
 }
 
-const fragmentShaderHeader = `
+const fragmentShaderHeader = `#version 300 es
 precision mediump float;
-varying vec2 pos;
+in vec2 gpgpuPos;
+out vec4 gpgpuOutput;
 `;
 
-/*
- * Input:
- *   [
- *     data: Float32Array,
- *     width: 1-4
- *   ]
- */
-export default function(inputs, code) {
-  const inputTextures = [];
-  let fragmentShaderInputs = "";
-  let inputSize = null;
-  for (const [index, { data, width }] of inputs.entries()) {
-    const size = Math.sqrt(data.length / width);
-    if (size > 0 && (size & (size - 1)) != 0)
-      throw new Error('Input size must be a power of two.');
+export default {
+  run: function(inputs, code) {
+    const inputTextures = [];
+    let fragmentShaderInputs = "";
+    let inputSize = null;
+    let inputDataSize = null;
 
-    if (inputSize == null)
-      inputSize = size;
-    else if (size != inputSize)
-      throw new Error(`All input sets must be of the same size. Received ${size} but expected ${inputSize}.`);
+    for (const [index, data] of inputs.entries()) {
+      if (data.gpgpuSize === undefined || data.gpgpuStride === undefined)
+        throw new Error('GPGPU inputs must be created by the `alloc` function.');
 
-    inputTextures.push(createTexture(data, size, width));
-    fragmentShaderInputs += `uniform sampler2D _input${index};\n`;
-  }
+      const size = Math.sqrt(data.length / data.gpgpuStride);
+      if (size == 0 || size % 1 != 0)
+        throw new Error('GPGPU input size is expected to be a perfect square.');
 
-  const fragmentShaderMain = `
+      if (inputSize == null) {
+        inputSize = size;
+        inputDataSize = data.gpgpuSize;
+      } else if (size != inputSize) {
+        throw new Error(`All GPGPU inputs must be of the same size. Received ${data.gpgpuSize} (internal ${size * size}) but expected ${inputDataSize} (internal ${inputSize * inputSize}).`);
+      }
+
+      inputTextures.push(createTexture(data, size, data.gpgpuStride));
+      fragmentShaderInputs += `uniform sampler2D _input${index};\n`;
+    }
+
+    const fragmentShaderMain = `
 void main() {
-  gl_FragColor = kernel(${[...Array(inputs.length).keys()].map(i => `texture2D(_input${i}, pos)`).join(', ')});
+  gpgpuOutput = vec4(kernel(${[...Array(inputs.length).keys()].map(i => `texture(_input${i}, gpgpuPos)`).join(', ')}));
 }
-  `;
+    `;
 
-  const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  const fragmentShaderSource = fragmentShaderHeader + fragmentShaderInputs + code + fragmentShaderMain;
-  gl.shaderSource(fragmentShader, fragmentShaderSource);
-  gl.compileShader(fragmentShader);
-  console.log(fragmentShaderSource);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    const fragmentShaderSource = fragmentShaderHeader + fragmentShaderInputs + code + fragmentShaderMain;
+    gl.shaderSource(fragmentShader, fragmentShaderSource);
+    gl.compileShader(fragmentShader);
 
-  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-    const source = fragmentShaderSource.split('\n');
-    let dbgMsg = "ERROR: Could not build shader (fatal).\n\n------------------ KERNEL CODE DUMP ------------------\n"
+    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+      const source = fragmentShaderSource.split('\n');
+      let dbgMsg = "ERROR: Could not build shader (fatal).\n\n------------------ KERNEL CODE DUMP ------------------\n"
 
-    for (let l = 0; l < source.length; l++)
-      dbgMsg += `${l + 1}> ${source[l]}\n`;
+      for (let l = 0; l < source.length; l++)
+        dbgMsg += `${l + 1}> ${source[l]}\n`;
 
-    dbgMsg += "\n--------------------- ERROR  LOG ---------------------\n" + gl.getShaderInfoLog(fragmentShader);
+      dbgMsg += "\n--------------------- ERROR  LOG ---------------------\n" + gl.getShaderInfoLog(fragmentShader);
 
-    throw new Error(dbgMsg);
+      throw new Error(dbgMsg);
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+      throw new Error('Failed to link GLSL program code.');
+
+    const aPosition = gl.getAttribLocation(program, 'position');
+    const aTexture = gl.getAttribLocation(program, 'texture');
+
+    gl.useProgram(program);
+
+    gl.viewport(0, 0, inputSize, inputSize);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, gl.createFramebuffer());
+
+    const output = new Float32Array(inputSize * inputSize * 4);
+    const outTexture = createTexture(output, inputSize, 4);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, outTexture, 0);
+    const frameBufferStatus = (gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE);
+    if (!frameBufferStatus)
+      throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible');
+
+    for (const [index, texture] of inputTextures.entries()) {
+      const textureUniform = gl.getUniformLocation(program, `_input${index}`);
+
+      gl.activeTexture(gl.TEXTURE0 + index);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.uniform1i(textureUniform, index);
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+    gl.enableVertexAttribArray(aTexture);
+    gl.vertexAttribPointer(aTexture, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    gl.readPixels(0, 0, inputSize, inputSize, gl.RGBA, gl.FLOAT, output);
+
+    return output.subarray(0, inputDataSize * 4);
+  },
+
+  alloc: function(size, stride) {
+    if (!Number.isInteger(stride) || stride < 1 || stride > 4)
+      throw new Error("Data stride must be an integer between 1 and 4.");
+
+    // Find the smallest integer `squareSize`, such that `sqrt(squareSize) >= sqrt(size)`.
+    const squareSize = Math.pow(Math.ceil(Math.sqrt(size)), 2);
+
+    const data = new Float32Array(squareSize * stride);
+    data.gpgpuSize = size;
+    data.gpgpuStride = stride;
+    return data;
   }
-
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-    throw new Error('Failed to link GLSL program code.');
-
-  const aPosition = gl.getAttribLocation(program, 'position');
-  const aTexture = gl.getAttribLocation(program, 'texture');
-
-  gl.useProgram(program);
-
-  gl.viewport(0, 0, inputSize, inputSize);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, gl.createFramebuffer());
-
-  const output = new Float32Array(inputSize * inputSize * 4);
-  const outTexture = createTexture(output, inputSize, 4);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, outTexture, 0);
-  const frameBufferStatus = (gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE);
-  if (!frameBufferStatus)
-    throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible');
-
-  for (const [index, texture] of inputTextures.entries()) {
-    const textureUniform = gl.getUniformLocation(program, `_input${index}`);
-
-    gl.activeTexture(gl.TEXTURE0 + index);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(textureUniform, index);
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
-  gl.enableVertexAttribArray(aTexture);
-  gl.vertexAttribPointer(aTexture, 2, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.enableVertexAttribArray(aPosition);
-  gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-  gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-  gl.readPixels(0, 0, inputSize, inputSize, gl.RGBA, gl.FLOAT, output);
-
-  return output;
 }
