@@ -65,9 +65,9 @@ export default class Simulator {
 
     let count = 0;
     let failed = 0;
-    const startDate = +new Date;
     const gpuStarts = GPGPU.alloc(Math.pow(16, 5), 4);
     const gpuEnds = GPGPU.alloc(Math.pow(16, 5), 4);
+    const startDate = +new Date;
 
     for (let x = 1; x <= 50; x += 49/15) {
       for (let y = -50; y <= 50; y += 100/15) {
@@ -89,9 +89,7 @@ export default class Simulator {
               const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: converged ? new THREE.Color(0x40ffaa) : new THREE.Color(0xffaa40), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
               pathObject.renderOrder = 1;
               this.scene.add(pathObject);
-              */
 
-              /*
               count++;
               //if (!converged) failed++;
               if (count % 10000 == 0) {

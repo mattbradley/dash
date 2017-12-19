@@ -9,6 +9,7 @@ const float CONVERGENCE_ERROR = 0.01;
 // These two consts must stay in sync.
 const int SIMPSONS_INTERVALS = 16;
 const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
+//const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
 
 const float PI = 3.1415926535897932384626433832795;
 const float TWO_PI = PI + PI;

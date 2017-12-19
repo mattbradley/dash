@@ -1,8 +1,11 @@
-Cubic spiral:
+Computers:
+  * 2012 MBP: 2.6GHz i7, GeForce GT 650M 1GB
+  * Desktop: 3.4GHz i5-2500K, GeForce GTX 970
+
+Cubic spiral (16 newton iterations, 16 relaxation iterations, 16 simpson's intervals):
 2012 MBP, Original JS: ~3,500 curves per second
 2012 MBP, Optimized JS: ~26,000 curves per second
 2012 MBP, GPU: ~700,000 curves per second
 
-Old: 1048576 (473018 failed) in 303.713 seconds
-New: 1048576 (473021 failed) in 39.733 seconds
-GPU: 1048576 in 1.496 seconds
+Desktop, Optimized JS: ~24,000 curves per seconds
+Desktop, GPU: ~6,500,000 curves per seconds
