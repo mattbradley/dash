@@ -6,7 +6,7 @@ import AutonomousController from "./autonomy/control/AutonomousController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
-import Editor from "./simulator/Editor.js";
+import Editor from "./simulator/EditorSpline.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
 import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";

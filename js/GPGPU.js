@@ -184,7 +184,7 @@ void main() {
     if (!Number.isInteger(stride) || stride < 1 || stride > 4)
       throw new Error("Data stride must be an integer between 1 and 4.");
 
-    // Find the smallest integer `squareSize`, such that `sqrt(squareSize) >= sqrt(size)`.
+    // Find the smallest perfect square greater than or equal to size
     const squareSize = Math.pow(Math.ceil(Math.sqrt(size)), 2);
 
     const data = new Float32Array(squareSize * stride);

@@ -3,6 +3,7 @@ import Simulator from "./Simulator.js";
 const geolocation = [36.037351, -86.786561];
 window.simulator = new Simulator(geolocation, document.getElementById('container'));
 
+/*
 const start = new THREE.Vector2(10, -5);
 const startRot = 0;
 const end = new THREE.Vector2(20, -6);
@@ -28,3 +29,4 @@ const center = THREE.Vector2.fromAngle(arcAngle + Math.PI).multiplyScalar(1 / ka
 for (let i = 0; i <= 10; i++) {
   console.log(THREE.Vector2.fromAngle(arcAngle + i * angle / 10).multiplyScalar(1 / kappa).add(center));
 }
+*/
