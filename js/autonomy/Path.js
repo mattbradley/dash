@@ -8,21 +8,25 @@ export default class Path {
 
     for (let i = 0; i < poses.length; i++) {
       const pose = poses[i];
-      let rot;
 
-      if (i == 0) {
-        rot = startRotation;
-      } else if (i == poses.length - 1) {
-        rot = goalRotation;
-      } else {
-        const prev = poses[i - 1].pos;
-        const next = poses[i + 1].pos;
-        rot = Math.atan2(next.y - prev.y, next.x - prev.x);
+      if (pose.rot === undefined) {
+        let rot;
+
+        if (i == 0) {
+          rot = startRotation;
+        } else if (i == poses.length - 1) {
+          rot = goalRotation;
+        } else {
+          const prev = poses[i - 1].pos;
+          const next = poses[i + 1].pos;
+          rot = Math.atan2(next.y - prev.y, next.x - prev.x);
+        }
+
+        pose.rot = rot;
       }
 
-      pose.rot = rot;
-      pose.frontPos = Car.getFrontAxlePosition(pose.pos, rot);
-      pose.fakePos = Car.getFakeAxlePosition(pose.pos, rot);
+      pose.frontPos = Car.getFrontAxlePosition(pose.pos, pose.rot);
+      pose.fakePos = Car.getFakeAxlePosition(pose.pos, pose.rot);
     }
   }
 }

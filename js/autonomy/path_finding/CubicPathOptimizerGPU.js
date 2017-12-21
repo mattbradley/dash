@@ -1,4 +1,5 @@
 import GPGPU from "../../GPGPU.js";
+import CubicPathOptimizer from "./CubicPathOptimizer.js"
 
 const kernel = `
 
@@ -7,9 +8,9 @@ const int RELAXATION_ITERATIONS = 16;
 const float CONVERGENCE_ERROR = 0.01;
 
 // These two consts must stay in sync.
-const int SIMPSONS_INTERVALS = 16;
-const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
-//const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
+const int SIMPSONS_INTERVALS = 8;
+//const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
+const float SIMPSONS_COEFFS[SIMPSONS_INTERVALS + 1] = float[](1.0, 4.0, 2.0, 4.0, 2.0, 4.0, 2.0, 4.0, 1.0);
 
 const float PI = 3.1415926535897932384626433832795;
 const float TWO_PI = PI + PI;
@@ -29,17 +30,13 @@ vec4 iterate(vec4 goal, float p0, float p1, float p2, float p3, float sG) {
   float sG_2 = sG * sG;
   float sG_3 = sG_2 * sG;
 
-  float dX_p1 = 0.0;
-  float dX_p2 = 0.0;
-  float dX_sG = 0.0;
-  float dY_p1 = 0.0;
-  float dY_p2 = 0.0;
-  float dY_sG = 0.0;
-  float guessX = 0.0;
-  float guessY = 0.0;
+  vec3 dX_p = vec3(0.0);
+  vec3 dY_p = vec3(0.0);
+  vec2 guess = vec2(0.0);
   float s = 0.0;
 
-  float theta, cosTheta, sinTheta, dT_p1, dT_p2, dT_sG;
+  float theta, cosTheta, sinTheta;
+  vec3 dT_p;
 
   for (int i = 0; i <= SIMPSONS_INTERVALS; i++) {
     float coeff = SIMPSONS_COEFFS[i];
@@ -54,38 +51,37 @@ vec4 iterate(vec4 goal, float p0, float p1, float p2, float p3, float sG) {
     sinTheta = sin(theta);
 
     float s_sG = s / sG;
-    dT_p1 = ((3.375 * s_sG - 7.5) * s_sG + 4.5) * s_sG * s;
-    dT_p2 = ((-3.375 * s_sG + 6.0) * s_sG - 2.25) * s_sG * s;
-    dT_sG = ((3.375 * (p0 - 3.0 * p1 + 3.0 * p2 - p3) * s_sG - 3.0 * (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3)) * s_sG + 0.25 * (11.0 * p0 - 18.0 * p1 + 9.0 * p2 - 2.0 * p3)) * s_sG * s_sG;
+    dT_p = vec3(
+      ((3.375 * s_sG - 7.5) * s_sG + 4.5) * s_sG * s,
+      ((-3.375 * s_sG + 6.0) * s_sG - 2.25) * s_sG * s,
+      ((3.375 * (p0 - 3.0 * p1 + 3.0 * p2 - p3) * s_sG - 3.0 * (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3)) * s_sG + 0.25 * (11.0 * p0 - 18.0 * p1 + 9.0 * p2 - 2.0 * p3)) * s_sG * s_sG
+    );
 
-    dX_p1 -= coeff * sinTheta * dT_p1;
-    dX_p2 -= coeff * sinTheta * dT_p2;
-    dX_sG -= coeff * sinTheta * dT_sG;
+    dX_p -= coeff * sinTheta * dT_p;
+    dY_p += coeff * cosTheta * dT_p;
 
-    dY_p1 += coeff * cosTheta * dT_p1;
-    dY_p2 += coeff * cosTheta * dT_p2;
-    dY_sG += coeff * cosTheta * dT_sG;
-
-    guessX += coeff * cosTheta;
-    guessY += coeff * sinTheta;
+    guess += coeff * vec2(cosTheta, sinTheta);
 
     s += ds;
   }
 
   float hOver3 = sG / SIMPSONS_INTERVALS_F / 3.0;
 
-  vec3 delta = vec3(goal.x - guessX * hOver3, goal.y - guessY * hOver3, wrapAngle(goal.z - theta));
+  vec3 delta;
+  delta.xy = goal.xy - guess * hOver3;
+  delta.z = wrapAngle(goal.z - theta);
 
   if (abs(delta.x) + abs(delta.y) + abs(delta.z) < CONVERGENCE_ERROR)
     return vec4(p1, p2, sG, 1.0);
 
-  mat3 invJacobian = inverse(
-    mat3( // Column-major order
-      dX_p1 * hOver3, dY_p1 * hOver3, dT_p1,
-      dX_p2 * hOver3, dY_p2 * hOver3, dT_p2,
-      cosTheta + dX_sG * hOver3, sinTheta + dY_sG * hOver3, dT_sG
-    )
-  );
+  dX_p.xy *= hOver3;
+  dY_p.xy *= hOver3;
+  dX_p.z *= hOver3;
+  dY_p.z *= hOver3;
+  dX_p.z += cosTheta;
+  dY_p.z += sinTheta;
+
+  mat3 invJacobian = inverse(transpose(mat3(dX_p, dY_p, dT_p)));
 
   vec3 deltaP = invJacobian * delta;
   vec4 params = vec4(p1, p2, sG, 0.0);
@@ -167,18 +163,21 @@ vec4 kernel(vec4 start, vec4 end) {
 
 `;
 
-export default {
-  optimizePath(start, end) {
+export default class CubicPathOptimizerGPU extends CubicPathOptimizer {
+  static optimizePath(start, end) {
     const s = GPGPU.alloc(1, 4);
     const e = GPGPU.alloc(1, 4);
 
     s.set([start.x, start.y, start.rot, start.curv]);
     e.set([end.x, end.y, end.rot, end.curv]);
 
-    return GPGPU.run([s, e], kernel);
-  },
+    const result = GPGPU.run([s, e], kernel);
+    const optimizer = new CubicPathOptimizer(start, end, { p1: result[0], p2: result[1], sG: result[2] });
+    optimizer.converged = true;
+    return optimizer;
+  }
 
-  optimizePaths(starts, ends) {
+  static optimizePaths(starts, ends) {
     return GPGPU.run([starts, ends], kernel);
   }
 }

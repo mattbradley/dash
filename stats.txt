@@ -9,3 +9,11 @@ Cubic spiral (16 newton iterations, 16 relaxation iterations, 16 simpson's inter
 
 Desktop, Optimized JS: ~24,000 curves per seconds
 Desktop, GPU: ~6,500,000 curves per seconds
+
+Failed to converge:
+2012 MBP, Optimizd JS: 1048576 (473021 failed) in 37.716 seconds
+2012 MBP, GPU (16 simpson's intervals): 1048576 (504781 failed) in 1.611 seconds
+2012 MBP, GPU (8 simpson's intervals): 1048576 (514625 failed) in 0.604 seconds
+
+Updating GPU implementation to only 8 Simpson's intervals (like the original
+paper). It's only marginally worse at convergence but about 3x faster.

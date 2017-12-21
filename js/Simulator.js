@@ -63,6 +63,7 @@ export default class Simulator {
 
     requestAnimationFrame(render.bind(this));
 
+    /*
     let count = 0;
     let failed = 0;
     const gpuStarts = GPGPU.alloc(Math.pow(16, 5), 4);
@@ -91,11 +92,10 @@ export default class Simulator {
               this.scene.add(pathObject);
 
               count++;
-              //if (!converged) failed++;
+              if (!converged) failed++;
               if (count % 10000 == 0) {
                 console.log(`Count: ${count} (${failed} failed)`);
               }
-              */
 
               gpuStarts[count * 4 + 0] = 0;
               gpuStarts[count * 4 + 1] = 0;
@@ -113,8 +113,12 @@ export default class Simulator {
       }
     }
 
-    CubicPathOptimizerGPU.optimizePaths(gpuStarts, gpuEnds);
+    const optimized = CubicPathOptimizerGPU.optimizePaths(gpuStarts, gpuEnds);
+    for (let i = 0; i < count; i++) {
+      if (optimized[i * 4 + 3] == 0) failed++;
+    }
     console.log(`Final count: ${count} (${failed} failed) in ${((+new Date) - startDate) / 1000} seconds`);
+    */
   }
 
   enableEditor() {
@@ -165,6 +169,35 @@ export default class Simulator {
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
     this.editor.enabled = false;
+    follow = true;
+  }
+
+  go3() {
+    const start = { x: 0, y: 0, rot: Math.PI / 8, curv: 0.05 };
+    const end = { x: 100, y: -5, rot: -3 * Math.PI / 8, curv: -0.08 };
+
+    const optimizer = CubicPathOptimizerGPU.optimizePath(start, end);
+    const cubicPath = optimizer.buildPath(1000);
+
+    const pathGeometry = new THREE.Geometry();
+    pathGeometry.setFromPoints(cubicPath.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
+    const pathLine = new MeshLine();
+    pathLine.setGeometry(pathGeometry);
+
+    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: optimizer.converged ? new THREE.Color(0x40ffaa) : new THREE.Color(0xffaa40), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+    pathObject.renderOrder = 1;
+    this.scene.add(pathObject);
+
+    const path = new Path(cubicPath, start.rot, end.rot);
+
+    autoController = new AutonomousController(path);
+    this.car.setPose(start.x, start.y, start.rot);
+
+    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
+    const frontGeometry = new THREE.Geometry();
+    frontGeometry.vertices.push(...path.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
+    this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
+
     follow = true;
   }
 }
