@@ -5,6 +5,8 @@ const dragOffset = new THREE.Vector3();
 let draggingPoint = null;
 let mouseMoved = false;
 const splineGeometry = new THREE.Geometry();
+const tangentGeometry = new THREE.Geometry();
+const boundaryGeometry = new THREE.Geometry();
 
 export default class Editor {
   constructor(canvas, camera, scene) {
@@ -19,8 +21,6 @@ export default class Editor {
     this.group.add(this.pointsGroup);
     scene.add(this.group);
 
-    this.splineObject = null;
-
     this.mouseDown = this.mouseDown.bind(this);
     this.mouseMove = this.mouseMove.bind(this);
     this.mouseUp = this.mouseUp.bind(this);
@@ -29,21 +29,82 @@ export default class Editor {
     canvas.addEventListener('mousemove', this.mouseMove);
     canvas.addEventListener('mouseup', this.mouseUp);
     canvas.addEventListener('contextmenu', e => this.enabled && e.preventDefault());
-  }
 
-  redrawSpline() {
-    if (this.splineObject != null) this.group.remove(this.splineObject);
+    this.halfway = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), new THREE.MeshBasicMaterial({ color: 0xff8000, depthTest: false, transparent: true, opacity: 0.7 }));
+    this.halfway.rotation.x = -Math.PI / 2;
+    this.halfway.visible = false;
+    this.group.add(this.halfway);
 
-    const curve = new THREE.SplineCurve(this.points.map(p => new THREE.Vector2(p.position.x, p.position.z)));
-    splineGeometry.setFromPoints(curve.getPoints(20 * this.points.length));
+    this.center = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), new THREE.MeshBasicMaterial({ color: 0xff00ff, depthTest: false, transparent: true, opacity: 0.7 }));
+    this.center.rotation.x = -Math.PI / 2;
+    this.center.visible = false;
+    this.group.add(this.center);
 
-    const spline = new MeshLine();
-    spline.setGeometry(splineGeometry);
-
-    this.splineObject = new THREE.Mesh(spline.geometry, new MeshLineMaterial({ color: new THREE.Color(0x004080), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.splineObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0x004080), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.splineObject.rotation.x = Math.PI / 2;
     this.splineObject.renderOrder = 1;
     this.group.add(this.splineObject);
+
+    this.tangentObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.05, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.tangentObject.rotation.x = Math.PI / 2;
+    this.tangentObject.renderOrder = 1;
+    this.group.add(this.tangentObject);
+
+    this.boundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.05, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.boundaryObject.rotation.x = Math.PI / 2;
+    this.boundaryObject.renderOrder = 1;
+    this.group.add(this.boundaryObject);
+  }
+
+  redrawSpline() {
+    const numPoints = 100 * this.points.length;
+    const curve = new THREE.SplineCurve(this.points.map(p => new THREE.Vector2(p.position.x, p.position.z)));
+    const curvePoints = curve.getSpacedPoints(numPoints);
+    splineGeometry.setFromPoints(curvePoints);
+
+    const spline = new MeshLine();
+    spline.setGeometry(splineGeometry);
+    this.splineObject.geometry = spline.geometry;
+
+    const normals = Array(numPoints + 1).fill().map((_, i) => {
+      const tangent = curve.getTangentAt(i / numPoints);
+      return new THREE.Vector2(-tangent.y, tangent.x);
+    });
+
+    const laneWidth = 3.7 / 2;
+    const boundaryPoints = [];
+    for (let i = 0; i < normals.length; i++) {
+      boundaryPoints.push(normals[i].clone().multiplyScalar(laneWidth).add(curvePoints[i]));
+    }
+    for (let i = normals.length - 1; i >= 0; i--) {
+      boundaryPoints.push(normals[i].clone().multiplyScalar(-laneWidth).add(curvePoints[i]));
+    }
+    boundaryPoints.push(boundaryPoints[0]);
+
+    boundaryGeometry.setFromPoints(boundaryPoints);
+    const boundaryLine = new MeshLine();
+    boundaryLine.setGeometry(boundaryGeometry);
+    this.boundaryObject.geometry = boundaryLine.geometry
+
+    if (this.points.length > 1) {
+      const p = curve.getPointAt(0.5);
+      this.halfway.visible = true;
+      this.halfway.position.set(p.x, 0, p.y);
+
+      const tangent = curve.getTangentAt(0.5);
+      tangentGeometry.setFromPoints([tangent.clone().multiplyScalar(-5).add(p), tangent.clone().multiplyScalar(5).add(p)]);
+      const tangentLine = new MeshLine();
+      tangentLine.setGeometry(tangentGeometry);
+      this.tangentObject.geometry = tangentLine.geometry;
+
+      const curvature = curve.getCurvatureAt(0.5);
+      const centerPos = (new THREE.Vector2(-tangent.y, tangent.x)).multiplyScalar(1 / curvature).add(p);
+      this.center.position.set(centerPos.x, 0, centerPos.y);
+      this.center.visible = true;
+    } else {
+      this.halfway.visible = false;
+      this.center.visible = false;
+    }
   }
 
   addPoint(pos) {
@@ -58,8 +119,7 @@ export default class Editor {
   }
 
   clearPoints() {
-    if (this.splineObject != null) this.group.remove(this.splineObject);
-    this.splineObject = null;
+    this.splineObject.geometry = new THREE.Geometry();
 
     this.group.remove(this.pointsGroup);
     this.pointsGroup = new THREE.Group();
