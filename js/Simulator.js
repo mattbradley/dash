@@ -6,7 +6,7 @@ import AutonomousController from "./autonomy/control/AutonomousController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
-import Editor from "./simulator/EditorSpline.js";
+import Editor from "./simulator/EditorLanePath.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
 import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";
@@ -198,6 +198,28 @@ export default class Simulator {
     frontGeometry.vertices.push(...path.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
+    follow = true;
+  }
+
+  go4() {
+    const points = this.editor.lanePath.centerline;
+    const rotations = this.editor.lanePath.centerlineRotations;
+
+    const poses = points.map((p, i) => {
+      const rot = rotations[i];
+      return { pos: Car.frontToRearAxlePosition(p, rot), rot: rot };
+    });
+    const path = new Path(poses);
+
+    autoController = new AutonomousController(path);
+    this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
+
+    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
+    const frontGeometry = new THREE.Geometry();
+    frontGeometry.vertices.push(...path.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
+    this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
+
+    this.editor.enabled = false;
     follow = true;
   }
 }

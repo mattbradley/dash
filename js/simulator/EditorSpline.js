@@ -57,7 +57,7 @@ export default class Editor {
   }
 
   redrawSpline() {
-    const numPoints = 100 * this.points.length;
+    const numPoints = 10 * this.points.length;
     const curve = new THREE.SplineCurve(this.points.map(p => new THREE.Vector2(p.position.x, p.position.z)));
     const curvePoints = curve.getSpacedPoints(numPoints);
     splineGeometry.setFromPoints(curvePoints);

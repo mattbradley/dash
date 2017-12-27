@@ -25,7 +25,7 @@ THREE.Curve.prototype.getCurvatureAt = function(u) {
   if (t3 > 1) {
     t3 = 1;
     t2 = 1 - delta;
-    t3 = 1 - 2 * delta;
+    t1 = 1 - 2 * delta;
   }
 
   const p1 = this.getPoint(t1);

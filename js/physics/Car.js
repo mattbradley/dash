@@ -9,11 +9,15 @@ export default class Car {
   }
 
   static getFakeAxlePosition(pos, rot) {
-    return THREE.Vector2.fromAngle(rot).multiplyScalar(-Car.WHEEL_BASE).add(pos);
+    return Car.frontToRearAxlePosition(pos, rot);
   }
 
   static centerToRearAxlePosition(pos, rot) {
     return THREE.Vector2.fromAngle(rot).multiplyScalar(Car.REAR_AXLE_POS).add(pos);
+  }
+
+  static frontToRearAxlePosition(pos, rot) {
+    return THREE.Vector2.fromAngle(rot).multiplyScalar(-Car.WHEEL_BASE).add(pos);
   }
 
   get pose() {

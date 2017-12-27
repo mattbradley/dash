@@ -10,8 +10,9 @@ export default class MapObject extends THREE.Object3D {
 
   // Converts lat-long geolocation to Google Maps world coodinates
   static geoToWorld(latlng) {
+    const latitudeRadians = latlng[0] * Math.PI / 180;
     const x = (latlng[1] + 180) / 360 * 256;
-    const y = ((1 - Math.log(Math.tan(latlng[0] * Math.PI / 180) + 1 / Math.cos(latlng[0] * Math.PI / 180)) / Math.PI) / 2) * 256;
+    const y = ((1 - Math.log(Math.tan(latitudeRadians) + 1 / Math.cos(latitudeRadians)) / Math.PI) / 2) * 256;
     return [x, y];
   }
 
