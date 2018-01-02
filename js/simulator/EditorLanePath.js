@@ -1,20 +1,21 @@
 import LanePath from "../autonomy/LanePath.js";
 
-const raycaster = new THREE.Raycaster();
-const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
-const mouse = new THREE.Vector2();
-const dragOffset = new THREE.Vector3();
-let draggingPoint = null;
-let mouseMoved = false;
-let pointIndex = 0;
-const centerlineGeometry = new THREE.Geometry();
-const leftBoundaryGeometry = new THREE.Geometry();
-const rightBoundaryGeometry = new THREE.Geometry();
+const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 
 export default class Editor {
   constructor(canvas, camera, scene) {
     this.canvas = canvas;
     this.camera = camera;
+
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.mouseMoved = false;
+    this.dragOffset = new THREE.Vector3();
+    this.draggingPoint = null;
+    this.pointIndex = 0;
+    this.centerlineGeometry = new THREE.Geometry();
+    this.leftBoundaryGeometry = new THREE.Geometry();
+    this.rightBoundaryGeometry = new THREE.Geometry();
 
     this.points = [];
     this.enabled = false;
@@ -52,19 +53,19 @@ export default class Editor {
   }
 
   redraw() {
-    centerlineGeometry.setFromPoints(this.lanePath.centerline);
+    this.centerlineGeometry.setFromPoints(this.lanePath.centerline);
     const centerline = new MeshLine();
-    centerline.setGeometry(centerlineGeometry);
+    centerline.setGeometry(this.centerlineGeometry);
     this.centerlineObject.geometry = centerline.geometry;
 
-    leftBoundaryGeometry.setFromPoints(this.lanePath.leftBoundary);
+    this.leftBoundaryGeometry.setFromPoints(this.lanePath.leftBoundary);
     const leftBoundary = new MeshLine();
-    leftBoundary.setGeometry(leftBoundaryGeometry);
+    leftBoundary.setGeometry(this.leftBoundaryGeometry);
     this.leftBoundaryObject.geometry = leftBoundary.geometry;
 
-    rightBoundaryGeometry.setFromPoints(this.lanePath.rightBoundary);
+    this.rightBoundaryGeometry.setFromPoints(this.lanePath.rightBoundary);
     const rightBoundary = new MeshLine();
-    rightBoundary.setGeometry(rightBoundaryGeometry);
+    rightBoundary.setGeometry(this.rightBoundaryGeometry);
     this.rightBoundaryObject.geometry = rightBoundary.geometry;
   }
 
@@ -72,7 +73,7 @@ export default class Editor {
     const point = new THREE.Mesh(new THREE.CircleGeometry(0.25, 32), new THREE.MeshBasicMaterial({ color: 0x0080ff, depthTest: false, transparent: true, opacity: 0.7 }));
     point.rotation.x = -Math.PI / 2;
     point.position.set(pos.x, 0, pos.y);
-    point.userData = { index: pointIndex++ };
+    point.userData = { index: this.pointIndex++ };
 
     this.pointsGroup.add(point);
     this.points.push(point);
@@ -96,36 +97,36 @@ export default class Editor {
     if (!this.enabled) return;
     if (event.button != 0) return;
 
-    mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
-    mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
+    this.mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
+    this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, this.camera);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    const picked = raycaster.intersectObjects(this.points)[0];
+    const picked = this.raycaster.intersectObjects(this.points)[0];
 
     if (picked) {
-      draggingPoint = picked.object;
-      dragOffset.copy(picked.object.position).sub(picked.point);
+      this.draggingPoint = picked.object;
+      this.dragOffset.copy(picked.object.position).sub(picked.point);
       event.stopImmediatePropagation();
     } else {
-      mouseMoved = false;
+      this.mouseMoved = false;
     }
   }
 
   mouseMove(event) {
     if (!this.enabled) return;
 
-    mouseMoved = true;
-    if (draggingPoint == null) return;
+    this.mouseMoved = true;
+    if (this.draggingPoint == null) return;
 
-    mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
-    mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
+    this.mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
+    this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, this.camera);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    const intersection = raycaster.ray.intersectPlane(groundPlane);
+    const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
     if (intersection != null) {
-      this.updatePoint(draggingPoint, intersection.add(dragOffset));
+      this.updatePoint(this.draggingPoint, intersection.add(this.dragOffset));
       this.redraw();
     }
   }
@@ -134,10 +135,10 @@ export default class Editor {
     if (!this.enabled) return;
     if (event.button != 0) return;
 
-    draggingPoint = null;
+    this.draggingPoint = null;
 
-    if (!mouseMoved) {
-      const intersection = raycaster.ray.intersectPlane(groundPlane);
+    if (!this.mouseMoved) {
+      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection != null) {
         this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
         this.redraw();

@@ -1,4 +1,4 @@
-const SIMPSONS_INTERVALS = 16;
+const SIMPSONS_INTERVALS = 8;
 const NEWTON_ITERATIONS = 16;
 const RELAXATION_ITERATIONS = 32;
 const CONVERGENCE_ERROR = 0.01;
@@ -9,23 +9,33 @@ const invJacobian = new THREE.Matrix3();
 // Alternate reference implementation: https://github.com/ApolloAuto/apollo/blob/master/modules/planning/math/spiral_curve/cubic_spiral_curve.cc
 export default class CubicPathOptimizer {
   constructor(start, end, params = null) {
-    this.start = start;
+    this.start = start
     this.end = end;
 
-    const diffX = end.x - start.x;
-    const diffY = end.y - start.y;
-    const sinRot = Math.sin(start.rot);
-    const cosRot = Math.cos(start.rot);
+    if (start.pos) {
+      this.start.x = start.pos.x;
+      this.start.y = start.pos.y
+    }
+
+    if (end.pos) {
+      this.end.x = end.pos.x;
+      this.end.y = end.pos.y
+    }
+
+    const diffX = this.end.x - this.start.x;
+    const diffY = this.end.y - this.start.y;
+    const sinRot = Math.sin(this.start.rot);
+    const cosRot = Math.cos(this.start.rot);
 
     this.goal = {
       x: cosRot * diffX + sinRot * diffY,
       y: -sinRot * diffX + cosRot * diffY,
-      rot: Math.wrapAngle(end.rot - start.rot),
-      curv: end.curv
+      rot: Math.wrapAngle(this.end.rot - this.start.rot),
+      curv: this.end.curv
     };
 
     if (params)
-      this.params = Object.assign({}, params, { p0: start.curv, p3: end.curv });
+      this.params = Object.assign({}, params, { p0: this.start.curv, p3: this.end.curv });
     else
       this.guessInitialParams();
 

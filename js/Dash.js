@@ -4,30 +4,29 @@ import Simulator from "./Simulator.js";
 const geolocation = [33.523900, -111.908756];
 window.simulator = new Simulator(geolocation, document.getElementById('container'));
 
-/*
-const start = new THREE.Vector2(10, -5);
-const startRot = 0;
-const end = new THREE.Vector2(20, -6);
+import GPGPU from "./GPGPU.js";
 
-const startRotVec = THREE.Vector2.fromAngle(startRot);
-const diff = end.clone().sub(start);
-const dist = diff.length();
-const dot = end.clone().sub(start).dot(startRotVec) / dist;
-//const angle = 2 * Math.acos(dot);
-//const kappa = 2 / dist * Math.sqrt(1 - dot * dot);
-const angle = 2 * (Math.atan2(diff.y, diff.x) - Math.atan2(startRotVec.y, startRotVec.x));
-const kappa = 2 / dist * Math.sin(angle / 2);
-const arcLength = angle / kappa;
-console.log(`dist: ${dist}`);
-console.log(`angle: ${angle}`);
-console.log(`arc length: ${arcLength}`);
-console.log(`radius: ${1/kappa}`);
-console.log(`curvature: ${kappa}`);
+const input = GPGPU.alloc(10, 1);
+for (let i = 0; i < 10; i++) input[i] = i % 4;
 
-const arcAngle = startRot + Math.sign(angle) * Math.PI / 2;
-const center = THREE.Vector2.fromAngle(arcAngle + Math.PI).multiplyScalar(1 / kappa).add(start);
-
-for (let i = 0; i <= 10; i++) {
-  console.log(THREE.Vector2.fromAngle(arcAngle + i * angle / 10).multiplyScalar(1 / kappa).add(center));
+const out = GPGPU.run(
+  {
+    inputs: [input],
+    globals: {
+      test: {
+        type: 'texture',
+        width: 4,
+        height: 1,
+        stride: 1,
+        data: new Float32Array([13, 14, 15, 16])
+      }
+    }
+  },
+  `
+vec4 kernel(vec4 num) {
+  return vec4(texelFetch(test, ivec2(num.r, 0), 0).r);
 }
-*/
+  `
+);
+
+console.log(out);
