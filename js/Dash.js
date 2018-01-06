@@ -23,8 +23,9 @@ const g = new GPGPU([
     inputs: [i1],
     globals: {
       num: 10,
+      numInt: { type: 'int', value: -7 }
     },
-    kernel: `vec4 kernel(vec4 i1) { return vec4(kernelPosition + num, i1.r, 0); }`,
+    kernel: `vec4 kernel(vec4 i1) { return vec4(kernelPosition + num, i1.r, numInt); }`,
     outputName: 'out1'
   },
   {

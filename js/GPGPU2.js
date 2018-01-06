@@ -15,7 +15,7 @@ const fragmentShaderHeader = `#version 300 es
 precision mediump float;
 in vec2 kernelPosition;
 out vec4 kernelOut;
-uniform float kernelSize;
+uniform int kernelSize;
 `;
 
 export default class {
@@ -61,7 +61,7 @@ export default class {
     this._prepareProgramInputs(program, inputs);
 
     this.gl.useProgram(program.glProgram);
-    this.gl.uniform1f(program.kernelSizeLocation, program.inputSize);
+    this.gl.uniform1i(program.kernelSizeLocation, program.inputSize);
 
     if (program.inputSize != previousInputSize)
       this._prepareProgramOutput(program);
@@ -93,20 +93,13 @@ export default class {
     let global;
 
     if (global = program.uniforms[globalName]) {
-      const location = global.location;
-
-      switch (global.type) {
-        case 'float': this.gl.uniform1f(location, value); break;
-        case 'vec2': this.gl.uniform2fv(location, value); break;
-        case 'vec3': this.gl.uniform3fv(location, value); break;
-        case 'vec4': this.gl.uniform4fv(location, value); break;
-      }
+      this._setUniform(global.type, global.location, value)
     } else if (global = program.globalTextures[globalName]) {
       if (typeof(value) != 'object' || value.type != 'texture')
         throw new Error(`Expected texture type for global ${globalName}.`);
 
       const { width, height, channels, data } = global;
-      program.globalTextures[globalName].texture = this._createTexture(data, width, height, channels);
+      program.globalTextures[globalName].texture = this._createTexture(data, width, height, channels, global);
     } else {
       throw new Error(`The global ${globalName} does not exist in this program.`);
     }
@@ -172,6 +165,10 @@ export default class {
     program.outputName = config.outputName;
 
     const kernel = config.kernel;
+
+    if (typeof(kernel) != 'string' || kernel.length == 0)
+      throw new Error("Kernel code cannot be empty.");
+
     const inputs = config.inputs || [];
     const globals = config.globals || {};
 
@@ -211,16 +208,14 @@ export default class {
         const { type, width, height, channels, data, value } = global;
 
         if (type == 'texture') {
-          program.globalTextures[globalName] = { texture: this._createTexture(data, width, height, channels) };
+          program.globalTextures[globalName] = { texture: data ? this._createTexture(data, width, height, channels, global) : null };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
         } else if (type == 'output') {
           program.globalTextures[globalName] = { texture: null };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
-        } else if (type == 'float' || type == 'vec2' || type == 'vec3' || type == 'vec4') {
+        } else {
           program.uniforms[globalName] = { type, value };
           fragmentShaderConfig += `uniform ${type} ${globalName};\n`;
-        } else {
-          throw new Error(`Unknown global type ${type}.`);
         }
       }
     }
@@ -288,19 +283,13 @@ void main() {
       const { type, value } = program.uniforms[uniformName];
       const location = program.uniforms[uniformName].location = this.gl.getUniformLocation(program.glProgram, uniformName);
 
-      switch (type) {
-        case 'float': this.gl.uniform1f(location, value); break;
-        case 'vec2': this.gl.uniform2fv(location, value); break;
-        case 'vec3': this.gl.uniform3fv(location, value); break;
-        case 'vec4': this.gl.uniform4fv(location, value); break;
-        default: throw new Error(`Unknown uniform type ${type}.`);
-      }
+      this._setUniform(type, location, value);
 
       delete program.uniforms[uniformName].value;
     }
 
     program.kernelSizeLocation = this.gl.getUniformLocation(program.glProgram, 'kernelSize');
-    this.gl.uniform1f(program.kernelSizeLocation, program.inputSize);
+    this.gl.uniform1i(program.kernelSizeLocation, program.inputSize);
 
     const aPosition = this.gl.getAttribLocation(program.glProgram, 'position');
     const aTexture = this.gl.getAttribLocation(program.glProgram, 'texture');
@@ -354,6 +343,17 @@ void main() {
       this.outputTextures[program.outputName] = outputTexture;
   }
 
+  _setUniform(type, location, value) {
+    switch (type) {
+      case 'int': this.gl.uniform1i(location, value); break;
+      case 'float': this.gl.uniform1f(location, value); break;
+      case 'vec2': this.gl.uniform2fv(location, value); break;
+      case 'vec3': this.gl.uniform3fv(location, value); break;
+      case 'vec4': this.gl.uniform4fv(location, value); break;
+      default: throw new Error(`Unknown uniform type ${type}.`);
+    }
+  }
+
   _newBuffer(data, klass, target) {
     const buf = this.gl.createBuffer();
 
@@ -363,7 +363,7 @@ void main() {
     return buf;
   }
 
-  _createTexture(data, width, height, channels) {
+  _createTexture(data, width, height, channels, options = {}) {
     const texture = this.gl.createTexture();
 
     let internalFormat, format;
@@ -392,8 +392,8 @@ void main() {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
     this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, this.gl.FLOAT, data);
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 

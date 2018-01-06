@@ -1,4 +1,4 @@
-import ArcPath from "../autonomy/path_finding/ArcPath.js";
+import ArcPath from "../autonomy/path-planning/ArcPath.js";
 
 const raycaster = new THREE.Raycaster();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
