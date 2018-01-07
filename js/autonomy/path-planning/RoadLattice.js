@@ -20,6 +20,7 @@ if (LATITUDE_CONNECTIVITY > NUM_LATITUDES)
 export default class {
   constructor(lanePath) {
     const stationInterval = SPATIAL_HORIZON / NUM_STATIONS;
+    // TODO: try transforming points into vehicle space
     const centerline = lanePath.sampleStations(stationInterval, NUM_STATIONS, stationInterval);
     const lattice = new Array(NUM_STATIONS);
     const offset = Math.floor(NUM_LATITUDES / 2);
@@ -29,7 +30,7 @@ export default class {
       const latitudes = lattice[s] = new Array(NUM_LATITUDES);
 
       for (let l = 0; l < NUM_LATITUDES; l++) {
-        const latitude = (l - offset) / offset * LANE_WIDTH;
+        const latitude = (l - offset) / offset * LANE_WIDTH / 2;
         const rot = sample.rot;
         const pos = THREE.Vector2.fromAngle(rot + Math.PI / 2).multiplyScalar(latitude).add(sample.pos);
         const curv = sample.curv == 0 ? 0 : 1 / (1 / sample.curv - latitude);

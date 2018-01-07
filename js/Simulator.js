@@ -242,7 +242,7 @@ export default class Simulator {
 
     const planner = new PathPlanner();
     const start = performance.now();
-    const xysl = planner.plan(this.editor.lanePath)[0];
+    const { xysl, center, rot } = planner.plan(this.editor.lanePath);
     console.log(`Planner time: ${(performance.now() - start) / 1000}s`);
 
     const size = Math.sqrt(xysl.length / 4);
@@ -255,7 +255,8 @@ export default class Simulator {
     const xyslMat = new THREE.MeshBasicMaterial({ map: xyslTex, depthTest: false, transparent: true, opacity: 0.5 });
     const xyslObj = new THREE.Mesh(xyslGeom, xyslMat);
     xyslObj.rotation.x = -Math.PI / 2;
-    xyslObj.position.set(this.editor.lanePath.anchors[0].x, 0, this.editor.lanePath.anchors[0].y);
+    xyslObj.rotation.z = -rot;
+    xyslObj.position.set(center.x, 0, center.y);
     this.scene.add(xyslObj);
   }
 }

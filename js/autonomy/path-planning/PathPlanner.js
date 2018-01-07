@@ -1,6 +1,7 @@
 import GPGPU from "./../../GPGPU2.js";
 
 const GRID_CELL_SIZE = 0.5; // meters
+const GRID_MARGIN = 10; // meters
 const STATION_INTERVAL = 0.5; // meters
 const SPATIAL_HORIZON = 100; // meters
 
@@ -24,7 +25,7 @@ int closestSample(vec2 pos) {
 }
 
 vec4 kernel() {
-  vec2 worldPos = (kernelPosition - 0.5) * vec2(float(kernelSize) * GRID_CELL_SIZE) + origin;
+  vec2 worldPos = (kernelPosition - 0.5) * vec2(float(kernelSize) * GRID_CELL_SIZE) + centerPoint;
   int closest = closestSample(worldPos);
   vec2 closestPos = texelFetch(centerline, ivec2(closest, 0), 0).xy;
   vec2 prev, next;
@@ -75,34 +76,36 @@ export default class {
   }
 
   plan(lanePath) {
-    const centerline = lanePath.sampleStations(0, Math.ceil(SPATIAL_HORIZON / STATION_INTERVAL), STATION_INTERVAL);
+    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(SPATIAL_HORIZON / STATION_INTERVAL), STATION_INTERVAL);
+
+    // Transform all centerline points into vehicle frame
+    const transform = vehicleFrameTransform(centerlineRaw[0]);
+    const rot = centerlineRaw[0].rot;
+    const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(transform), rot: c.rot - rot, curv: c.curv } });
+
     const centerlineBuffer = GPGPU.alloc(centerline.length, 2);
-    const origin = centerline[0].pos;
-    let maxAxisAlignedDist = 0;
+    const maxPoint = new THREE.Vector2(0, 0);
+    const minPoint = new THREE.Vector2(0, 0);
 
     for (let i = 0; i < centerline.length; i++) {
       const pos = centerline[i].pos;
       centerlineBuffer[i * 2 + 0] = pos.x;
       centerlineBuffer[i * 2 + 1] = pos.y;
 
-      const xDist = Math.abs(pos.x - origin.x);
-      const yDist = Math.abs(pos.y - origin.y);
-
-      if (xDist > maxAxisAlignedDist)
-        maxAxisAlignedDist = xDist;
-
-      if (yDist > maxAxisAlignedDist)
-        maxAxisAlignedDist = yDist;
+      maxPoint.max(pos);
+      minPoint.min(pos);
     }
 
-    const xlslMapSize = Math.ceil((maxAxisAlignedDist + 10) * 2 / GRID_CELL_SIZE);
+    const diff = maxPoint.clone().sub(minPoint);
+    const centerPoint = minPoint.clone().add(maxPoint).divideScalar(2);
+    const xlslMapSize = Math.ceil(Math.max(diff.x, diff.y) + GRID_MARGIN * 2) / GRID_CELL_SIZE;
 
     const gpgpuPrograms = [
       {
         kernel: XYSL_MAP_KERNEL,
         size: xlslMapSize,
         globals: {
-          origin: [origin.x, origin.y],
+          centerPoint: [centerPoint.x, centerPoint.y],
           numSamples: { type: 'int', value: centerline.length },
           centerline: {
             type: 'texture',
@@ -116,6 +119,27 @@ export default class {
     ];
 
     const gpgpu = new GPGPU(gpgpuPrograms);
-    return gpgpu.run();
+    return { xysl: gpgpu.run()[0], center: centerPoint.applyMatrix3((new THREE.Matrix3()).getInverse(transform)), rot: centerlineRaw[0].rot };
   }
+}
+
+function vehicleFrameTransform({ pos, rot }) {
+  const translate = new THREE.Matrix3();
+  translate.set(
+    1, 0, -pos.x,
+    0, 1, -pos.y,
+    0, 0, 1
+  );
+
+  const cosRot = Math.cos(rot);
+  const sinRot = Math.sin(rot);
+
+  const rotate = new THREE.Matrix3();
+  rotate.set(
+    cosRot, sinRot, 0,
+    -sinRot, cosRot, 0,
+    0, 0, 1
+  );
+
+  return rotate.multiply(translate);
 }
