@@ -15,7 +15,7 @@ const fragmentShaderHeader = `#version 300 es
 precision mediump float;
 in vec2 kernelPosition;
 out vec4 kernelOut;
-uniform int kernelSize;
+uniform ivec2 kernelSize;
 `;
 
 export default class {
@@ -49,25 +49,27 @@ export default class {
     if (program.inputTextures.length != inputs.length)
       throw new Error(`You must provide the same number of inputs as when the program was set up: got ${inputs.length} but expected ${program.inputTextures.length}.`);
 
-    const previousInputSize = program.inputSize;
+    const previousInputWidth = program.inputWidth;
+    const previousInputHeight = program.inputHeight;
 
     const config = program.config;
 
-    if (config.size === undefined) {
-      program.inputSize = undefined;
+    if (config.width === undefined || config.height === undefined) {
+      program.inputWidth = undefined;
+      program.inputHeight = undefined;
       program.inputDataSize = undefined;
     }
 
     this._prepareProgramInputs(program, inputs);
 
-    this.gl.useProgram(program.glProgram);
-    this.gl.uniform1i(program.kernelSizeLocation, program.inputSize);
-
-    if (program.inputSize != previousInputSize)
+    if (program.inputWidth != previousInputWidth || program.inputHeight != previousInputHeight) {
+      this.gl.useProgram(program.glProgram);
+      this.gl.uniform2i(program.kernelSizeLocation, program.inputWidth, program.inputHeight);
       this._prepareProgramOutput(program);
+    }
   }
 
-  updateProgramSize(programIndex, size) {
+  updateProgramSize(programIndex, width, height) {
     const program = this.programs[programIndex];
 
     if (!program)
@@ -76,10 +78,11 @@ export default class {
     if (program.inputTextures.length != 0)
       throw new Error(`Size can only be updated on programs with no inputs.`);
 
-    if (size == program.inputSize) return;
+    if (width == program.inputWidth && height == program.inputHeight) return;
 
-    program.inputSize = size;
-    program.inputDataSize = size * size;
+    program.inputWidth = width;
+    program.inputHeight = height;
+    program.inputDataSize = width * height;
 
     this._prepareProgramOutput(program);
   }
@@ -110,7 +113,7 @@ export default class {
 
     for (const program of this.programs) {
       this.gl.useProgram(program.glProgram);
-      this.gl.viewport(0, 0, program.inputSize, program.inputSize);
+      this.gl.viewport(0, 0, program.inputWidth, program.inputHeight);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, program.frameBuffer);
 
       for (const [index, inputTexture] of program.inputTextures.entries()) {
@@ -121,16 +124,28 @@ export default class {
       for (const globalName in program.globalTextures) {
         const globalTexture = program.globalTextures[globalName];
         this.gl.activeTexture(this.gl.TEXTURE0 + globalTexture.index);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, globalTexture.texture || this.outputTextures[globalName]);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, globalTexture.texture || this.outputTextures[globalTexture.name]);
       }
 
-      this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+      if (typeof(program.draw) == 'function') {
+        program.draw(this.gl, program);
+      } else {
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.textureBuffer);
+        this.gl.enableVertexAttribArray(program.textureLocation);
+        this.gl.vertexAttribPointer(program.textureLocation, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+        this.gl.enableVertexAttribArray(program.positionLocation);
+        this.gl.vertexAttribPointer(program.positionLocation, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
 
-      if (program.outputName) {
+        this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+      }
+
+      if (program.output && program.output.name) {
         outputs.push(null);
       } else {
-        const output = new Float32Array(program.inputSize * program.inputSize * 4);
-        this.gl.readPixels(0, 0, program.inputSize, program.inputSize, this.gl.RGBA, this.gl.FLOAT, output);
+        const output = new Float32Array(program.inputWidth * program.inputHeight * 4);
+        this.gl.readPixels(0, 0, program.inputWidth, program.inputHeight, this.gl.RGBA, this.gl.FLOAT, output);
         outputs.push(output.subarray(0, program.inputDataSize * 4));
       }
     }
@@ -157,12 +172,15 @@ export default class {
   _prepareProgram(config) {
     const program = { config };
 
-    if (config.size) {
-      program.inputSize = config.size;
-      program.inputDataSize = config.size * config.size;
+    program.draw = config.draw;
+
+    if (config.width && config.height) {
+      program.inputWidth = config.width;
+      program.inputHeight = config.height;
+      program.inputDataSize = config.width * config.height;
     }
 
-    program.outputName = config.outputName;
+    program.output = config.output;
 
     const kernel = config.kernel;
 
@@ -179,8 +197,8 @@ export default class {
     for (const index in inputs)
       fragmentShaderConfig += `uniform sampler2D _input${index};\n`;
 
-    if (program.inputSize === undefined)
-      throw new Error("Unknown kernel size. You must provide either an input or the `size` parameter in the kernel config.");
+    if (program.inputWidth === undefined || program.inputHeight === undefined)
+      throw new Error("Unknown kernel size. You must provide either an input or the `width` and `height` parameters in the kernel config.");
 
     program.globalTextures = {};
     program.uniforms = {};
@@ -205,13 +223,13 @@ export default class {
         };
         fragmentShaderConfig += `uniform ${type} ${globalName};\n`;
       } else {
-        const { type, width, height, channels, data, value } = global;
+        const { type, width, height, channels, data, value, name } = global;
 
         if (type == 'texture') {
           program.globalTextures[globalName] = { texture: data ? this._createTexture(data, width, height, channels, global) : null };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
         } else if (type == 'output') {
-          program.globalTextures[globalName] = { texture: null };
+          program.globalTextures[globalName] = { texture: null, name: name || globalName };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
         } else {
           program.uniforms[globalName] = { type, value };
@@ -221,7 +239,7 @@ export default class {
     }
 
     const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(vertexShader, vertexShaderCode);
+    this.gl.shaderSource(vertexShader, config.vertexShader || vertexShaderCode);
     this.gl.compileShader(vertexShader);
 
     if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS)) {
@@ -289,18 +307,10 @@ void main() {
     }
 
     program.kernelSizeLocation = this.gl.getUniformLocation(program.glProgram, 'kernelSize');
-    this.gl.uniform1i(program.kernelSizeLocation, program.inputSize);
+    this.gl.uniform2i(program.kernelSizeLocation, program.inputWidth, program.inputHeight);
 
-    const aPosition = this.gl.getAttribLocation(program.glProgram, 'position');
-    const aTexture = this.gl.getAttribLocation(program.glProgram, 'texture');
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.textureBuffer);
-    this.gl.enableVertexAttribArray(aTexture);
-    this.gl.vertexAttribPointer(aTexture, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
-    this.gl.enableVertexAttribArray(aPosition);
-    this.gl.vertexAttribPointer(aPosition, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+    program.positionLocation = this.gl.getAttribLocation(program.glProgram, 'position');
+    program.textureLocation = this.gl.getAttribLocation(program.glProgram, 'texture');
 
     program.frameBuffer = this.gl.createFramebuffer();
     this._prepareProgramOutput(program);
@@ -319,11 +329,12 @@ void main() {
       if (size <= 0 || size % 1 != 0)
         throw new Error('GPGPU input size is expected to be a perfect square.');
 
-      if (program.inputSize === undefined) {
-        program.inputSize = size;
+      if (program.inputWidth === undefined || program.inputHeight === undefined) {
+        program.inputWidth = size;
+        program.inputHeight = size;
         program.inputDataSize = data.gpgpuSize;
-      } else if (size != program.inputSize) {
-        throw new Error(`All GPGPU inputs must be of the same size. Received ${data.gpgpuSize} (internal ${size * size}) but expected ${program.inputDataSize} (internal ${program.inputSize * program.inputSize}).`);
+      } else if (size != program.inputWidth || size != program.inputHeight) {
+        throw new Error(`All GPGPU inputs must be of the same size. Received ${data.gpgpuSize} (internal ${size * size}) but expected ${program.inputDataSize} (internal ${program.inputWidth * program.inputHeight}).`);
       }
 
       program.inputTextures.push(this._createTexture(data, size, size, data.gpgpuStride));
@@ -333,14 +344,14 @@ void main() {
   _prepareProgramOutput(program) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, program.frameBuffer);
 
-    const outputTexture = this._createTexture(null, program.inputSize, program.inputSize, 4);
+    const outputTexture = this._createTexture(null, program.inputWidth, program.inputHeight, 4, program.output);
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, outputTexture, 0);
     const frameBufferStatus = (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) == this.gl.FRAMEBUFFER_COMPLETE);
     if (!frameBufferStatus)
       throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible');
 
-    if (program.outputName)
-      this.outputTextures[program.outputName] = outputTexture;
+    if (program.output && program.output.name)
+      this.outputTextures[program.output.name] = outputTexture;
   }
 
   _setUniform(type, location, value) {
@@ -350,6 +361,7 @@ void main() {
       case 'vec2': this.gl.uniform2fv(location, value); break;
       case 'vec3': this.gl.uniform3fv(location, value); break;
       case 'vec4': this.gl.uniform4fv(location, value); break;
+      case 'mat3': this.gl.uniformMatrix3fv(location, value); break;
       default: throw new Error(`Unknown uniform type ${type}.`);
     }
   }
