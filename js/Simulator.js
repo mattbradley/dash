@@ -258,16 +258,15 @@ export default class Simulator {
 
     const xyslTex = new THREE.DataTexture(xysl, width, height, THREE.RGBAFormat, THREE.FloatType);
     xyslTex.flipY = true;
-    //xyslTex.magFilter = THREE.LinearFilter;
+    xyslTex.magFilter = THREE.LinearFilter;
     xyslTex.needsUpdate = true;
 
-    const xyslGeom = new THREE.PlaneGeometry(width * (PathPlanner.SL_OBSTACLE_GRID_CELL_SIZE || PathPlanner.GRID_CELL_SIZE), height * (PathPlanner.SL_OBSTACLE_GRID_CELL_SIZE || PathPlanner.GRID_CELL_SIZE));
+    const xyslGeom = new THREE.PlaneGeometry(width * PathPlanner.GRID_CELL_SIZE, height * PathPlanner.GRID_CELL_SIZE);
     const xyslMat = new THREE.MeshBasicMaterial({ map: xyslTex, depthTest: false, transparent: true, opacity: 0.5 });
     const xyslObj = new THREE.Mesh(xyslGeom, xyslMat);
     xyslObj.rotation.x = -Math.PI / 2;
-    //xyslObj.rotation.z = -rot;
-    //xyslObj.position.set(center.x, 0, center.y);
-    xyslObj.position.set(0, 0, 20);
+    xyslObj.rotation.z = -rot;
+    xyslObj.position.set(center.x, 0, center.y);
 
     this.scene.add(xyslObj);
   }
