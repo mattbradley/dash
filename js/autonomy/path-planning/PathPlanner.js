@@ -1,154 +1,30 @@
 import GPGPU from "./../../GPGPU2.js";
 import Car from "../../physics/Car.js";
+import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
+import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
+import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
+import xyCostMap from "./gpgpu-programs/xyCostMap.js";
 
-const GRID_CELL_SIZE = 0.3; // meters
-const GRID_MARGIN = 10; // meters
-const SL_OBSTACLE_GRID_CELL_SIZE = GRID_CELL_SIZE / 2; // meters
-const STATION_INTERVAL = 0.5; // meters
-const SPATIAL_HORIZON = 100; // meters
-const LETHAL_S_DILATION = Car.HALF_CAR_LENGTH + 0.3; // meters
-const HAZARD_S_DILATION = 1; // meters
-const LETHAL_L_DILATION = Car.HALF_CAR_WIDTH + 0.3; //meters
-const HAZARD_L_DILATION = 1; // meters
+const config = {
+  spatialHorizon: 100, // meters
+  stationInterval: 0.5, // meters
 
-const LANE_WIDTH = 3.7; // meters
-const LANE_SHOULDER_COST = 0.75;
-const LANE_SHOULDER_LATITUDE = LANE_WIDTH / 2 - Car.HALF_CAR_WIDTH;
-const LANE_COST_SLOPE = 0.25 * 2 / LANE_SHOULDER_LATITUDE; // cost / meter
+  xyGridCellSize: 0.3, // meters
+  slGridCellSize: 0.15, // meters
+  gridMargin: 10, // meters
 
-const OBSTACLE_VERTEX_SHADER = `#version 300 es
-uniform mat3 xform;
-in vec2 position;
+  lethalDilationS: Car.HALF_CAR_LENGTH + 0.6, // meters
+  hazardDilationS: 2, // meters
+  lethalDilationL: Car.HALF_CAR_WIDTH + 0.3, //meters
+  hazardDilationL: 1, // meters
 
-void main(void) {
-  gl_Position = vec4((xform * vec3(position, 1)).xy, 0, 1);
-}
-`;
+  laneWidth: 3.7, // meters
+  laneShoulderCost: 5,
+  laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
+  laneCostSlope: 0.5 // cost / meter
+};
 
-const SL_OBSTACLE_KERNEL = `
-
-const float SL_GRID_CELL_SIZE = ${SL_OBSTACLE_GRID_CELL_SIZE};
-const float XY_GRID_CELL_SIZE = ${GRID_CELL_SIZE};
-const float STATION_INTERVAL = ${STATION_INTERVAL};
-
-vec4 kernel() {
-  vec2 sl = (kernelPosition - 0.5) * vec2(kernelSize) * vec2(SL_GRID_CELL_SIZE) + slCenterPoint;
-  float centerlineCoord = sl.x / STATION_INTERVAL / float(numSamples);
-  if (centerlineCoord < 0.0 || centerlineCoord > 1.0) return vec4(0);
-
-  vec3 centerlineSample = texture(centerline, vec2(centerlineCoord, 0)).xyz;
-  float perpindicular = centerlineSample.z + radians(90.0);
-  vec2 xy = centerlineSample.xy + sl.yy * vec2(cos(perpindicular), sin(perpindicular));
-
-  vec2 xyTexCoords = (xy - xyCenterPoint) / vec2(textureSize(xyObstacleGrid, 0)) / vec2(XY_GRID_CELL_SIZE) + 0.5;
-  return texture(xyObstacleGrid, xyTexCoords);
-}
-
-`;
-
-const SL_OBSTACLE_DILATION_KERNEL = `
-// TODO: test performance of returning early if non-zero pixel found
-vec4 kernel() {
-  float val = 0.0;
-
-  for (int d = 0; d <= lethalDilation; d++) {
-    val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(d)).r);
-    val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(-d)).r);
-  }
-
-  for (int d = lethalDilation + 1; d <= lethalDilation + hazardDilation; d++) {
-    val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(d)).r * 0.5);
-    val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(-d)).r * 0.5);
-  }
-
-  val = max(val, step(0.1, val) * 0.5);
-  float obs = texture(slObstacleGrid, kernelPosition).g;
-
-  return vec4(val, obs, 0, 1);
-}
-
-`;
-
-const XYSL_MAP_KERNEL = `
-
-const float XY_GRID_CELL_SIZE = ${GRID_CELL_SIZE};
-const float SL_GRID_CELL_SIZE = ${SL_OBSTACLE_GRID_CELL_SIZE};
-const float STATION_INTERVAL = ${STATION_INTERVAL};
-const float LANE_COST_SLOPE = ${LANE_COST_SLOPE};
-const float LANE_SHOULDER_COST = float(${LANE_SHOULDER_COST});
-const float LANE_SHOULDER_LATITUDE = ${LANE_SHOULDER_LATITUDE};
-
-int closestSample(vec2 pos) {
-  int closest = 0;
-  float closestDist = distance(pos, texelFetch(centerline, ivec2(0, 0), 0).xy);
-  for (int i = 1; i < numSamples; i++) {
-    float dist = distance(pos, texelFetch(centerline, ivec2(i, 0), 0).xy);
-    if (dist < closestDist) {
-      closestDist = dist;
-      closest = i;
-    }
-  }
-
-  return closest;
-}
-
-vec4 kernel() {
-  vec2 worldPos = (kernelPosition - 0.5) * vec2(kernelSize) * vec2(XY_GRID_CELL_SIZE) + xyCenterPoint;
-  int closest = closestSample(worldPos);
-  vec2 closestPos = texelFetch(centerline, ivec2(closest, 0), 0).xy;
-  vec2 prev, next;
-  int prevIndex, nextIndex;
-
-  if (closest == 0) {
-    prevIndex = 0;
-    nextIndex = 1;
-    prev = closestPos;
-    next = texelFetch(centerline, ivec2(1, 0), 0).xy;
-  } else if (closest == numSamples - 1) {
-    prevIndex = closest - 1;
-    nextIndex = closest;
-    prev = texelFetch(centerline, ivec2(prevIndex, 0), 0).xy;
-    next = closestPos;
-  } else {
-    vec2 before = texelFetch(centerline, ivec2(closest - 1, 0), 0).xy;
-    vec2 after = texelFetch(centerline, ivec2(closest + 1, 0), 0).xy;
-
-    if (distance(before, worldPos) < distance(after, worldPos)) {
-      prevIndex = closest - 1;
-      nextIndex = closest;
-      prev = before;
-      next = closestPos;
-    } else {
-      prevIndex = closest;
-      nextIndex = closest + 1;
-      prev = closestPos;
-      next = after;
-    }
-  }
-
-  float dist = distance(prev, next);
-  float progress = clamp(dot(worldPos - prev, next - prev) / dist / dist, 0.0, 1.0);
-  vec2 projectedPos = (next - prev) * vec2(progress) + prev;
-
-  vec2 sl = vec2(
-    (float(prevIndex) + progress) * STATION_INTERVAL,
-    sign(determinant(mat2(next - prev, worldPos - prev))) * distance(worldPos, projectedPos)
-  );
-
-  vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slObstacleGrid, 0)) / vec2(SL_GRID_CELL_SIZE) + 0.5;
-  float obstacleCost = texture(slObstacleGrid, slTexCoords).r;
-
-  float absLatitude = abs(sl.y);
-  float laneCost = max(absLatitude * LANE_COST_SLOPE, step(LANE_SHOULDER_LATITUDE, absLatitude) * LANE_SHOULDER_COST);
-
-  //return vec4(sl, cost, 1);
-  //return clamp(vec4(sl.x / 100.0, 1.0 - abs(sl.y / (3.7 / 2.0)), cost, 1), 0.0, 1.0);
-  return vec4(clamp(obstacleCost + laneCost, 0.0, 1.0), 0, 0, 1);
-}
-
-`;
-
-/* Obstacle Grid Plan:
+/* Obstacle cost map:
  *
  * 1. Rasterize triangles from polygonal obstacles into XY-space occupancy grid
  * 2. Convert occupancy grid to SL-space
@@ -168,7 +44,7 @@ export default class PathPlanner {
   }
 
   plan(lanePath, obstacles) {
-    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(SPATIAL_HORIZON / STATION_INTERVAL), STATION_INTERVAL);
+    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval), config.stationInterval);
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(centerlineRaw[0]);
@@ -191,107 +67,36 @@ export default class PathPlanner {
     }
 
     const diff = maxPoint.clone().sub(minPoint);
-    const centerPoint = minPoint.clone().add(maxPoint).divideScalar(2);
-    const xyslMapWidth = Math.ceil((diff.x + GRID_MARGIN * 2) / GRID_CELL_SIZE);
-    const xyslMapHeight = Math.ceil((diff.y + GRID_MARGIN * 2) / GRID_CELL_SIZE);
+    const xyCenterPoint = minPoint.clone().add(maxPoint).divideScalar(2);
+    const xyWidth = Math.ceil((diff.x + config.gridMargin * 2) / config.xyGridCellSize);
+    const xyHeight = Math.ceil((diff.y + config.gridMargin * 2) / config.xyGridCellSize);
 
-    const obstacleVertices = new Float32Array(Array.prototype.concat.apply([], obstacles.map(o => o.vertices)));
-    const obstacleXform = obstacleTransform(vehicleXform, centerPoint, xyslMapWidth * GRID_CELL_SIZE, xyslMapHeight * GRID_CELL_SIZE);
-    const slObstacleWidth = Math.ceil(SPATIAL_HORIZON / SL_OBSTACLE_GRID_CELL_SIZE);
-    const slObstacleHeight = Math.ceil((LANE_WIDTH + GRID_MARGIN * 2) / SL_OBSTACLE_GRID_CELL_SIZE);
+    const slCenterPoint = new THREE.Vector2(config.spatialHorizon / 2, 0);
+    const slObstacleWidth = Math.ceil(config.spatialHorizon / config.slGridCellSize);
+    const slObstacleHeight = Math.ceil((config.laneWidth + config.gridMargin * 2) / config.slGridCellSize);
 
-    const gpgpuPrograms = [
-      { // Draw obstacle triangles to XY-space obstacle grid
-        kernel: `vec4 kernel() { return vec4(1, 1, 0, 1); }`,
-        vertexShader: OBSTACLE_VERTEX_SHADER,
-        width: xyslMapWidth,
-        height: xyslMapHeight,
-        output: { name: 'xyObstacleGrid' },
-        draw: (gl, program) => {
-          gl.clearColor(0, 0, 0, 1.0);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-
-          gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-          gl.bufferData(gl.ARRAY_BUFFER, obstacleVertices, gl.STATIC_DRAW);
-          gl.enableVertexAttribArray(program.positionLocation);
-          gl.vertexAttribPointer(program.positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-          const xformLocation = gl.getUniformLocation(program.glProgram, 'xform');
-          gl.uniformMatrix3fv(xformLocation, false, obstacleXform.elements);
-
-          gl.drawArrays(gl.TRIANGLES, 0, obstacleVertices.length / 2);
-        }
-      },
-      { // Convert XY-space obstacle grid to SL-space obstacle grid
-        kernel: SL_OBSTACLE_KERNEL,
-        width: slObstacleWidth,
-        height: slObstacleHeight,
-        output: { name: 'slObstacleGrid' },
-        globals: {
-          xyObstacleGrid: { type: 'output' },
-          slCenterPoint: [SPATIAL_HORIZON / 2, 0],
-          xyCenterPoint: [centerPoint.x, centerPoint.y],
-          numSamples: { type: 'int', value: centerline.length },
-          centerline: {
-            type: 'texture',
-            height: 1,
-            width: centerline.length,
-            channels: 3,
-            data: centerlineBuffer
-          }
-        }
-      },
-      { // XY-space obstacle grid S dilation
-        kernel: SL_OBSTACLE_DILATION_KERNEL,
-        width: slObstacleWidth,
-        height: slObstacleHeight,
-        output: { name: 'slObstacleGridStationDilated' },
-        globals: {
-          slObstacleGrid: { type: 'output' },
-          delta: [1 / slObstacleWidth, 0],
-          lethalDilation: { type: 'int', value: Math.ceil(LETHAL_S_DILATION / SL_OBSTACLE_GRID_CELL_SIZE) },
-          hazardDilation: { type: 'int', value: Math.ceil(HAZARD_S_DILATION / SL_OBSTACLE_GRID_CELL_SIZE) }
-        }
-      },
-      { // XY-space obstacle grid L dilation
-        kernel: SL_OBSTACLE_DILATION_KERNEL,
-        width: slObstacleWidth,
-        height: slObstacleHeight,
-        output: { name: 'slObstacleGridDilated' },
-        globals: {
-          slObstacleGrid: { type: 'output', name: 'slObstacleGridStationDilated' },
-          delta: [0, 1 / slObstacleHeight],
-          lethalDilation: { type: 'int', value: Math.ceil(LETHAL_L_DILATION / SL_OBSTACLE_GRID_CELL_SIZE) },
-          hazardDilation: { type: 'int', value: Math.ceil(HAZARD_L_DILATION / SL_OBSTACLE_GRID_CELL_SIZE) }
-        }
-      },
-      { // Build combined XY-SL map and cost map
-        kernel: XYSL_MAP_KERNEL,
-        width: xyslMapWidth,
-        height: xyslMapHeight,
-        globals: {
-          slObstacleGrid: { type: 'output', name: 'slObstacleGridDilated' },
-          xyCenterPoint: [centerPoint.x, centerPoint.y],
-          slCenterPoint: [SPATIAL_HORIZON / 2, 0],
-          numSamples: { type: 'int', value: centerline.length },
-          centerline: {
-            type: 'texture',
-            height: 1,
-            width: centerline.length,
-            channels: 3,
-            data: centerlineBuffer
-          }
-        }
-      }
+    const programs = [
+      xyObstacleGrid(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
+      slObstacleGrid(config, slObstacleWidth, slObstacleHeight, slCenterPoint, xyCenterPoint),
+      ...slObstacleGridDilation(config, slObstacleWidth, slObstacleHeight),
+      xyCostMap(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
     ];
 
-    const gpgpu = new GPGPU(gpgpuPrograms);
-    return { xysl: gpgpu.run()[4], width: xyslMapWidth, height: xyslMapHeight, center: centerPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: centerlineRaw[0].rot };
+    const shared = {
+      centerline: {
+        width: centerline.length,
+        height: 1,
+        channels: 3,
+        data: centerlineBuffer
+      }
+    }
+
+    const gpgpu = new GPGPU(programs, shared);
+    return { xysl: gpgpu.run()[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: centerlineRaw[0].rot };
   }
 }
 
-PathPlanner.GRID_CELL_SIZE = GRID_CELL_SIZE;
-PathPlanner.SL_OBSTACLE_GRID_CELL_SIZE = SL_OBSTACLE_GRID_CELL_SIZE;
+PathPlanner.config = config;
 
 function vehicleTransform({ pos, rot }) {
   const translate = new THREE.Matrix3();
@@ -314,11 +119,11 @@ function vehicleTransform({ pos, rot }) {
   return rotate.multiply(translate);
 }
 
-function obstacleTransform(vehicleXform, centerPoint, width, height) {
+function obstacleTransform(vehicleXform, xyCenterPoint, width, height) {
   const translate = new THREE.Matrix3();
   translate.set(
-    1, 0, -centerPoint.x,
-    0, 1, -centerPoint.y,
+    1, 0, -xyCenterPoint.x,
+    0, 1, -xyCenterPoint.y,
     0, 0, 1
   );
 

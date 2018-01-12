@@ -32,12 +32,18 @@ export default class {
     return data;
   }
 
-  constructor(configs) {
+  constructor(configs, shared = {}) {
     this._setUpGL();
 
     this.outputTextures = {};
+    this.sharedTextures = {};
 
     this.programs = configs.map(c => this._prepareProgram(c));
+
+    for (const name in shared) {
+      const { width, height, channels, data, ...options } = shared[name];
+      this.sharedTextures[name] = this._createTexture(data, width, height, channels, options);
+    }
   }
 
   updateProgramInputs(programIndex, inputs) {
@@ -101,8 +107,8 @@ export default class {
       if (typeof(value) != 'object' || value.type != 'texture')
         throw new Error(`Expected texture type for global ${globalName}.`);
 
-      const { width, height, channels, data } = global;
-      program.globalTextures[globalName].texture = this._createTexture(data, width, height, channels, global);
+      const { width, height, channels, data, ...options } = global;
+      program.globalTextures[globalName].texture = this._createTexture(data, width, height, channels, options);
     } else {
       throw new Error(`The global ${globalName} does not exist in this program.`);
     }
@@ -124,7 +130,7 @@ export default class {
       for (const globalName in program.globalTextures) {
         const globalTexture = program.globalTextures[globalName];
         this.gl.activeTexture(this.gl.TEXTURE0 + globalTexture.index);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, globalTexture.texture || this.outputTextures[globalTexture.name]);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, globalTexture.texture || this.sharedTextures[globalTexture.name] || this.outputTextures[globalTexture.name]);
       }
 
       if (typeof(program.draw) == 'function') {
@@ -223,12 +229,12 @@ export default class {
         };
         fragmentShaderConfig += `uniform ${type} ${globalName};\n`;
       } else {
-        const { type, width, height, channels, data, value, name } = global;
+        const { type, width, height, channels, data, value, name, ...options } = global;
 
         if (type == 'texture') {
-          program.globalTextures[globalName] = { texture: data ? this._createTexture(data, width, height, channels, global) : null };
+          program.globalTextures[globalName] = { texture: data ? this._createTexture(data, width, height, channels, options) : null };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
-        } else if (type == 'output') {
+        } else if (type == 'outputTexture' || type == 'sharedTexture') {
           program.globalTextures[globalName] = { texture: null, name: name || globalName };
           fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
         } else {

@@ -261,7 +261,7 @@ export default class Simulator {
     xyslTex.magFilter = THREE.LinearFilter;
     xyslTex.needsUpdate = true;
 
-    const xyslGeom = new THREE.PlaneGeometry(width * PathPlanner.GRID_CELL_SIZE, height * PathPlanner.GRID_CELL_SIZE);
+    const xyslGeom = new THREE.PlaneGeometry(width * PathPlanner.config.xyGridCellSize, height * PathPlanner.config.xyGridCellSize);
     const xyslMat = new THREE.MeshBasicMaterial({ map: xyslTex, depthTest: false, transparent: true, opacity: 0.5 });
     const xyslObj = new THREE.Mesh(xyslGeom, xyslMat);
     xyslObj.rotation.x = -Math.PI / 2;
