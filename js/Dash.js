@@ -16,3 +16,22 @@ const g = new GPGPU([
 ]);
 console.log(g.run());
 */
+
+const kernel = `
+vec4 kernel() {
+  ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
+  return vec4(indexes.x, indexes.y, 0, 0);
+}
+`;
+
+import GPGPU from "./GPGPU2.js";
+
+const g = new GPGPU([
+  {
+    width: 4,
+    height: 4,
+    kernel: kernel
+  }
+]);
+
+console.log(g.run());
