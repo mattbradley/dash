@@ -16,13 +16,17 @@ const g = new GPGPU([
 ]);
 console.log(g.run());
 */
-
+/*
 const kernel = `
 vec4 kernel() {
-  ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
-  return vec4(indexes.x, indexes.y, 0, 0);
+  int a = 3;
+  int b = 5;
+  int c = int(mod(float(a), float(b)));
+  return vec4(vec2(ivec2(kernelPosition * vec2(kernelSize))), -1, -1);
 }
 `;
+
+const d = new Float32Array([1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1]);
 
 import GPGPU from "./GPGPU2.js";
 
@@ -30,8 +34,18 @@ const g = new GPGPU([
   {
     width: 4,
     height: 4,
-    kernel: kernel
+    kernel: kernel,
+    globals: {
+      tex: {
+        type: 'texture',
+        width: 8,
+        height: 1,
+        channels: 2,
+        filter: 'linear',
+        data: d
+      }
+    }
   }
 ]);
 
-console.log(g.run());
+console.log(g.run());*/

@@ -28,6 +28,9 @@
  *   * Ending speed
  *   * Ending time
  *   * Index of parent node
+ *
+ * Since one cubic path can be shared between multiple trajectories, they need to be pre-optimized.
+ * 
  */
 
 const SOLVE_STATION_KERNEL = `
@@ -35,12 +38,13 @@ const SOLVE_STATION_KERNEL = `
 vec4 kernel() {
   ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
 
+  // TODO: check and rewrite this, I don't think it's right
   int latitudeIndex = indexes.y;
   int numPerAcceleration = numTimes * numVelocities;
-  int accelerationIndex = indexes.y / numPerAcceleration;
+  int accelerationIndex = indexes.x / numPerAcceleration;
   indexes.y -= accelerationIndex * numPerAcceleration;
-  int velocityIndex = indexes.y / numTimes;
-  int timeIndex = mod(indexes.y, numTimes);
+  int velocityIndex = indexes.x / numTimes;
+  int timeIndex = mod(indexes.x, numTimes);
 
   
 }

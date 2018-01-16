@@ -4,10 +4,18 @@ import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
 import xyCostMap from "./gpgpu-programs/xyCostMap.js";
+import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
 
 const config = {
   spatialHorizon: 100, // meters
   stationInterval: 0.5, // meters
+
+  lattice: {
+    numStations: 10,
+    numLatitudes: 19,
+    stationConnectivity: 3,
+    latitudeConnectivity: 9
+  },
 
   xyGridCellSize: 0.3, // meters
   slGridCellSize: 0.15, // meters
@@ -44,12 +52,12 @@ export default class PathPlanner {
   }
 
   plan(lanePath, obstacles) {
-    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval), config.stationInterval);
+    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(centerlineRaw[0]);
-    const rot = centerlineRaw[0].rot;
-    const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - rot, curv: c.curv } });
+    const vehicleRot = centerlineRaw[0].rot;
+    const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - vehicleRot, curv: c.curv } });
 
     const centerlineBuffer = GPGPU.alloc(centerline.length, 3);
     const maxPoint = new THREE.Vector2(0, 0);
@@ -79,7 +87,8 @@ export default class PathPlanner {
       xyObstacleGrid(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
       slObstacleGrid(config, slObstacleWidth, slObstacleHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation(config, slObstacleWidth, slObstacleHeight),
-      xyCostMap(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
+      xyCostMap(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint),
+      optimizeCubicPaths(config)
     ];
 
     const shared = {
@@ -87,12 +96,47 @@ export default class PathPlanner {
         width: centerline.length,
         height: 1,
         channels: 3,
+        filter: 'linear',
         data: centerlineBuffer
+      },
+      lattice: {
+        width: config.lattice.numLatitudes,
+        height: config.lattice.numStations,
+        channels: 4,
+        data: this._buildLattice(lanePath, vehicleRot, vehicleXform)
       }
     }
 
     const gpgpu = new GPGPU(programs, shared);
-    return { xysl: gpgpu.run()[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: centerlineRaw[0].rot };
+    const outputs = gpgpu.run();
+    console.log(outputs[5]);
+    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: vehicleRot };
+  }
+
+  _buildLattice(lanePath, vehicleRot, vehicleXform) {
+    const stationInterval = config.spatialHorizon / config.lattice.numStations;
+    const centerline = lanePath.sampleStations(stationInterval, config.lattice.numStations, stationInterval);
+    const offset = Math.floor(config.lattice.numLatitudes / 2);
+    const lattice = new Float32Array(config.lattice.numStations * config.lattice.numLatitudes * 4);
+    let index = 0;
+
+    for (let s = 0; s < config.lattice.numStations; s++) {
+      const sample = centerline[s];
+
+      for (let l = 0; l < config.lattice.numLatitudes; l++) {
+        const latitude = (l - offset) / offset * config.laneWidth / 2;
+        const rot = sample.rot - vehicleRot;
+        const pos = THREE.Vector2.fromAngle(rot + Math.PI / 2).multiplyScalar(latitude).add(sample.pos.clone().applyMatrix3(vehicleXform));
+        const curv = sample.curv == 0 ? 0 : 1 / (1 / sample.curv - latitude);
+
+        lattice[index++] = pos.x;
+        lattice[index++] = pos.y;
+        lattice[index++] = rot;
+        lattice[index++] = curv;
+      }
+    }
+
+    return lattice;
   }
 }
 

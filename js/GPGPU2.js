@@ -46,6 +46,23 @@ export default class {
     }
   }
 
+  updateProgram(programOrProgramIndex, config) {
+    const program = typeof(programOrProgramIndex) == 'number' ? this.programs[programOrProgramIndex] : programOrProgramIndex;
+
+    if (!program)
+      throw new Error(`Program with index ${programOrProgramIndex} does not exist.`);
+
+    if (config.inputs)
+      throw new Error('The `updateProgram` function cannot be used to update inputs. Use `updateProgramInputs` instead.');
+
+    if (config.width !== undefined && config.height !== undefined)
+      this.updateProgramSize(program, config.width, config.height);
+
+    if (typeof(config.globals) == 'object')
+      for (const globalName in config.globals)
+        this.updateProgramGlobal(program, globalName, config.globals[globalName]);
+  }
+
   updateProgramInputs(programIndex, inputs) {
     const program = this.programs[programIndex];
 
@@ -75,11 +92,11 @@ export default class {
     }
   }
 
-  updateProgramSize(programIndex, width, height) {
-    const program = this.programs[programIndex];
+  updateProgramSize(programOrProgramIndex, width, height) {
+    const program = typeof(programOrProgramIndex) == 'number' ? this.programs[programOrProgramIndex] : programOrProgramIndex;
 
     if (!program)
-      throw new Error(`Program with index ${programIndex} does not exist.`);
+      throw new Error(`Program with index ${programOrProgramIndex} does not exist.`);
 
     if (program.inputTextures.length != 0)
       throw new Error(`Size can only be updated on programs with no inputs.`);
@@ -93,11 +110,11 @@ export default class {
     this._prepareProgramOutput(program);
   }
 
-  updateProgramGlobal(programIndex, globalName, value) {
-    const program = this.programs[programIndex];
+  updateProgramGlobal(programOrProgramIndex, globalName, value) {
+    const program = typeof(programOrProgramIndex) == 'number' ? this.programs[programOrProgramIndex] : programOrProgramIndex;
 
     if (!program)
-      throw new Error(`Program with index ${programIndex} does not exist.`);
+      throw new Error(`Program with index ${programOrProgramIndex} does not exist.`);
 
     let global;
 
@@ -168,7 +185,10 @@ export default class {
       throw new Error("Unable to initialize WebGL2. Your browser may not support it.");
 
     if (!this.gl.getExtension('EXT_color_buffer_float'))
-      throw new Error('Required texture format EXT_color_buffer_float not supported.');
+      throw new Error('Required WebGL extension EXT_color_buffer_float not supported.');
+
+    if (!this.gl.getExtension('OES_texture_float_linear'))
+      throw new Error('Required WebGL extension OES_texture_float_linear not supported.');
 
     this.positionBuffer = this._newBuffer([-1, -1, 1, -1, 1, 1, -1, 1]);
     this.textureBuffer = this._newBuffer([0, 0, 1, 0, 1, 1, 0, 1]);
