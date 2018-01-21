@@ -180,7 +180,7 @@ vec4 kernel() {
   int endStation = indexes.x / numLatitudes;
   int endLatitude = int(mod(float(indexes.x), float(numLatitudes)));
 
-  int startStation = endStation - stationConnectivity; + indexes.y / latitudeConnectivity;;
+  int startStation = endStation - stationConnectivity + indexes.y / latitudeConnectivity;
   int startLatitude = endLatitude - latitudeConnectivity / 2 + int(mod(float(indexes.y), float(latitudeConnectivity)));
 
   if (startStation < 0 || startStation >= numStations || startLatitude < 0 || startLatitude >= numLatitudes)
@@ -194,18 +194,50 @@ vec4 kernel() {
 
 `;
 
+// Cubic spiral path optimizer
+export default {
+  setUp() {
+    return {
+      kernel: OPTIMIZE_KERNEL,
+      output: { name: 'cubicPaths' },
+      uniforms: {
+        lattice: { type: 'sharedTexture' },
+        numStations: { type: 'int' },
+        numLatitudes: { type: 'int' },
+        stationConnectivity: { type: 'int' },
+        latitudeConnectivity: { type: 'int' }
+      }
+    };
+  },
+
+  update(config) {
+    return {
+      width: config.lattice.numStations * config.lattice.numLatitudes,
+      height: config.lattice.stationConnectivity * config.lattice.latitudeConnectivity,
+      uniforms: {
+        numStations: config.lattice.numStations,
+        numLatitudes: config.lattice.numLatitudes,
+        stationConnectivity: config.lattice.stationConnectivity,
+        latitudeConnectivity: config.lattice.latitudeConnectivity
+      }
+    };
+  }
+}
+
+/*
 export default function(config) {
   return {
     kernel: OPTIMIZE_KERNEL,
     width: config.lattice.numStations * config.lattice.numLatitudes,
     height: config.lattice.stationConnectivity * config.lattice.latitudeConnectivity,
-    globals: {
+    uniforms: {
       lattice: { type: 'sharedTexture' },
       numStations: { type: 'int', value: config.lattice.numStations },
       numLatitudes: { type: 'int', value: config.lattice.numLatitudes },
       stationConnectivity: { type: 'int', value: config.lattice.stationConnectivity },
-      latitudeConnectivity: { type: 'int', value: config.lattice.latitudeConnectivity },
+      latitudeConnectivity: { type: 'int', value: config.lattice.latitudeConnectivity }
     },
     output: { name: 'cubicPaths' }
   };
 }
+*/

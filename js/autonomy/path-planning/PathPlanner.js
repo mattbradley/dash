@@ -49,6 +49,15 @@ const config = {
 
 export default class PathPlanner {
   constructor() {
+    const programs = [
+      xyObstacleGrid.setUp(),
+      slObstacleGrid.setUp(),
+      ...slObstacleGridDilation.setUp(),
+      xyCostMap.setUp(),
+      optimizeCubicPaths.setUp()
+    ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
+
+    this.gpgpu = new GPGPU(programs);
   }
 
   plan(lanePath, obstacles) {
@@ -59,16 +68,16 @@ export default class PathPlanner {
     const vehicleRot = centerlineRaw[0].rot;
     const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - vehicleRot, curv: c.curv } });
 
-    const centerlineBuffer = GPGPU.alloc(centerline.length, 3);
+    const centerlineData = new Float32Array(centerline.length * 3);
     const maxPoint = new THREE.Vector2(0, 0);
     const minPoint = new THREE.Vector2(0, 0);
 
     for (let i = 0; i < centerline.length; i++) {
       const sample = centerline[i];
       const pos = sample.pos;
-      centerlineBuffer[i * 3 + 0] = pos.x;
-      centerlineBuffer[i * 3 + 1] = pos.y;
-      centerlineBuffer[i * 3 + 2] = sample.rot;
+      centerlineData[i * 3 + 0] = pos.x;
+      centerlineData[i * 3 + 1] = pos.y;
+      centerlineData[i * 3 + 2] = sample.rot;
 
       maxPoint.max(pos);
       minPoint.min(pos);
@@ -80,24 +89,26 @@ export default class PathPlanner {
     const xyHeight = Math.ceil((diff.y + config.gridMargin * 2) / config.xyGridCellSize);
 
     const slCenterPoint = new THREE.Vector2(config.spatialHorizon / 2, 0);
-    const slObstacleWidth = Math.ceil(config.spatialHorizon / config.slGridCellSize);
-    const slObstacleHeight = Math.ceil((config.laneWidth + config.gridMargin * 2) / config.slGridCellSize);
+    const slWidth = Math.ceil(config.spatialHorizon / config.slGridCellSize);
+    const slHeight = Math.ceil((config.laneWidth + config.gridMargin * 2) / config.slGridCellSize);
 
-    const programs = [
-      xyObstacleGrid(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
-      slObstacleGrid(config, slObstacleWidth, slObstacleHeight, slCenterPoint, xyCenterPoint),
-      ...slObstacleGridDilation(config, slObstacleWidth, slObstacleHeight),
-      xyCostMap(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint),
-      optimizeCubicPaths(config)
-    ];
+    for (const [i, p] of [
+      xyObstacleGrid.update(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
+      slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
+      ...slObstacleGridDilation.update(config, slWidth, slHeight),
+      xyCostMap.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint),
+      optimizeCubicPaths.update(config)
+    ].entries()) {
+      this.gpgpu.updateProgram(i, p);
+    }
 
-    const shared = {
+    this.gpgpu.updateSharedTextures({
       centerline: {
         width: centerline.length,
         height: 1,
         channels: 3,
         filter: 'linear',
-        data: centerlineBuffer
+        data: centerlineData
       },
       lattice: {
         width: config.lattice.numLatitudes,
@@ -105,10 +116,9 @@ export default class PathPlanner {
         channels: 4,
         data: this._buildLattice(lanePath, vehicleRot, vehicleXform)
       }
-    }
+    });
 
-    const gpgpu = new GPGPU(programs, shared);
-    const outputs = gpgpu.run();
+    const outputs = this.gpgpu.run();
     console.log(outputs[5]);
     return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: vehicleRot };
   }

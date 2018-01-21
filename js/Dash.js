@@ -35,7 +35,7 @@ const g = new GPGPU([
     width: 4,
     height: 4,
     kernel: kernel,
-    globals: {
+    uniforms: {
       tex: {
         type: 'texture',
         width: 8,

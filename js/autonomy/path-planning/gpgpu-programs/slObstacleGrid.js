@@ -18,13 +18,46 @@ vec4 kernel() {
 `;
 
 // Convert XY-space obstacle grid to SL-space obstacle grid
-export default function(config, slObstacleWidth, slObstacleHeight, slCenterPoint, xyCenterPoint) {
+export default {
+  setUp() {
+    return {
+      kernel: SL_OBSTACLE_KERNEL,
+      output: { name: 'slObstacleGrid', read: true },
+      uniforms: {
+        xyObstacleGrid: { type: 'outputTexture' },
+        slGridCellSize: { type: 'float' },
+        xyGridCellSize: { type: 'float' },
+        slCenterPoint: { type: 'vec2' },
+        xyCenterPoint: { type: 'vec2' },
+        stationInterval: { type: 'float' },
+        centerline: { type: 'sharedTexture' }
+      }
+    }
+  },
+
+  update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint) {
+    return {
+      width: slWidth,
+      height: slHeight,
+      uniforms: {
+        slGridCellSize: config.slGridCellSize,
+        xyGridCellSize: config.xyGridCellSize,
+        slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
+        xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
+        stationInterval: config.stationInterval
+      }
+    }
+  }
+}
+
+/*
+export default function(config, slWidth, slHeight, slCenterPoint, xyCenterPoint) {
   return {
     kernel: SL_OBSTACLE_KERNEL,
-    width: slObstacleWidth,
-    height: slObstacleHeight,
+    width: slWidth,
+    height: slHeight,
     output: { name: 'slObstacleGrid' },
-    globals: {
+    uniforms: {
       xyObstacleGrid: { type: 'outputTexture' },
       slGridCellSize: config.slGridCellSize,
       xyGridCellSize: config.xyGridCellSize,
@@ -35,3 +68,4 @@ export default function(config, slObstacleWidth, slObstacleHeight, slCenterPoint
     }
   }
 }
+*/

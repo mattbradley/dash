@@ -258,7 +258,7 @@ export default class Simulator {
 
     const xyslTex = new THREE.DataTexture(xysl, width, height, THREE.RGBAFormat, THREE.FloatType);
     xyslTex.flipY = true;
-    xyslTex.magFilter = THREE.LinearFilter;
+    //xyslTex.magFilter = THREE.LinearFilter;
     xyslTex.needsUpdate = true;
 
     const xyslGeom = new THREE.PlaneGeometry(width * PathPlanner.config.xyGridCellSize, height * PathPlanner.config.xyGridCellSize);

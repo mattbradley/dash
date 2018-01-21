@@ -46,6 +46,15 @@ export default class {
     }
   }
 
+  updateSharedTextures(shared) {
+    this.sharedTextures = {};
+
+    for (const name in shared) {
+      const { width, height, channels, data, ...options } = shared[name];
+      this.sharedTextures[name] = this._createTexture(data, width, height, channels, options);
+    }
+  }
+
   updateProgram(programOrProgramIndex, config) {
     const program = typeof(programOrProgramIndex) == 'number' ? this.programs[programOrProgramIndex] : programOrProgramIndex;
 
@@ -58,9 +67,8 @@ export default class {
     if (config.width !== undefined && config.height !== undefined)
       this.updateProgramSize(program, config.width, config.height);
 
-    if (typeof(config.globals) == 'object')
-      for (const globalName in config.globals)
-        this.updateProgramGlobal(program, globalName, config.globals[globalName]);
+    if (typeof(config.uniforms) == 'object')
+      this.updateProgramUniforms(program, config.uniforms);
   }
 
   updateProgramInputs(programIndex, inputs) {
@@ -107,27 +115,33 @@ export default class {
     program.inputHeight = height;
     program.inputDataSize = width * height;
 
+    this.gl.useProgram(program.glProgram);
+    this.gl.uniform2i(program.kernelSizeLocation, program.inputWidth, program.inputHeight);
     this._prepareProgramOutput(program);
   }
 
-  updateProgramGlobal(programOrProgramIndex, globalName, value) {
+  updateProgramUniforms(programOrProgramIndex, uniforms) {
     const program = typeof(programOrProgramIndex) == 'number' ? this.programs[programOrProgramIndex] : programOrProgramIndex;
+    this.gl.useProgram(program.glProgram);
 
     if (!program)
       throw new Error(`Program with index ${programOrProgramIndex} does not exist.`);
 
-    let global;
+    for (const uniformName in uniforms) {
+      const value = uniforms[uniformName];
+      let uniform;
 
-    if (global = program.uniforms[globalName]) {
-      this._setUniform(global.type, global.location, value)
-    } else if (global = program.globalTextures[globalName]) {
-      if (typeof(value) != 'object' || value.type != 'texture')
-        throw new Error(`Expected texture type for global ${globalName}.`);
+      if (uniform = program.uniforms[uniformName]) {
+        this._setUniform(uniform.type, uniform.location, value)
+      } else if (uniform = program.uniformTextures[uniformName]) {
+        if (typeof(value) != 'object' || value.type != 'texture')
+          throw new Error(`Expected texture type for uniform ${uniformName}.`);
 
-      const { width, height, channels, data, ...options } = global;
-      program.globalTextures[globalName].texture = this._createTexture(data, width, height, channels, options);
-    } else {
-      throw new Error(`The global ${globalName} does not exist in this program.`);
+        const { width, height, channels, data, ...options } = uniform;
+        program.uniformTextures[uniformName].texture = this._createTexture(data, width, height, channels, options);
+      } else {
+        throw new Error(`The uniform ${uniformName} does not exist in this program.`);
+      }
     }
   }
 
@@ -144,10 +158,10 @@ export default class {
         this.gl.bindTexture(this.gl.TEXTURE_2D, inputTexture);
       }
 
-      for (const globalName in program.globalTextures) {
-        const globalTexture = program.globalTextures[globalName];
-        this.gl.activeTexture(this.gl.TEXTURE0 + globalTexture.index);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, globalTexture.texture || this.sharedTextures[globalTexture.name] || this.outputTextures[globalTexture.name]);
+      for (const uniformName in program.uniformTextures) {
+        const uniformTexture = program.uniformTextures[uniformName];
+        this.gl.activeTexture(this.gl.TEXTURE0 + uniformTexture.index);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, uniformTexture.texture || this.sharedTextures[uniformTexture.name] || this.outputTextures[uniformTexture.name]);
       }
 
       if (typeof(program.draw) == 'function') {
@@ -164,7 +178,7 @@ export default class {
         this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
       }
 
-      if (program.output && program.output.name) {
+      if (program.output && program.output.name && !program.output.read) {
         outputs.push(null);
       } else {
         const output = new Float32Array(program.inputWidth * program.inputHeight * 4);
@@ -214,7 +228,7 @@ export default class {
       throw new Error("Kernel code cannot be empty.");
 
     const inputs = config.inputs || [];
-    const globals = config.globals || {};
+    const uniforms = config.uniforms || {};
 
     this._prepareProgramInputs(program, inputs);
 
@@ -226,40 +240,40 @@ export default class {
     if (program.inputWidth === undefined || program.inputHeight === undefined)
       throw new Error("Unknown kernel size. You must provide either an input or the `width` and `height` parameters in the kernel config.");
 
-    program.globalTextures = {};
+    program.uniformTextures = {};
     program.uniforms = {};
 
-    for (const globalName in globals) {
-      const global = globals[globalName];
+    for (const uniformName in uniforms) {
+      const uniform = uniforms[uniformName];
 
-      if (typeof(global) == 'number') {
-        program.uniforms[globalName] = {
+      if (typeof(uniform) == 'number') {
+        program.uniforms[uniformName] = {
           type: 'float',
-          value: global
+          value: uniform
         };
-        fragmentShaderConfig += `uniform float ${globalName};\n`;
-      } else if (Array.isArray(global)) {
-        if (global.length < 2 || global.length > 4)
-          throw new Error(`Array globals can only have lengths of 2, 3, or 4 elements (corresponding to vec2, vec3, and vec4).`);
+        fragmentShaderConfig += `uniform float ${uniformName};\n`;
+      } else if (Array.isArray(uniform)) {
+        if (uniform.length < 2 || uniform.length > 4)
+          throw new Error(`Array uniforms can only have lengths of 2, 3, or 4 elements (corresponding to vec2, vec3, and vec4).`);
 
-        const type = ['vec2', 'vec3', 'vec4'][global.length - 2];
-        program.uniforms[globalName] = {
+        const type = ['vec2', 'vec3', 'vec4'][uniform.length - 2];
+        program.uniforms[uniformName] = {
           type: type,
-          value: global
+          value: uniform
         };
-        fragmentShaderConfig += `uniform ${type} ${globalName};\n`;
+        fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
       } else {
-        const { type, width, height, channels, data, value, name, ...options } = global;
+        const { type, width, height, channels, data, value, name, ...options } = uniform;
 
         if (type == 'texture') {
-          program.globalTextures[globalName] = { texture: data ? this._createTexture(data, width, height, channels, options) : null };
-          fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
+          program.uniformTextures[uniformName] = { texture: data ? this._createTexture(data, width, height, channels, options) : null };
+          fragmentShaderConfig += `uniform sampler2D ${uniformName};\n`;
         } else if (type == 'outputTexture' || type == 'sharedTexture') {
-          program.globalTextures[globalName] = { texture: null, name: name || globalName };
-          fragmentShaderConfig += `uniform sampler2D ${globalName};\n`;
+          program.uniformTextures[uniformName] = { texture: null, name: name || uniformName };
+          fragmentShaderConfig += `uniform sampler2D ${uniformName};\n`;
         } else {
-          program.uniforms[globalName] = { type, value };
-          fragmentShaderConfig += `uniform ${type} ${globalName};\n`;
+          program.uniforms[uniformName] = { type, value };
+          fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
         }
       }
     }
@@ -316,9 +330,9 @@ void main() {
       textureIndex++;
     }
 
-    for (const globalName in program.globalTextures) {
-      program.globalTextures[globalName].index = textureIndex;
-      const location = this.gl.getUniformLocation(program.glProgram, globalName);
+    for (const uniformName in program.uniformTextures) {
+      program.uniformTextures[uniformName].index = textureIndex;
+      const location = this.gl.getUniformLocation(program.glProgram, uniformName);
       this.gl.uniform1i(location, textureIndex);
       textureIndex++;
     }
@@ -327,7 +341,8 @@ void main() {
       const { type, value } = program.uniforms[uniformName];
       const location = program.uniforms[uniformName].location = this.gl.getUniformLocation(program.glProgram, uniformName);
 
-      this._setUniform(type, location, value);
+      if (value !== undefined)
+        this._setUniform(type, location, value);
 
       delete program.uniforms[uniformName].value;
     }

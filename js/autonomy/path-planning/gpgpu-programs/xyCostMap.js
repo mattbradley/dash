@@ -68,12 +68,51 @@ vec4 kernel() {
 `;
 
 // Build combined XY-SL map and cost map
+export default {
+  setUp() {
+    return {
+      kernel: XYSL_MAP_KERNEL,
+      //output: { name: 'xyCostMap' },
+      uniforms: {
+        slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
+        xyCenterPoint: { type: 'vec2' },
+        slCenterPoint: { type: 'vec2' },
+        centerline: { type: 'sharedTexture' },
+        xyGridCellSize: { type: 'float'},
+        slGridCellSize: { type: 'float'},
+        stationInterval: { type: 'float'},
+        laneCostSlope: { type: 'float'},
+        laneShoulderCost: { type: 'float'},
+        laneShoulderLatitude: { type: 'float'}
+      }
+    };
+  },
+
+  update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint) {
+    return {
+      width: xyWidth,
+      height: xyHeight,
+      uniforms: {
+        xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
+        slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
+        xyGridCellSize: config.xyGridCellSize,
+        slGridCellSize: config.slGridCellSize,
+        stationInterval: config.stationInterval,
+        laneCostSlope: config.laneCostSlope,
+        laneShoulderCost: config.laneShoulderCost,
+        laneShoulderLatitude: config.laneShoulderLatitude
+      }
+    };
+  }
+}
+
+/*
 export default function(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint) {
   return {
     kernel: XYSL_MAP_KERNEL,
     width: xyWidth,
     height: xyHeight,
-    globals: {
+    uniforms: {
       slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
       xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
       slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
@@ -87,3 +126,4 @@ export default function(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
     }
   };
 }
+*/

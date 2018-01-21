@@ -22,31 +22,83 @@ vec4 kernel() {
 
 `;
 
-export default function(config, slObstacleWidth, slObstacleHeight) {
+export default {
+  setUp() {
+    return [
+      { // SL-space obstacle grid S dilation
+        kernel: SL_OBSTACLE_DILATION_KERNEL,
+        output: { name: 'slObstacleGridStationDilated' },
+        uniforms: {
+          slObstacleGrid: { type: 'outputTexture' },
+          delta: { type: 'vec2' },
+          lethalDilation: { type: 'int' },
+          hazardDilation: { type: 'int' }
+        }
+      },
+      { // SL-space obstacle grid L dilation
+        kernel: SL_OBSTACLE_DILATION_KERNEL,
+        output: { name: 'slObstacleGridDilated' },
+        uniforms: {
+          slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridStationDilated' },
+          delta: { type: 'vec2' },
+          lethalDilation: { type: 'int' },
+          hazardDilation: { type: 'int' }
+        }
+      }
+    ];
+  },
+
+  update(config, slWidth, slHeight) {
+    return [
+      { // SL-space obstacle grid S dilation
+        width: slWidth,
+        height: slHeight,
+        uniforms: {
+          delta: [1 / slWidth, 0],
+          lethalDilation: Math.ceil(config.lethalDilationS / config.slGridCellSize),
+          hazardDilation: Math.ceil(config.hazardDilationS / config.slGridCellSize)
+        }
+      },
+      { // SL-space obstacle grid L dilation
+        width: slWidth,
+        height: slHeight,
+        uniforms: {
+          delta: [0, 1 / slHeight],
+          lethalDilation: Math.ceil(config.lethalDilationL / config.slGridCellSize),
+          hazardDilation: Math.ceil(config.hazardDilationL / config.slGridCellSize)
+        }
+      }
+    ];
+  }
+}
+
+/*
+export default function(config, slWidth, slHeight) {
   return [
     { // SL-space obstacle grid S dilation
       kernel: SL_OBSTACLE_DILATION_KERNEL,
-      width: slObstacleWidth,
-      height: slObstacleHeight,
+      width: slWidth,
+      height: slHeight,
       output: { name: 'slObstacleGridStationDilated' },
-      globals: {
+      uniforms: {
         slObstacleGrid: { type: 'outputTexture' },
-        delta: [1 / slObstacleWidth, 0],
+        delta: [1 / slWidth, 0],
         lethalDilation: { type: 'int', value: Math.ceil(config.lethalDilationS / config.slGridCellSize) },
         hazardDilation: { type: 'int', value: Math.ceil(config.hazardDilationS / config.slGridCellSize) }
       }
     },
     { // SL-space obstacle grid L dilation
       kernel: SL_OBSTACLE_DILATION_KERNEL,
-      width: slObstacleWidth,
-      height: slObstacleHeight,
+      width: slWidth,
+      height: slHeight,
       output: { name: 'slObstacleGridDilated' },
-      globals: {
+      uniforms: {
         slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridStationDilated' },
-        delta: [0, 1 / slObstacleHeight],
+        delta: [0, 1 / slHeight],
         lethalDilation: { type: 'int', value: Math.ceil(config.lethalDilationL / config.slGridCellSize) },
         hazardDilation: { type: 'int', value: Math.ceil(config.hazardDilationL / config.slGridCellSize) }
       }
     }
   ];
 }
+*/
