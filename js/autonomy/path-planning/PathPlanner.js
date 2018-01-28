@@ -5,6 +5,11 @@ import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
 import xyCostMap from "./gpgpu-programs/xyCostMap.js";
 import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
+import graphSearch from "./gpgpu-programs/graphSearch.js";
+
+const NUM_ACCELERATION_PROFILES = 8;
+const NUM_VELOCITY_RANGES = 4;
+const NUM_TIME_RANGES = 2;
 
 const config = {
   spatialHorizon: 100, // meters
@@ -54,7 +59,8 @@ export default class PathPlanner {
       slObstacleGrid.setUp(),
       ...slObstacleGridDilation.setUp(),
       xyCostMap.setUp(),
-      optimizeCubicPaths.setUp()
+      optimizeCubicPaths.setUp(),
+      graphSearch.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
     this.gpgpu = new GPGPU(programs);
@@ -97,7 +103,8 @@ export default class PathPlanner {
       slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(config, slWidth, slHeight),
       xyCostMap.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint),
-      optimizeCubicPaths.update(config)
+      optimizeCubicPaths.update(config),
+      graphSearch.update(config)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -115,6 +122,13 @@ export default class PathPlanner {
         height: config.lattice.numStations,
         channels: 4,
         data: this._buildLattice(lanePath, vehicleRot, vehicleXform)
+      },
+      costMap: {
+        width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
+        height: config.lattice.numLatitudes,
+        depth: config.lattice.numStations,
+        channels: 4,
+        textureType: '2DArray'
       }
     });
 

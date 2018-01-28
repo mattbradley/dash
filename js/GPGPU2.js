@@ -12,7 +12,13 @@ void main(void) {
 `;
 
 const fragmentShaderHeader = `#version 300 es
-precision mediump float;
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp sampler2DArray;
+precision highp sampler3D;
+precision highp samplerCube;
+
 in vec2 kernelPosition;
 out vec4 kernelOut;
 uniform ivec2 kernelSize;
@@ -63,6 +69,9 @@ export default class {
 
     if (config.inputs)
       throw new Error('The `updateProgram` function cannot be used to update inputs. Use `updateProgramInputs` instead.');
+
+    if (config.meta)
+      program.meta = Object.assign(program.meta, config.meta);
 
     if (config.width !== undefined && config.height !== undefined)
       this.updateProgramSize(program, config.width, config.height);
@@ -161,7 +170,7 @@ export default class {
       for (const uniformName in program.uniformTextures) {
         const uniformTexture = program.uniformTextures[uniformName];
         this.gl.activeTexture(this.gl.TEXTURE0 + uniformTexture.index);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, uniformTexture.texture || this.sharedTextures[uniformTexture.name] || this.outputTextures[uniformTexture.name]);
+        this.gl.bindTexture(uniformTexture.target, uniformTexture.texture || this.sharedTextures[uniformTexture.name] || this.outputTextures[uniformTexture.name]);
       }
 
       if (typeof(program.draw) == 'function') {
@@ -175,7 +184,12 @@ export default class {
         this.gl.vertexAttribPointer(program.positionLocation, 2, this.gl.FLOAT, false, 0, 0);
         this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
 
-        this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+        if (program.drawProxy) {
+          const draw = (() => this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0)).bind(this);
+          program.drawProxy(this, program, draw);
+        } else {
+          this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+        }
       }
 
       if (program.output && program.output.name && !program.output.read) {
@@ -213,6 +227,8 @@ export default class {
     const program = { config };
 
     program.draw = config.draw;
+    program.drawProxy = config.drawProxy;
+    program.meta = Object.assign({}, config.meta);
 
     if (config.width && config.height) {
       program.inputWidth = config.width;
@@ -263,17 +279,35 @@ export default class {
         };
         fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
       } else {
-        const { type, width, height, channels, data, value, name, ...options } = uniform;
+        const { type, width, height, channels, data, value, length, name, ...options } = uniform;
 
-        if (type == 'texture') {
-          program.uniformTextures[uniformName] = { texture: data ? this._createTexture(data, width, height, channels, options) : null };
-          fragmentShaderConfig += `uniform sampler2D ${uniformName};\n`;
-        } else if (type == 'outputTexture' || type == 'sharedTexture') {
-          program.uniformTextures[uniformName] = { texture: null, name: name || uniformName };
-          fragmentShaderConfig += `uniform sampler2D ${uniformName};\n`;
+        if (type == 'texture' || type == 'outputTexture' || type == 'sharedTexture') {
+          let target, type;
+
+          if (options.textureType == '3D') {
+            target = this.gl.TEXTURE_3D;
+            type = 'sampler3D';
+          } else if (options.textureType == '2DArray') {
+            target = this.gl.TEXTURE_2D_ARRAY;
+            type = 'sampler2DArray';
+          } else {
+            target = this.gl.TEXTURE_2D;
+            type = 'sampler2D';
+          }
+
+          if (type == 'texture') {
+            program.uniformTextures[uniformName] = { target, texture: data ? this._createTexture(data, width, height, channels, options) : null };
+          } else {
+            program.uniformTextures[uniformName] = { target, texture: null, name: name || uniformName };
+          }
+
+          fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
         } else {
           program.uniforms[uniformName] = { type, value };
-          fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
+          if (length !== undefined)
+            fragmentShaderConfig += `uniform ${type} ${uniformName}[${length}];\n`;
+          else
+            fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
         }
       }
     }
@@ -398,7 +432,7 @@ void main() {
   _setUniform(type, location, value) {
     switch (type) {
       case 'int': this.gl.uniform1i(location, value); break;
-      case 'float': this.gl.uniform1f(location, value); break;
+      case 'float': Array.isArray(value) ? this.gl.uniform1fv(location, value) : this.gl.uniform1f(location, value); break;
       case 'vec2': this.gl.uniform2fv(location, value); break;
       case 'vec3': this.gl.uniform3fv(location, value); break;
       case 'vec4': this.gl.uniform4fv(location, value); break;
@@ -442,13 +476,21 @@ void main() {
         throw("Texture channels must between 1 and 4.");
     }
 
-    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, this.gl.FLOAT, data);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+    const target = options.textureType == '3D' ? this.gl.TEXTURE_3D : options.textureType == '2DArray' ? this.gl.TEXTURE_2D_ARRAY : this.gl.TEXTURE_2D;
+
+    this.gl.bindTexture(target, texture);
+    this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(target, this.gl.TEXTURE_MIN_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
+    this.gl.texParameteri(target, this.gl.TEXTURE_MAG_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
+
+    if (options.textureType == '3D' || options.textureType == '2DArray') {
+      this.gl.texImage3D(target, 0, internalFormat, width, height, options.depth, 0, format, this.gl.FLOAT, data);
+    } else {
+      this.gl.texImage2D(target, 0, internalFormat, width, height, 0, format, this.gl.FLOAT, data);
+    }
+
+    this.gl.bindTexture(target, null);
 
     return texture;
   }

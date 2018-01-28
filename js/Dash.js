@@ -7,45 +7,43 @@ window.simulator = new Simulator(geolocation, document.getElementById('container
 /*
 import GPGPU from "./GPGPU2.js";
 
-const g = new GPGPU([
-  {
-    width: 4,
-    height: 2,
-    kernel: `vec4 kernel() { return vec4(kernelPosition, 0, 0); }`
-  }
-]);
-console.log(g.run());
-*/
-/*
 const kernel = `
 vec4 kernel() {
-  int a = 3;
-  int b = 5;
-  int c = int(mod(float(a), float(b)));
-  return vec4(vec2(ivec2(kernelPosition * vec2(kernelSize))), -1, -1);
+  int a = 0; // 8
+  int v = 3; // 4
+  int t = 0; // 2
+  int l = 16; // 19
+  int s = 2; // 10
+
+  int index = a + v * 8 + t * 8 * 4 + l * 8 * 4 * 2 + s * 8 * 4 * 2 * 19;
+  return vec4(index);
 }
 `;
 
-const d = new Float32Array([1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1]);
+const g = new GPGPU([{
+  kernel: kernel,
+  width: 1,
+  height: 1
+}]);
 
-import GPGPU from "./GPGPU2.js";
+let index = g.run()[0][0];
+console.log(index);
 
-const g = new GPGPU([
-  {
-    width: 4,
-    height: 4,
-    kernel: kernel,
-    uniforms: {
-      tex: {
-        type: 'texture',
-        width: 8,
-        height: 1,
-        channels: 2,
-        filter: 'linear',
-        data: d
-      }
-    }
-  }
-]);
+const s = index / (19 * 2 * 4 * 8) | 0;
+index -= s * (19 * 2 * 4 * 8);
 
-console.log(g.run());*/
+const l = index / (2 * 4 * 8) | 0;
+index -= l * (2 * 4 * 8);
+
+const t = index / (4 * 8) | 0;
+index -= t * (4 * 8);
+
+const v = index / 8 | 0;
+const a = index % 8;
+
+console.log(`s: ${s}`);
+console.log(`l: ${l}`);
+console.log(`t: ${t}`);
+console.log(`v: ${v}`);
+console.log(`a: ${a}`);
+*/

@@ -38,55 +38,59 @@ const SOLVE_STATION_KERNEL = `
 const float vSqEpsilon = -0.0001;
 const float smallV = 0.01;
 
-float calculateAcceleration(index, initialVelocitySq, distance) {
+float calculateAcceleration(int index, float initialVelocitySq, float distance) {
   if (index <= 4) {
     // [aMaxHard, aMinHard, aMaxSoft, aMinSoft, 0]
     return accelerationProfiles[index];
   } else {
     float finalVelocity = finalVelocityProfiles[index - 5];
-    return clamp((finalVelocity * finalVelocity - initialVelocitySq) / (2 * distance), accelerationProfiles[1], accelerationProfiles[0]);
+    return clamp((finalVelocity * finalVelocity - initialVelocitySq) / (2.0 * distance), accelerationProfiles[1], accelerationProfiles[0]);
   }
 }
 
-int samplePath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec2 samples[128], inout vec4 coefficients) {
+int samplePath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[128], inout vec4 coefficients) {
   float p0 = start.w;
   float p1 = cubicPathParams.x;
   float p2 = cubicPathParams.y;
   float p3 = end.w;
   float sG = cubicPathParams.z;
 
-  int numSamples = ceil(sG / pathSamplingStep) + 1;
+  int numSamples = int(ceil(sG / pathSamplingStep)) + 1;
 
   float sG_2 = sG * sG;
   float sG_3 = sG_2 * sG;
 
   float a = p0;
-  float b = (-5.5 * p0 + 9 * p1 - 4.5 * p2 + p3) / sG;
-  float c = (9 * p0 - 22.5 * p1 + 18 * p2 - 4.5 * p3) / sG_2;
-  float d = (-4.5 * (p0 - 3 * p1 + 3 * p2 - p3)) / sG_3;
+  float b = (-5.5 * p0 + 9.0 * p1 - 4.5 * p2 + p3) / sG;
+  float c = (9.0 * p0 - 22.5 * p1 + 18.0 * p2 - 4.5 * p3) / sG_2;
+  float d = (-4.5 * (p0 - 3.0 * p1 + 3.0 * p2 - p3)) / sG_3;
   coefficients = vec4(a, b, c, d);
 
   samples[0] = start;
 
-  float ds = sG / (numSamples - 1);
+  float ds = sG / float(numSamples - 1);
   float s = ds;
   vec2 dxy = vec2(0);
   vec2 prevCosSin = vec2(cos(start.z), sin(start.z));
 
   for (int i = 1; i < numSamples; i++) {
-    float rot = (((d * s / 4 + c / 3) * s + b / 2) * s + a) * s + start.z;
+    float rot = (((d * s / 4.0 + c / 3.0) * s + b / 2.0) * s + a) * s + start.z;
     float curv = ((d * s + c) * s + b) * s + a;
 
-    float cosSin = vec2(cos(rot), sin(rot));
-    dxy = dxy * vec2(float(i - 1) / i) + (cosSin + prevCosSin) / vec2(2 * i);
+    vec2 cosSin = vec2(cos(rot), sin(rot));
+    dxy = dxy * vec2(float(i - 1) / float(i)) + (cosSin + prevCosSin) / vec2(2 * i);
 
     samples[i] = vec4(dxy * vec2(s) + start.xy, rot, curv);
 
     s += ds;
-    prevCosSin = cosSin
+    prevCosSin = cosSin;
   }
 
   return numSamples;
+}
+
+float sampleCost(vec4 xytk, float time, float velocity, float acceleration, float dCurv) {
+  return 1.0;
 }
 
 vec4 kernel() {
@@ -113,7 +117,7 @@ vec4 kernel() {
   float minTime = timeRanges[timeIndex];
   float maxTime = timeRanges[timeIndex + 1];
 
-  float minCost = -1.0; // -1 means infinite cost
+  vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
 
   for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
@@ -128,7 +132,7 @@ vec4 kernel() {
       // If cubic path didn't converge
       if (cubicPathParams.w == 0.0) continue;
 
-      vec2 pathSamples[128];
+      vec4 pathSamples[128];
       vec4 coefficients;
       int numSamples = samplePath(pathStart, pathEnd, cubicPathParams, pathSamples, coefficients);
 
@@ -151,51 +155,125 @@ vec4 kernel() {
             float initialVelocitySq = initialVelocity * initialVelocity;
             float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, cubicPathParams.z);
 
-            float finalVelocitySq = 2 * acceleration * cubicPathParams.z + initialVelocitySq;
+            float finalVelocitySq = 2.0 * acceleration * cubicPathParams.z + initialVelocitySq;
             float finalVelocity = smallV;
-            float finalTime;
 
             if (finalVelocitySq >= vSqEpsilon)
-              finalVelocity = sqrt(max(0, finalVelocitySq));
+              finalVelocity = sqrt(max(0.0, finalVelocitySq));
 
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
             if (finalVelocity < minVelocity || finalVelocity >= maxVelocity) continue;
 
+            float finalTime = costMapEntry.z;
+
             // Calculate final time if the vehicle stops before the end of the trajectory
             if (finalVelocitySq < vSqEpsilon) {
-              float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2 * acceleration);
-              finalTime = (smallV - initialVelocity) / acceleration + distanceLeft / smallV;
+              float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
+              finalTime += (smallV - initialVelocity) / acceleration + distanceLeft / smallV;
             } else {
-              finalTime = (finalVelocity - initialVelocity) / acceleration;
+              finalTime += (finalVelocity - initialVelocity) / acceleration;
             }
 
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
-            float s = 0;
-            float ds = cubicPathParams.z / numSamples;
+            float s = 0.0;
+            float ds = cubicPathParams.z / float(numSamples);
+            float costSum = 0.0;
 
             for (int i = 0; i < numSamples; i++) {
-              float velocitySq = 2 * acceleration * s + initialVelocitySq;
+              float velocitySq = 2.0 * acceleration * s + initialVelocitySq;
               float velocity;
 
               if (velocitySq >= vSqEpsilon) {
-                velocity = sqrt(max(0, velocitySq));
+                velocity = sqrt(max(0.0, velocitySq));
               } else {
                 velocity = smallV;
               }
 
-              float time = 2 * s / (initialVelocity + velocity);
-              float dCurv = velocity * (coefficients.y + s * (2 * coefficients.z + 3 * coefficients.w * s);
+              float time = 2.0 * s / (initialVelocity + velocity);
+              float dCurv = velocity * (coefficients.y + s * (2.0 * coefficients.z + 3.0 * coefficients.w * s));
+
+              costSum += sampleCost(pathSamples[i], time, velocity, acceleration, dCurv);
+            }
+
+            // The cost of a trajectory is the average sample cost scaled by the path length
+            float totalCost = costSum / float(numSamples) * cubicPathParams.z;
+
+            if (bestTrajectory.x == -1.0 || totalCost < bestTrajectory.x) {
+              int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
+              bestTrajectory = vec4(totalCost, finalTime, finalVelocity, incomingIndex);
             }
           }
         }
       }
     }
   }
+
+  return bestTrajectory;
 }
 
 `;
 
-export default function() {
+const NUM_ACCELERATION_PROFILES = 8;
+const NUM_VELOCITY_RANGES = 4;
+const NUM_TIME_RANGES = 2;
+
+export default {
+  setUp() {
+    return {
+      kernel: SOLVE_STATION_KERNEL,
+      output: { name: 'graphSearch' },
+      uniforms: {
+        lattice: { type: 'sharedTexture' },
+        costMap: { type: 'sharedTexture', textureType: '2DArray' },
+        cubicPaths: { type: 'outputTexture' },
+        numStations: { type: 'int' },
+        numLatitudes: { type: 'int' },
+        numAccelerations: { type: 'int' },
+        numVelocities: { type: 'int' },
+        numTimes: { type: 'int' },
+        accelerationProfiles: { type: 'float', length: 5 },
+        finalVelocityProfiles: { type: 'float', length: 3 },
+        pathSamplingStep: { type: 'float' },
+        stationConnectivity: { type: 'int' },
+        latitudeConnectivity: { type: 'int' },
+        station: { type: 'int' },
+        velocityRanges: { type: 'float', length: NUM_VELOCITY_RANGES + 1 },
+        timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 }
+      },
+      drawProxy: (gpgpu, program, draw) => {
+        for (let s = 1; s < program.meta.numStations; s++) {
+          gpgpu.updateProgramUniforms(program, { station: s });
+          gpgpu.gl.framebufferTextureLayer(gpgpu.gl.FRAMEBUFFER, gpgpu.gl.COLOR_ATTACHMENT0, gpgpu.sharedTextures.costMap, 0, s);
+          draw();
+        }
+      }
+    };
+  },
+
+  update(config) {
+    return {
+      width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
+      height: config.lattice.numLatitudes,
+      meta: {
+        numStations: config.lattice.numStations
+      },
+      uniforms: {
+        numStations: config.lattice.numStations,
+        numLatitudes: config.lattice.numLatitudes,
+        numAccelerations: NUM_ACCELERATION_PROFILES,
+        numVelocities: NUM_VELOCITY_RANGES,
+        numTimes: NUM_TIME_RANGES,
+        accelerationProfiles: [3.5, 6.5, 2.0, 3.0, 0],
+        finalVelocityProfiles: [0.99 * 25.0, 1.0, 0.01],
+        pathSamplingStep: 0.5,
+        stationConnectivity: config.lattice.stationConnectivity,
+        latitudeConnectivity: config.lattice.latitudeConnectivity,
+        station: 1,
+        velocityRanges: [0, 25 / 3, 25 * 2 / 3, 25, 1000000],
+        timeRanges: [0, 5, 1000000]
+      }
+    };
+  }
 }
