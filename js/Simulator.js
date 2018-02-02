@@ -250,10 +250,16 @@ export default class Simulator {
     obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
     this.scene.add(obsObj);
 
+    let start = performance.now();
     const planner = new PathPlanner();
-    const start = performance.now();
+    console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
+    start = performance.now();
+    const sd = +new Date;
+    console.log(new Date);
     const { xysl, width, height, center, rot } = planner.plan(this.editor.lanePath, [obstacle]);
-    console.log(`Planner time: ${(performance.now() - start) / 1000}s`);
+    //console.log(`Planner run time: ${(performance.now() - start) / 1000}s`);
+    console.log(`Planner run time: ${((+new Date) - sd) / 1000}s`);
+    console.log(new Date);
     console.log(`Grid size: ${width}x${height}`);
 
     const xyslTex = new THREE.DataTexture(xysl, width, height, THREE.RGBAFormat, THREE.FloatType);

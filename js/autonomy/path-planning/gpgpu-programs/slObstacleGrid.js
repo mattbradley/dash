@@ -22,7 +22,7 @@ export default {
   setUp() {
     return {
       kernel: SL_OBSTACLE_KERNEL,
-      output: { name: 'slObstacleGrid', read: true },
+      output: { name: 'slObstacleGrid' },
       uniforms: {
         xyObstacleGrid: { type: 'outputTexture' },
         slGridCellSize: { type: 'float' },

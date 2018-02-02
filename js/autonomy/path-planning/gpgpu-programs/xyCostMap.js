@@ -57,12 +57,16 @@ vec4 kernel() {
   vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slObstacleGrid, 0)) / vec2(slGridCellSize) + 0.5;
   float obstacleCost = texture(slObstacleGrid, slTexCoords).r;
 
+  if (obstacleCost == 1.0) return vec4(-1); // Infinite cost
+  obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
+
   float absLatitude = abs(sl.y);
   float laneCost = max(absLatitude * laneCostSlope, step(laneShoulderLatitude, absLatitude) * laneShoulderCost);
 
   //return vec4(sl, cost, 1);
   //return clamp(vec4(sl.x / 100.0, 1.0 - abs(sl.y / (3.7 / 2.0)), cost, 1), 0.0, 1.0);
-  return vec4(clamp(vec2(obstacleCost, laneCost), 0.0, 1.0), 0, 1);
+  //return vec4(clamp(vec2(obstacleCost, laneCost), 0.0, 1.0), 0, 1);
+  return vec4(obstacleCost + laneCost);
 }
 
 `;
@@ -72,7 +76,7 @@ export default {
   setUp() {
     return {
       kernel: XYSL_MAP_KERNEL,
-      //output: { name: 'xyCostMap' },
+      output: { name: 'xyCostMap', read: true },
       uniforms: {
         slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
         xyCenterPoint: { type: 'vec2' },
@@ -83,7 +87,8 @@ export default {
         stationInterval: { type: 'float'},
         laneCostSlope: { type: 'float'},
         laneShoulderCost: { type: 'float'},
-        laneShoulderLatitude: { type: 'float'}
+        laneShoulderLatitude: { type: 'float'},
+        obstacleHazardCost: { type: 'float' }
       }
     };
   },
@@ -100,7 +105,8 @@ export default {
         stationInterval: config.stationInterval,
         laneCostSlope: config.laneCostSlope,
         laneShoulderCost: config.laneShoulderCost,
-        laneShoulderLatitude: config.laneShoulderLatitude
+        laneShoulderLatitude: config.laneShoulderLatitude,
+        obstacleHazardCost: config.obstacleHazardCost
       }
     };
   }

@@ -15,9 +15,8 @@ vec4 kernel() {
   }
 
   val = max(val, step(0.1, val) * 0.5);
-  float obs = texture(slObstacleGrid, kernelPosition).g;
 
-  return vec4(val, obs, 0, 1);
+  return vec4(val, 0, 0, 1);
 }
 
 `;

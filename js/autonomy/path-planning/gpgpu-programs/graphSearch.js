@@ -89,7 +89,11 @@ int samplePath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[12
   return numSamples;
 }
 
-float sampleCost(vec4 xytk, float time, float velocity, float acceleration, float dCurv) {
+float staticCost(vec4 xytk) {
+  return 1.0;
+}
+
+float dynamicCost(vec4 xytk, float time, float velocity, float acceleration, float dCurv) {
   return 1.0;
 }
 
@@ -136,6 +140,21 @@ vec4 kernel() {
       vec4 coefficients;
       int numSamples = samplePath(pathStart, pathEnd, cubicPathParams, pathSamples, coefficients);
 
+      float staticCostSum = 0.0;
+
+      for (int i = 0; i < numSamples; i++) {
+        float cost = staticCost(pathSamples[i]);
+
+        if (cost < 0.0) {
+          staticCostSum = cost;
+          break;
+        }
+
+        staticCostSum += cost;
+      }
+
+      if (staticCostSum < 0.0) continue;
+
       for (int prevVelocity = 0; prevVelocity < numVelocities; prevVelocity++) {
         for (int prevTime = 0; prevTime < numTimes; prevTime++) {
           for (int prevAccel = 0; prevAccel < numAccelerations; prevAccel++) {
@@ -146,12 +165,12 @@ vec4 kernel() {
             //   y: end speed
             //   z: end time
             //   w: parent index
-            vec4 costMapEntry = texelFetch(costMap, ivec3(avtIndex, prevLatitude, prevStation), 0);
+            vec4 costTableEntry = texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0);
 
             // If cost entry is infinity
-            if (costMapEntry.x == -1.0) continue;
+            if (costTableEntry.x == -1.0) continue;
 
-            float initialVelocity = costMapEntry.y;
+            float initialVelocity = costTableEntry.y;
             float initialVelocitySq = initialVelocity * initialVelocity;
             float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, cubicPathParams.z);
 
@@ -164,7 +183,7 @@ vec4 kernel() {
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
             if (finalVelocity < minVelocity || finalVelocity >= maxVelocity) continue;
 
-            float finalTime = costMapEntry.z;
+            float finalTime = costTableEntry.z;
 
             // Calculate final time if the vehicle stops before the end of the trajectory
             if (finalVelocitySq < vSqEpsilon) {
@@ -178,8 +197,8 @@ vec4 kernel() {
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
             float s = 0.0;
-            float ds = cubicPathParams.z / float(numSamples);
-            float costSum = 0.0;
+            float ds = cubicPathParams.z / float(numSamples - 1);
+            float dynamicCostSum = 0.0;
 
             for (int i = 0; i < numSamples; i++) {
               float velocitySq = 2.0 * acceleration * s + initialVelocitySq;
@@ -194,15 +213,25 @@ vec4 kernel() {
               float time = 2.0 * s / (initialVelocity + velocity);
               float dCurv = velocity * (coefficients.y + s * (2.0 * coefficients.z + 3.0 * coefficients.w * s));
 
-              costSum += sampleCost(pathSamples[i], time, velocity, acceleration, dCurv);
+              float cost = dynamicCost(pathSamples[i], time, velocity, acceleration, dCurv);
+
+              if (cost < 0.0) {
+                dynamicCostSum = cost;
+                break;
+              }
+
+              dynamicCostSum += cost;
+              s += ds;
             }
 
-            // The cost of a trajectory is the average sample cost scaled by the path length
-            float totalCost = costSum / float(numSamples) * cubicPathParams.z;
+            if (dynamicCostSum < 0.0) continue;
 
-            if (bestTrajectory.x == -1.0 || totalCost < bestTrajectory.x) {
+            // The cost of a trajectory is the average sample cost scaled by the path length
+            float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * cubicPathParams.z + costTableEntry.x;
+
+            if (bestTrajectory.x < 0.0 || totalCost < bestTrajectory.x) {
               int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
-              bestTrajectory = vec4(totalCost, finalTime, finalVelocity, incomingIndex);
+              bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
             }
           }
         }
@@ -223,10 +252,11 @@ export default {
   setUp() {
     return {
       kernel: SOLVE_STATION_KERNEL,
-      output: { name: 'graphSearch' },
+      output: { name: 'graphSearch', read: true },
       uniforms: {
         lattice: { type: 'sharedTexture' },
-        costMap: { type: 'sharedTexture', textureType: '2DArray' },
+        costTable: { type: 'sharedTexture', textureType: '2DArray' },
+        xyCostMap: { type: 'outputTexture' },
         cubicPaths: { type: 'outputTexture' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
@@ -243,10 +273,11 @@ export default {
         timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 }
       },
       drawProxy: (gpgpu, program, draw) => {
-        for (let s = 1; s < program.meta.numStations; s++) {
+        for (let s = 1; s < program.meta.lattice.numStations; s++) {
           gpgpu.updateProgramUniforms(program, { station: s });
-          gpgpu.gl.framebufferTextureLayer(gpgpu.gl.FRAMEBUFFER, gpgpu.gl.COLOR_ATTACHMENT0, gpgpu.sharedTextures.costMap, 0, s);
           draw();
+          gpgpu.gl.bindTexture(gpgpu.gl.TEXTURE_2D_ARRAY, gpgpu.sharedTextures.costTable);
+          gpgpu.gl.copyTexSubImage3D(gpgpu.gl.TEXTURE_2D_ARRAY, 0, 0, 0, s, 0, 0, NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES, program.meta.lattice.numLatitudes);
         }
       }
     };
@@ -257,7 +288,7 @@ export default {
       width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
       height: config.lattice.numLatitudes,
       meta: {
-        numStations: config.lattice.numStations
+        lattice: config.lattice
       },
       uniforms: {
         numStations: config.lattice.numStations,

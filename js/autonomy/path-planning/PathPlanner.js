@@ -31,6 +31,8 @@ const config = {
   lethalDilationL: Car.HALF_CAR_WIDTH + 0.3, //meters
   hazardDilationL: 1, // meters
 
+  obstacleHazardCost: 1,
+
   laneWidth: 3.7, // meters
   laneShoulderCost: 5,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
@@ -123,7 +125,7 @@ export default class PathPlanner {
         channels: 4,
         data: this._buildLattice(lanePath, vehicleRot, vehicleXform)
       },
-      costMap: {
+      costTable: {
         width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
         height: config.lattice.numLatitudes,
         depth: config.lattice.numStations,
@@ -133,7 +135,7 @@ export default class PathPlanner {
     });
 
     const outputs = this.gpgpu.run();
-    console.log(outputs[5]);
+    console.log(outputs[6]);
     return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: vehicleRot };
   }
 
