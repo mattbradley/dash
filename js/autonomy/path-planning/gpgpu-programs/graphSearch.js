@@ -35,7 +35,6 @@
 
 const SOLVE_STATION_KERNEL = `
 
-const float vSqEpsilon = -0.0001;
 const float smallV = 0.01;
 
 float calculateAcceleration(int index, float initialVelocitySq, float distance) {
@@ -90,7 +89,19 @@ int samplePath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[12
 }
 
 float staticCost(vec4 xytk) {
-  return 1.0;
+  vec2 xyTexCoords = (xytk.xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
+  vec2 sl = texture(xyslMap, xyTexCoords).xy;
+
+  vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slObstacleGrid, 0)) / vec2(slGridCellSize) + 0.5;
+  float obstacleCost = texture(slObstacleGrid, slTexCoords).x;
+
+  if (obstacleCost == 1.0) return -1.0; // Infinite cost
+  obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
+
+  float absLatitude = abs(sl.y);
+  float laneCost = max(absLatitude * laneCostSlope, step(laneShoulderLatitude, absLatitude) * laneShoulderCost);
+
+  return obstacleCost + laneCost;
 }
 
 float dynamicCost(vec4 xytk, float time, float velocity, float acceleration, float dCurv) {
@@ -122,6 +133,7 @@ vec4 kernel() {
   float maxTime = timeRanges[timeIndex + 1];
 
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
+  float bestCost = 1000000000.0;
 
   for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
@@ -175,10 +187,7 @@ vec4 kernel() {
             float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, cubicPathParams.z);
 
             float finalVelocitySq = 2.0 * acceleration * cubicPathParams.z + initialVelocitySq;
-            float finalVelocity = smallV;
-
-            if (finalVelocitySq >= vSqEpsilon)
-              finalVelocity = sqrt(max(0.0, finalVelocitySq));
+            float finalVelocity = max(smallV, sqrt(max(0.0, finalVelocitySq)));
 
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
             if (finalVelocity < minVelocity || finalVelocity >= maxVelocity) continue;
@@ -186,15 +195,26 @@ vec4 kernel() {
             float finalTime = costTableEntry.z;
 
             // Calculate final time if the vehicle stops before the end of the trajectory
-            if (finalVelocitySq < vSqEpsilon) {
-              float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
-              finalTime += (smallV - initialVelocity) / acceleration + distanceLeft / smallV;
+            if (finalVelocitySq <= 0.0) {
+              if (acceleration == 0.0) {
+                finalTime += cubicPathParams.z / smallV;
+              } else {
+                float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
+                finalTime += (smallV - initialVelocity) / acceleration + distanceLeft / smallV;
+              }
             } else {
-              finalTime += (finalVelocity - initialVelocity) / acceleration;
+              if (acceleration == 0.0)
+                finalTime += cubicPathParams.z / finalVelocity;
+              else
+                finalTime += (finalVelocity - initialVelocity) / acceleration;
             }
 
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
+
+            float finalCost = costTableEntry.x + extraTimePenalty*10.0 * finalTime;
+            if (finalCost >= bestCost) continue;
+            bestCost = finalCost;
 
             float s = 0.0;
             float ds = cubicPathParams.z / float(numSamples - 1);
@@ -202,13 +222,7 @@ vec4 kernel() {
 
             for (int i = 0; i < numSamples; i++) {
               float velocitySq = 2.0 * acceleration * s + initialVelocitySq;
-              float velocity;
-
-              if (velocitySq >= vSqEpsilon) {
-                velocity = sqrt(max(0.0, velocitySq));
-              } else {
-                velocity = smallV;
-              }
+              float velocity = max(smallV, sqrt(max(0.0, velocitySq)));
 
               float time = 2.0 * s / (initialVelocity + velocity);
               float dCurv = velocity * (coefficients.y + s * (2.0 * coefficients.z + 3.0 * coefficients.w * s));
@@ -229,10 +243,8 @@ vec4 kernel() {
             // The cost of a trajectory is the average sample cost scaled by the path length
             float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * cubicPathParams.z + costTableEntry.x;
 
-            if (bestTrajectory.x < 0.0 || totalCost < bestTrajectory.x) {
-              int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
-              bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
-            }
+            int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
+            bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
           }
         }
       }
@@ -252,12 +264,22 @@ export default {
   setUp() {
     return {
       kernel: SOLVE_STATION_KERNEL,
-      output: { name: 'graphSearch', read: true },
+      output: { name: 'graphSearch' },
       uniforms: {
         lattice: { type: 'sharedTexture' },
         costTable: { type: 'sharedTexture', textureType: '2DArray' },
-        xyCostMap: { type: 'outputTexture' },
+        xyslMap: { type: 'outputTexture' },
         cubicPaths: { type: 'outputTexture' },
+        slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
+        xyCenterPoint: { type: 'vec2' },
+        xyGridCellSize: { type: 'float' },
+        slCenterPoint: { type: 'vec2' },
+        slGridCellSize: { type: 'float'},
+        laneCostSlope: { type: 'float'},
+        laneShoulderCost: { type: 'float'},
+        laneShoulderLatitude: { type: 'float'},
+        obstacleHazardCost: { type: 'float' },
+        extraTimePenalty: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
         numAccelerations: { type: 'int' },
@@ -273,17 +295,26 @@ export default {
         timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 }
       },
       drawProxy: (gpgpu, program, draw) => {
+        const width = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES;
+        const height = program.meta.lattice.numLatitudes;
+        const costTable = new Float32Array(width * height * program.meta.lattice.numStations * 4);
+
         for (let s = 1; s < program.meta.lattice.numStations; s++) {
           gpgpu.updateProgramUniforms(program, { station: s });
           draw();
+
+          gpgpu.gl.readPixels(0, 0, width, height, gpgpu.gl.RGBA, gpgpu.gl.FLOAT, costTable, s * width * height * 4);
+
           gpgpu.gl.bindTexture(gpgpu.gl.TEXTURE_2D_ARRAY, gpgpu.sharedTextures.costTable);
-          gpgpu.gl.copyTexSubImage3D(gpgpu.gl.TEXTURE_2D_ARRAY, 0, 0, 0, s, 0, 0, NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES, program.meta.lattice.numLatitudes);
+          gpgpu.gl.copyTexSubImage3D(gpgpu.gl.TEXTURE_2D_ARRAY, 0, 0, 0, s, 0, 0, width, height);
         }
+
+        gpgpu._graphSearchCostTable = costTable;
       }
     };
   },
 
-  update(config) {
+  update(config, xyCenterPoint, slCenterPoint) {
     return {
       width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
       height: config.lattice.numLatitudes,
@@ -291,19 +322,27 @@ export default {
         lattice: config.lattice
       },
       uniforms: {
+        xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
+        xyGridCellSize: config.xyGridCellSize,
+        slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
+        slGridCellSize: config.slGridCellSize,
+        laneCostSlope: config.laneCostSlope,
+        laneShoulderCost: config.laneShoulderCost,
+        laneShoulderLatitude: config.laneShoulderLatitude,
+        obstacleHazardCost: config.obstacleHazardCost,
+        extraTimePenalty: config.extraTimePenalty,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,
         numAccelerations: NUM_ACCELERATION_PROFILES,
         numVelocities: NUM_VELOCITY_RANGES,
         numTimes: NUM_TIME_RANGES,
-        accelerationProfiles: [3.5, 6.5, 2.0, 3.0, 0],
+        accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
         finalVelocityProfiles: [0.99 * 25.0, 1.0, 0.01],
-        pathSamplingStep: 0.5,
+        pathSamplingStep: config.pathSamplingStep,
         stationConnectivity: config.lattice.stationConnectivity,
         latitudeConnectivity: config.lattice.latitudeConnectivity,
-        station: 1,
         velocityRanges: [0, 25 / 3, 25 * 2 / 3, 25, 1000000],
-        timeRanges: [0, 5, 1000000]
+        timeRanges: [0, 10, 1000000]
       }
     };
   }

@@ -199,7 +199,7 @@ export default {
   setUp() {
     return {
       kernel: OPTIMIZE_KERNEL,
-      output: { name: 'cubicPaths' },
+      output: { name: 'cubicPaths', read: true },
       uniforms: {
         lattice: { type: 'sharedTexture' },
         numStations: { type: 'int' },
@@ -223,21 +223,3 @@ export default {
     };
   }
 }
-
-/*
-export default function(config) {
-  return {
-    kernel: OPTIMIZE_KERNEL,
-    width: config.lattice.numStations * config.lattice.numLatitudes,
-    height: config.lattice.stationConnectivity * config.lattice.latitudeConnectivity,
-    uniforms: {
-      lattice: { type: 'sharedTexture' },
-      numStations: { type: 'int', value: config.lattice.numStations },
-      numLatitudes: { type: 'int', value: config.lattice.numLatitudes },
-      stationConnectivity: { type: 'int', value: config.lattice.stationConnectivity },
-      latitudeConnectivity: { type: 'int', value: config.lattice.latitudeConnectivity }
-    },
-    output: { name: 'cubicPaths' }
-  };
-}
-*/

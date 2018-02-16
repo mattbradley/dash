@@ -3,7 +3,7 @@ import Car from "../../physics/Car.js";
 import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
-import xyCostMap from "./gpgpu-programs/xyCostMap.js";
+import xyslMap from "./gpgpu-programs/xyslMap.js";
 import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
 import graphSearch from "./gpgpu-programs/graphSearch.js";
 
@@ -25,6 +25,7 @@ const config = {
   xyGridCellSize: 0.3, // meters
   slGridCellSize: 0.15, // meters
   gridMargin: 10, // meters
+  pathSamplingStep: 0.5, // meters
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 0.6, // meters
   hazardDilationS: 2, // meters
@@ -36,7 +37,10 @@ const config = {
   laneWidth: 3.7, // meters
   laneShoulderCost: 5,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 0.5 // cost / meter
+  laneCostSlope: 0.5, // cost / meter
+
+  stationReachDiscount: -1,
+  extraTimePenalty: 1
 };
 
 /* Obstacle cost map:
@@ -60,7 +64,7 @@ export default class PathPlanner {
       xyObstacleGrid.setUp(),
       slObstacleGrid.setUp(),
       ...slObstacleGridDilation.setUp(),
-      xyCostMap.setUp(),
+      xyslMap.setUp(),
       optimizeCubicPaths.setUp(),
       graphSearch.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
@@ -104,9 +108,9 @@ export default class PathPlanner {
       xyObstacleGrid.update(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
       slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(config, slWidth, slHeight),
-      xyCostMap.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint),
+      xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
       optimizeCubicPaths.update(config),
-      graphSearch.update(config)
+      graphSearch.update(config, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -135,7 +139,35 @@ export default class PathPlanner {
     });
 
     const outputs = this.gpgpu.run();
-    console.log(outputs[6]);
+    const costTable = this.gpgpu._graphSearchCostTable;
+
+    console.log(costTable);
+    let bestEntry = [Number.POSITIVE_INFINITY];
+    let bestEntryIndex;
+    const numEntries = costTable.length / 4;
+
+    for (let i = config.lattice.numLatitudes * NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES; i < numEntries; i++) {
+      const entryIndex = this._unpackCostTableIndex(i);
+      const entry = [
+        costTable[i * 4],
+        costTable[i * 4 + 1],
+        costTable[i * 4 + 2],
+        costTable[i * 4 + 3]
+      ];
+
+      if (entry[0] == -1) continue;
+
+      entry[0] = this._finalCost(entryIndex, entry);
+
+      if (entry[0] < bestEntry[0]) {
+        bestEntryIndex = entryIndex;
+        bestEntry = entry;
+      }
+    }
+
+    console.log(bestEntryIndex, bestEntry);
+    console.log(this._unpackCostTableIndex(bestEntry[3]));
+
     return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: vehicleRot };
   }
 
@@ -163,6 +195,41 @@ export default class PathPlanner {
     }
 
     return lattice;
+  }
+
+  _finalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
+    // Only consider vertices that reach the end of the spatial or temporal horizon
+    if (stationIndex != config.lattice.numStations - 1 && finalVelocity > 0.05)
+      return Number.POSITIVE_INFINITY;
+
+    const station = (config.spatialHorizon / config.lattice.numStations) * (stationIndex + 1);
+
+    const t = cost + config.stationReachDiscount * station + config.extraTimePenalty * finalTime;
+    if (latitudeIndex == 9) {
+      console.log([...arguments[0], ...arguments[1]]);
+      console.log(this._unpackCostTableIndex(incomingIndex));
+    }
+    return t;
+  }
+
+  _unpackCostTableIndex(index) {
+    const numPerTime = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES;
+    const numPerLatitude = numPerTime * NUM_TIME_RANGES;
+    const numPerStation = config.lattice.numLatitudes * numPerLatitude;
+
+    const stationIndex = Math.floor(index / numPerStation);
+    index -= stationIndex * numPerStation;
+
+    const latitudeIndex = Math.floor(index / numPerLatitude);
+    index -= latitudeIndex * numPerLatitude;
+
+    const timeIndex = Math.floor(index / numPerTime);
+    index -= timeIndex * numPerTime;
+
+    const velocityIndex = Math.floor(index / NUM_ACCELERATION_PROFILES);
+    const accelerationIndex = index % NUM_ACCELERATION_PROFILES;
+
+    return [stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex];
   }
 }
 
