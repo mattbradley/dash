@@ -39,7 +39,7 @@ const config = {
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 0.5, // cost / meter
 
-  stationReachDiscount: -1,
+  stationReachDiscount: -10,
   extraTimePenalty: 1
 };
 
@@ -206,7 +206,7 @@ export default class PathPlanner {
 
     const t = cost + config.stationReachDiscount * station + config.extraTimePenalty * finalTime;
     if (latitudeIndex == 9) {
-      console.log([...arguments[0], ...arguments[1]]);
+      console.log([t, ...arguments[0], ...arguments[1]]);
       console.log(this._unpackCostTableIndex(incomingIndex));
     }
     return t;
