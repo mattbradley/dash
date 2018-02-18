@@ -1,5 +1,6 @@
 import GPGPU from "./../../GPGPU2.js";
 import Car from "../../physics/Car.js";
+import CubicPathOptimizer from "./CubicPathOptimizer.js";
 import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
@@ -32,7 +33,7 @@ const config = {
   lethalDilationL: Car.HALF_CAR_WIDTH + 0.3, //meters
   hazardDilationL: 1, // meters
 
-  obstacleHazardCost: 1,
+  obstacleHazardCost: 10,
 
   laneWidth: 3.7, // meters
   laneShoulderCost: 5,
@@ -40,7 +41,7 @@ const config = {
   laneCostSlope: 0.5, // cost / meter
 
   stationReachDiscount: -10,
-  extraTimePenalty: 1
+  extraTimePenalty: 10
 };
 
 /* Obstacle cost map:
@@ -115,6 +116,8 @@ export default class PathPlanner {
       this.gpgpu.updateProgram(i, p);
     }
 
+    const lattice = this._buildLattice(lanePath, vehicleRot, vehicleXform);
+
     this.gpgpu.updateSharedTextures({
       centerline: {
         width: centerline.length,
@@ -127,7 +130,7 @@ export default class PathPlanner {
         width: config.lattice.numLatitudes,
         height: config.lattice.numStations,
         channels: 4,
-        data: this._buildLattice(lanePath, vehicleRot, vehicleXform)
+        data: lattice
       },
       costTable: {
         width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
@@ -140,6 +143,7 @@ export default class PathPlanner {
 
     const outputs = this.gpgpu.run();
     const costTable = this.gpgpu._graphSearchCostTable;
+    const cubicPathParams = outputs[5];
 
     console.log(costTable);
     let bestEntry = [Number.POSITIVE_INFINITY];
@@ -147,7 +151,7 @@ export default class PathPlanner {
     const numEntries = costTable.length / 4;
 
     for (let i = config.lattice.numLatitudes * NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES; i < numEntries; i++) {
-      const entryIndex = this._unpackCostTableIndex(i);
+      const entryUnpacked = this._unpackCostTableIndex(i);
       const entry = [
         costTable[i * 4],
         costTable[i * 4 + 1],
@@ -157,18 +161,28 @@ export default class PathPlanner {
 
       if (entry[0] == -1) continue;
 
-      entry[0] = this._finalCost(entryIndex, entry);
+      entry[0] += this._terminalCost(entryUnpacked, entry);
 
       if (entry[0] < bestEntry[0]) {
-        bestEntryIndex = entryIndex;
+        bestEntryIndex = i;
         bestEntry = entry;
       }
     }
 
-    console.log(bestEntryIndex, bestEntry);
-    console.log(this._unpackCostTableIndex(bestEntry[3]));
+    const inverseVehicleXform = (new THREE.Matrix3()).getInverse(vehicleXform);
+    const bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, lattice).map(p => {
+      return {
+        pos: p.pos.applyMatrix3(inverseVehicleXform),
+        rot: p.rot + vehicleRot,
+        curv: p.curv
+      };
+    });
 
-    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3((new THREE.Matrix3()).getInverse(vehicleXform)), rot: vehicleRot };
+    console.log(bestEntryIndex, bestEntry);
+    console.log(bestTrajectory);
+
+
+    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehicleRot, path: bestTrajectory };
   }
 
   _buildLattice(lanePath, vehicleRot, vehicleXform) {
@@ -197,19 +211,14 @@ export default class PathPlanner {
     return lattice;
   }
 
-  _finalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
+  _terminalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
     // Only consider vertices that reach the end of the spatial or temporal horizon
     if (stationIndex != config.lattice.numStations - 1 && finalVelocity > 0.05)
       return Number.POSITIVE_INFINITY;
 
     const station = (config.spatialHorizon / config.lattice.numStations) * (stationIndex + 1);
 
-    const t = cost + config.stationReachDiscount * station + config.extraTimePenalty * finalTime;
-    if (latitudeIndex == 9) {
-      console.log([t, ...arguments[0], ...arguments[1]]);
-      console.log(this._unpackCostTableIndex(incomingIndex));
-    }
-    return t;
+    return config.stationReachDiscount * station + config.extraTimePenalty * finalTime;
   }
 
   _unpackCostTableIndex(index) {
@@ -230,6 +239,58 @@ export default class PathPlanner {
     const accelerationIndex = index % NUM_ACCELERATION_PROFILES;
 
     return [stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex];
+  }
+
+  _reconstructTrajectory(index, costTable, cubicPathParams, lattice) {
+    let unpacked = this._unpackCostTableIndex(index);
+    const nodes = [unpacked];
+
+    while (unpacked[0] > 0) {
+      index = costTable[index * 4 + 3];
+      unpacked = this._unpackCostTableIndex(index);
+      nodes.unshift(unpacked);
+    }
+
+    const points = [];
+
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const [prevStation, prevLatitude] = nodes[i];
+      const [station, latitude] = nodes[i + 1];
+
+      const startIndex = (prevStation * config.lattice.numLatitudes + prevLatitude) * 4;
+      const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
+
+      const start = {
+        pos: new THREE.Vector2(lattice[startIndex], lattice[startIndex + 1]),
+        rot: lattice[startIndex + 2],
+        curv: lattice[startIndex + 3]
+      };
+
+      const end = {
+        pos: new THREE.Vector2(lattice[endIndex], lattice[endIndex + 1]),
+        rot: lattice[endIndex + 2],
+        curv: lattice[endIndex + 3]
+      };
+
+      const slIndex = station * config.lattice.numLatitudes + latitude;
+      const connectivityIndex = (prevStation - station + config.lattice.stationConnectivity) * config.lattice.latitudeConnectivity + prevLatitude - latitude + Math.floor(config.lattice.latitudeConnectivity / 2);
+      const cubicPathIndex = (connectivityIndex * config.lattice.numStations * config.lattice.numLatitudes + slIndex) * 4;
+
+      const length = cubicPathParams[cubicPathIndex + 2];
+
+      const optimizer = new CubicPathOptimizer(start, end, {
+        p1: cubicPathParams[cubicPathIndex],
+        p2: cubicPathParams[cubicPathIndex + 1],
+        sG: length
+      });
+
+      const path = optimizer.buildPath(Math.ceil(length / config.pathSamplingStep));
+
+      if (i < nodes.length - 2) path.shift();
+      points.push(...path);
+    }
+
+    return points;
   }
 }
 

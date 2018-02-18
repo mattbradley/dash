@@ -194,27 +194,21 @@ vec4 kernel() {
 
             float finalTime = costTableEntry.z;
 
-            // Calculate final time if the vehicle stops before the end of the trajectory
-            if (finalVelocitySq <= 0.0) {
-              if (acceleration == 0.0) {
-                finalTime += cubicPathParams.z / smallV;
-              } else {
-                float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
-                finalTime += (smallV - initialVelocity) / acceleration + distanceLeft / smallV;
-              }
+            if (acceleration == 0.0) {
+              finalTime += cubicPathParams.z / finalVelocity;
+            } else if (finalVelocitySq <= 0.0) { // Calculate final time if the vehicle stops before the end of the trajectory
+              float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
+              finalTime += (finalVelocity - initialVelocity) / acceleration + distanceLeft / smallV;
             } else {
-              if (acceleration == 0.0)
-                finalTime += cubicPathParams.z / finalVelocity;
-              else
-                finalTime += (finalVelocity - initialVelocity) / acceleration;
+              finalTime += 2.0 * cubicPathParams.z / (finalVelocity + initialVelocity);
             }
 
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
-            float finalCost = costTableEntry.x + extraTimePenalty*10.0 * finalTime;
-            if (finalCost >= bestCost) continue;
-            bestCost = finalCost;
+            float terminalCost = costTableEntry.x + extraTimePenalty * finalTime;
+            if (terminalCost >= bestCost) continue;
+            bestCost = terminalCost;
 
             float s = 0.0;
             float ds = cubicPathParams.z / float(numSamples - 1);

@@ -212,14 +212,14 @@ export default class Simulator {
       const rot = rotations[i];
       return { pos: Car.frontToRearAxlePosition(p, rot), rot: rot };
     });
-    const path = new Path(poses);
+    const followPath = new Path(poses);
 
-    autoController = new AutonomousController(path);
+    autoController = new AutonomousController(followPath);
     this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();
-    frontGeometry.vertices.push(...path.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
+    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
     this.editor.enabled = false;
@@ -239,7 +239,6 @@ export default class Simulator {
         this.scene.add(circle);
       });
     });
-    //lattice.optimizePaths();
 
     const obstacle = new StaticObstacle({ x: 0, y: 0 }, Math.PI, 32, 1);
     const obsGeom = new THREE.PlaneGeometry(obstacle.width, obstacle.height);
@@ -256,9 +255,9 @@ export default class Simulator {
     start = performance.now();
     const sd = +new Date;
     console.log(new Date);
-    const { xysl, width, height, center, rot } = planner.plan(this.editor.lanePath, [obstacle]);
-    //console.log(`Planner run time: ${(performance.now() - start) / 1000}s`);
-    console.log(`Planner run time: ${((+new Date) - sd) / 1000}s`);
+    const { xysl, width, height, center, rot, path } = planner.plan(this.editor.lanePath, [obstacle]);
+    console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
+    console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
     console.log(new Date);
     console.log(`Grid size: ${width}x${height}`);
 
@@ -275,6 +274,15 @@ export default class Simulator {
     xyslObj.position.set(center.x, 0, center.y);
 
     this.scene.add(xyslObj);
+
+    const pathGeometry = new THREE.Geometry();
+    pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
+    const pathLine = new MeshLine();
+    pathLine.setGeometry(pathGeometry);
+
+    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.8, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+    pathObject.renderOrder = 1;
+    this.scene.add(pathObject);
   }
 }
 

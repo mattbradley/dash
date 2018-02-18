@@ -174,7 +174,7 @@ export default class CubicPathOptimizer {
     const c = (9 * p0 - 22.5 * p1 + 18 * p2 - 4.5 * p3) / sG_2;
     const d = (-4.5 * (p0 - 3 * p1 + 3 * p2 - p3)) / sG_3;
 
-    const path = [{ pos: new THREE.Vector2(this.start.x, this.start.y), rot: this.start.rot }];
+    const path = [{ pos: new THREE.Vector2(this.start.x, this.start.y), rot: this.start.rot, curv: this.start.curv }];
     const ds = sG / (num - 1);
     let s = ds;
     let dx = 0;
@@ -182,20 +182,23 @@ export default class CubicPathOptimizer {
     let prevCosRot = Math.cos(path[0].rot);
     let prevSinRot = Math.sin(path[0].rot);
 
-    for (let i = 1; i < num; i++) {
+    for (let i = 1; i < num - 1; i++) {
       const rot = (((d * s / 4 + c / 3) * s + b / 2) * s + a) * s + path[0].rot;
+      const curv = ((d * s + c) * s + b) * s + a;
       const cosRot = Math.cos(rot);
       const sinRot = Math.sin(rot);
 
       dx = dx * (i - 1) / i + (cosRot + prevCosRot) / (2 * i);
       dy = dy * (i - 1) / i + (sinRot + prevSinRot) / (2 * i);
 
-      path[i] = { pos: new THREE.Vector2(s * dx + this.start.x, s * dy + this.start.y), rot: rot };
+      path.push({ pos: new THREE.Vector2(s * dx + this.start.x, s * dy + this.start.y), rot: rot, curv: curv });
 
       s += ds;
       prevCosRot = cosRot;
       prevSinRot = sinRot;
     }
+
+    path.push({ pos: new THREE.Vector2(this.end.x, this.end.y), rot: this.end.rot, curv: this.end.curv });
 
     return path;
   }
