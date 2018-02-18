@@ -205,27 +205,9 @@ export default class Simulator {
   }
 
   go4() {
-    const points = this.editor.lanePath.centerline;
-    const rotations = this.editor.lanePath.centerlineRotations;
-
-    const poses = points.map((p, i) => {
-      const rot = rotations[i];
-      return { pos: Car.frontToRearAxlePosition(p, rot), rot: rot };
-    });
-    const followPath = new Path(poses);
-
-    autoController = new AutonomousController(followPath);
-    this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
-
-    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
-    const frontGeometry = new THREE.Geometry();
-    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
-    this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
-
     this.editor.enabled = false;
     this.orbitControls.enabled = true;
     this.topDownControls.disable();
-    //follow = true;
 
     const circleGeom = new THREE.CircleGeometry(0.15, 32);
     const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
@@ -283,6 +265,24 @@ export default class Simulator {
     const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.8, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
     pathObject.renderOrder = 1;
     this.scene.add(pathObject);
+
+    const points = this.editor.lanePath.centerline;
+    const rotations = this.editor.lanePath.centerlineRotations;
+
+    const poses = points.map((p, i) => {
+      const rot = rotations[i];
+      return { pos: Car.frontToRearAxlePosition(p, rot), rot: rot };
+    });
+    const followPath = new Path(path);
+
+    autoController = new AutonomousController(followPath);
+    this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
+    follow = true;
+
+    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
+    const frontGeometry = new THREE.Geometry();
+    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
+    this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
   }
 }
 
