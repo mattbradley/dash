@@ -1,3 +1,4 @@
+// DEPRECATED
 import GPGPU from "../../GPGPU.js";
 import CubicPathOptimizer from "./CubicPathOptimizer.js"
 

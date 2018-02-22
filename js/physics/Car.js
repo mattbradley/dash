@@ -161,7 +161,7 @@ export default class Car {
 
     this.body.ApplyForceToCenter(totalForce);
 
-    const maxWheelAngle = Math.clamp(Math.atan(Car.MAX_CENTRIPETAL_ACCEL * Car.WHEEL_BASE / this.body.GetLinearVelocity().LengthSquared()), 0.07, Car.MAX_WHEEL_ANGLE);
+    const maxWheelAngle = Math.clamp(Math.atan(Car.MAX_LATERAL_ACCEL * Car.WHEEL_BASE / this.body.GetLinearVelocity().LengthSquared()), 0.07, Car.MAX_WHEEL_ANGLE);
     this.leftFrontWheel.joint.SetLimits(-maxWheelAngle, maxWheelAngle);
     this.rightFrontWheel.joint.SetLimits(-maxWheelAngle, maxWheelAngle);
 
@@ -293,4 +293,4 @@ Car.WHEEL_LATERAL_POS = 0.843; // meters
 Car.FRONT_AXLE_POS = 1.56; // meters
 Car.REAR_AXLE_POS = -1.37; // meters
 Car.WHEEL_BASE = Car.FRONT_AXLE_POS - Car.REAR_AXLE_POS; // meters
-Car.MAX_CENTRIPETAL_ACCEL = 9.81; // m / s^2
+Car.MAX_LATERAL_ACCEL = 9.81; // m / s^2

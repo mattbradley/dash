@@ -277,7 +277,7 @@ export default class Simulator {
 
     autoController = new AutonomousController(followPath);
     this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
-    follow = true;
+    //follow = true;
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();

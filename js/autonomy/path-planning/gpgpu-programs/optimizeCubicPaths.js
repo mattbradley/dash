@@ -57,9 +57,15 @@ vec4 iterate(vec4 goal, float p0, float p1, float p2, float p3, float sG) {
     sinTheta = sin(theta);
 
     float s_sG = s / sG;
+
     dT_p = vec3(
+      // p1
       ((3.375 * s_sG - 7.5) * s_sG + 4.5) * s_sG * s,
+
+      // p2
       ((-3.375 * s_sG + 6.0) * s_sG - 2.25) * s_sG * s,
+
+      // sG
       ((3.375 * (p0 - 3.0 * p1 + 3.0 * p2 - p3) * s_sG - 3.0 * (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3)) * s_sG + 0.25 * (11.0 * p0 - 18.0 * p1 + 9.0 * p2 - 2.0 * p3)) * s_sG * s_sG
     );
 
@@ -80,10 +86,8 @@ vec4 iterate(vec4 goal, float p0, float p1, float p2, float p3, float sG) {
   if (abs(delta.x) + abs(delta.y) + abs(delta.z) < CONVERGENCE_ERROR)
     return vec4(p1, p2, sG, 1.0);
 
-  dX_p.xy *= hOver3;
-  dY_p.xy *= hOver3;
-  dX_p.z *= hOver3;
-  dY_p.z *= hOver3;
+  dX_p.xyz *= hOver3;
+  dY_p.xyz *= hOver3;
   dX_p.z += cosTheta;
   dY_p.z += sinTheta;
 

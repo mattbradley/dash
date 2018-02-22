@@ -9,8 +9,8 @@ const invJacobian = new THREE.Matrix3();
 // Alternate reference implementation: https://github.com/ApolloAuto/apollo/blob/master/modules/planning/math/spiral_curve/cubic_spiral_curve.cc
 export default class CubicPathOptimizer {
   constructor(start, end, params = null) {
-    this.start = start
-    this.end = end;
+    this.start = Object.assign({}, start);
+    this.end = Object.assign({}, end);
 
     if (start.pos) {
       this.start.x = start.pos.x;
@@ -183,7 +183,7 @@ export default class CubicPathOptimizer {
     let prevSinRot = Math.sin(path[0].rot);
 
     for (let i = 1; i < num - 1; i++) {
-      const rot = (((d * s / 4 + c / 3) * s + b / 2) * s + a) * s + path[0].rot;
+      const rot = (((d * s / 4 + c / 3) * s + b / 2) * s + a) * s + this.start.rot;
       const curv = ((d * s + c) * s + b) * s + a;
       const cosRot = Math.cos(rot);
       const sinRot = Math.sin(rot);

@@ -1,11 +1,13 @@
 import GPGPU from "./../../GPGPU2.js";
 import Car from "../../physics/Car.js";
 import CubicPathOptimizer from "./CubicPathOptimizer.js";
+import QuinticPath from "./QuinticPath.js";
 import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
 import xyslMap from "./gpgpu-programs/xyslMap.js";
 import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
+import optimizeQuinticPaths from "./gpgpu-programs/optimizeQuinticPaths.js";
 import graphSearch from "./gpgpu-programs/graphSearch.js";
 
 const NUM_ACCELERATION_PROFILES = 8;
@@ -41,7 +43,19 @@ const config = {
   laneCostSlope: 0.5, // cost / meter
 
   stationReachDiscount: -10,
-  extraTimePenalty: 10
+  extraTimePenalty: 10,
+
+  speedLimit: 25, // m/s
+  speedLimitPenalty: 25,
+
+  hardAccelerationPenalty: 10,
+  hardDecelerationPenalty: 10,
+
+  lateralAccelerationLimit: 3, // m/s^2
+  softLateralAccelerationPenalty: 10,
+  linearLateralAccelerationPenalty: 1,
+
+  dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE
 };
 
 /* Obstacle cost map:
@@ -67,6 +81,7 @@ export default class PathPlanner {
       ...slObstacleGridDilation.setUp(),
       xyslMap.setUp(),
       optimizeCubicPaths.setUp(),
+      optimizeQuinticPaths.setUp(),
       graphSearch.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
@@ -111,6 +126,7 @@ export default class PathPlanner {
       ...slObstacleGridDilation.update(config, slWidth, slHeight),
       xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
       optimizeCubicPaths.update(config),
+      optimizeQuinticPaths.update(config, { curv: 0 }),
       graphSearch.update(config, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
@@ -286,7 +302,7 @@ export default class PathPlanner {
 
       const path = optimizer.buildPath(Math.ceil(length / config.pathSamplingStep));
 
-      if (i < nodes.length - 2) path.shift();
+      if (i < nodes.length - 2) path.pop();
       points.push(...path);
     }
 

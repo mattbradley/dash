@@ -4,7 +4,14 @@ export default class Dashboard {
   constructor(car) {
     this.car = car;
 
-    document.addEventListener('DOMContentLoaded', this.fetchDomElements.bind(this));
+    if (document.readyState == 'complete') {
+      this.fetchDomElements.call(this);
+    } else {
+      document.addEventListener('readystatechange', event => {
+        if (event.target.readyState == 'complete')
+          this.fetchDomElements.call(this);
+      });
+    }
   }
 
   fetchDomElements() {

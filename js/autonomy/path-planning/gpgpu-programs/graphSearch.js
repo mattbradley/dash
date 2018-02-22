@@ -47,7 +47,7 @@ float calculateAcceleration(int index, float initialVelocitySq, float distance) 
   }
 }
 
-int samplePath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[128], inout vec4 coefficients) {
+int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[128], inout vec4 coefficients) {
   float p0 = start.w;
   float p1 = cubicPathParams.x;
   float p2 = cubicPathParams.y;
@@ -150,7 +150,7 @@ vec4 kernel() {
 
       vec4 pathSamples[128];
       vec4 coefficients;
-      int numSamples = samplePath(pathStart, pathEnd, cubicPathParams, pathSamples, coefficients);
+      int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, coefficients);
 
       float staticCostSum = 0.0;
 
@@ -213,15 +213,26 @@ vec4 kernel() {
             float s = 0.0;
             float ds = cubicPathParams.z / float(numSamples - 1);
             float dynamicCostSum = 0.0;
+            float maxVelocity = 0.0;
+            float maxLateralAcceleration = 0.0;
 
             for (int i = 0; i < numSamples; i++) {
+              vec4 pathSample = pathSamples[i]; // vec4(x-pos, y-pos, theta (rotation), kappa (curvature))
+
               float velocitySq = 2.0 * acceleration * s + initialVelocitySq;
               float velocity = max(smallV, sqrt(max(0.0, velocitySq)));
+              maxVelocity = max(maxVelocity, velocity);
+              maxLateralAcceleration = max(maxLateralAcceleration, abs(pathSample.w * velocity * velocity));
 
               float time = 2.0 * s / (initialVelocity + velocity);
               float dCurv = velocity * (coefficients.y + s * (2.0 * coefficients.z + 3.0 * coefficients.w * s));
 
-              float cost = dynamicCost(pathSamples[i], time, velocity, acceleration, dCurv);
+              if (dCurv > dCurvatureMax) {
+                dynamicCostSum = -1.0;
+                break;
+              }
+
+              float cost = dynamicCost(pathSample, time, velocity, acceleration, dCurv);
 
               if (cost < 0.0) {
                 dynamicCostSum = cost;
@@ -233,6 +244,17 @@ vec4 kernel() {
             }
 
             if (dynamicCostSum < 0.0) continue;
+
+            // Apply speeding penality if any velocity along the trajectory is over the speed limit
+            dynamicCostSum += step(speedLimit, maxVelocity) * speedLimitPenalty;
+
+            // Apply hard acceleration/deceleration penalties if the acceleration/deceleration exceeds the soft limits
+            dynamicCostSum += step(accelerationProfiles[2] + 0.0001, acceleration) * hardAccelerationPenalty;
+            dynamicCostSum += (1.0 - step(accelerationProfiles[3], acceleration)) * hardDecelerationPenalty;
+
+            // Penalize lateral acceleration
+            dynamicCostSum += step(lateralAccelerationLimit, maxLateralAcceleration) * softLateralAccelerationPenalty;
+            dynamicCostSum += linearLateralAccelerationPenalty * maxLateralAcceleration;
 
             // The cost of a trajectory is the average sample cost scaled by the path length
             float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * cubicPathParams.z + costTableEntry.x;
@@ -274,6 +296,14 @@ export default {
         laneShoulderLatitude: { type: 'float'},
         obstacleHazardCost: { type: 'float' },
         extraTimePenalty: { type: 'float' },
+        speedLimit: { type: 'float' },
+        speedLimitPenalty: { type: 'float' },
+        hardAccelerationPenalty: { type: 'float' },
+        hardDecelerationPenalty: { type: 'float' },
+        lateralAccelerationLimit: { type: 'float' },
+        softLateralAccelerationPenalty: { type: 'float' },
+        linearLateralAccelerationPenalty: { type: 'float' },
+        dCurvatureMax: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
         numAccelerations: { type: 'int' },
@@ -325,17 +355,25 @@ export default {
         laneShoulderLatitude: config.laneShoulderLatitude,
         obstacleHazardCost: config.obstacleHazardCost,
         extraTimePenalty: config.extraTimePenalty,
+        speedLimit: config.speedLimit,
+        speedLimitPenalty: config.speedLimitPenalty,
+        hardAccelerationPenalty: config.hardAccelerationPenalty,
+        hardDecelerationPenalty: config.hardDecelerationPenalty,
+        lateralAccelerationLimit: config.lateralAccelerationLimit,
+        softLateralAccelerationPenalty: config.softLateralAccelerationPenalty,
+        linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
+        dCurvatureMax: config.dCurvatureMax,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,
         numAccelerations: NUM_ACCELERATION_PROFILES,
         numVelocities: NUM_VELOCITY_RANGES,
         numTimes: NUM_TIME_RANGES,
         accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
-        finalVelocityProfiles: [0.99 * 25.0, 1.0, 0.01],
+        finalVelocityProfiles: [0.99 * config.speedLimit, 1.0, 0.01],
         pathSamplingStep: config.pathSamplingStep,
         stationConnectivity: config.lattice.stationConnectivity,
         latitudeConnectivity: config.lattice.latitudeConnectivity,
-        velocityRanges: [0, 25 / 3, 25 * 2 / 3, 25, 1000000],
+        velocityRanges: [0, config.speedLimit / 3, config.speedLimit * 2 / 3, config.speedLimit, 1000000],
         timeRanges: [0, 10, 1000000]
       }
     };

@@ -30,11 +30,12 @@ export default class AutonomousController {
     const dir = frontAxlePos.distanceToSquared(left) < frontAxlePos.distanceToSquared(right) ? -1 : 1;
 
     const k = 4;
+    const gain = 0.1;
     const crossTrackError = frontAxlePos.distanceTo(this.closestFrontPathPos);
-    const headingError = Math.wrapAngle(pathPoses[nextIndex].rot - desiredHeading);
+    const headingError = Math.wrapAngle(pose.rot - desiredHeading);
 
     // phi is the desired wheel deflection
-    const phi = -headingError + Math.atan(k * dir * crossTrackError / speed);
+    const phi = -headingError + gain * Math.atan(k * dir * crossTrackError / speed);
     const phiError = phi - wheelAngle;
     /*
     const dPhiError = (phiError - this.prevPhiError) / dt;
