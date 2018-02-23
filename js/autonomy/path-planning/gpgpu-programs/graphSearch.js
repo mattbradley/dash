@@ -47,7 +47,7 @@ float calculateAcceleration(int index, float initialVelocitySq, float distance) 
   }
 }
 
-int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[128], inout vec4 coefficients) {
+int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 samples[128], inout float curvRates[128]) {
   float p0 = start.w;
   float p1 = cubicPathParams.x;
   float p2 = cubicPathParams.y;
@@ -63,7 +63,6 @@ int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 sampl
   float b = (-5.5 * p0 + 9.0 * p1 - 4.5 * p2 + p3) / sG;
   float c = (9.0 * p0 - 22.5 * p1 + 18.0 * p2 - 4.5 * p3) / sG_2;
   float d = (-4.5 * (p0 - 3.0 * p1 + 3.0 * p2 - p3)) / sG_3;
-  coefficients = vec4(a, b, c, d);
 
   samples[0] = start;
 
@@ -80,6 +79,7 @@ int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 sampl
     dxy = dxy * vec2(float(i - 1) / float(i)) + (cosSin + prevCosSin) / vec2(2 * i);
 
     samples[i] = vec4(dxy * vec2(s) + start.xy, rot, curv);
+    curvRates[i] = b + s * (2.0 * c + 3.0 * d * s);
 
     s += ds;
     prevCosSin = cosSin;
@@ -104,7 +104,7 @@ float staticCost(vec4 xytk) {
   return obstacleCost + laneCost;
 }
 
-float dynamicCost(vec4 xytk, float time, float velocity, float acceleration, float dCurv) {
+float dynamicCost(vec4 xytk, float time, float velocity, float acceleration) {
   return 1.0;
 }
 
@@ -149,8 +149,8 @@ vec4 kernel() {
       if (cubicPathParams.w == 0.0) continue;
 
       vec4 pathSamples[128];
-      vec4 coefficients;
-      int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, coefficients);
+      float pathSampleCurvRates[128];
+      int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, pathSampleCurvRates);
 
       float staticCostSum = 0.0;
 
@@ -225,14 +225,14 @@ vec4 kernel() {
               maxLateralAcceleration = max(maxLateralAcceleration, abs(pathSample.w * velocity * velocity));
 
               float time = 2.0 * s / (initialVelocity + velocity);
-              float dCurv = velocity * (coefficients.y + s * (2.0 * coefficients.z + 3.0 * coefficients.w * s));
+              float dCurv = pathSampleCurvRates[i] * velocity;
 
               if (dCurv > dCurvatureMax) {
                 dynamicCostSum = -1.0;
                 break;
               }
 
-              float cost = dynamicCost(pathSample, time, velocity, acceleration, dCurv);
+              float cost = dynamicCost(pathSample, time, velocity, acceleration);
 
               if (cost < 0.0) {
                 dynamicCostSum = cost;
