@@ -1,4 +1,4 @@
-export default class {
+export default class QuinticPath {
   constructor(start, end, params) {
     this.start = Object.assign({}, start);
     this.end = Object.assign({}, end);

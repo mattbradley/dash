@@ -1,6 +1,6 @@
 import GPGPU from "./../../GPGPU2.js";
 import Car from "../../physics/Car.js";
-import CubicPathOptimizer from "./CubicPathOptimizer.js";
+import CubicPath from "./CubicPath.js";
 import QuinticPath from "./QuinticPath.js";
 import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
@@ -29,6 +29,8 @@ const config = {
   slGridCellSize: 0.15, // meters
   gridMargin: 10, // meters
   pathSamplingStep: 0.5, // meters
+
+  cubicPathCost: 0.1,
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 0.6, // meters
   hazardDilationS: 2, // meters
@@ -80,7 +82,7 @@ export default class PathPlanner {
       slObstacleGrid.setUp(),
       ...slObstacleGridDilation.setUp(),
       xyslMap.setUp(),
-      optimizeCubicPaths.setUp(),
+      ...optimizeCubicPaths.setUp(),
       optimizeQuinticPaths.setUp(),
       graphSearch.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
@@ -91,10 +93,10 @@ export default class PathPlanner {
   plan(lanePath, obstacles) {
     const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
 
+    const vehiclePose = centerlineRaw[0];
     // Transform all centerline points into vehicle frame
-    const vehicleXform = vehicleTransform(centerlineRaw[0]);
-    const vehicleRot = centerlineRaw[0].rot;
-    const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - vehicleRot, curv: c.curv } });
+    const vehicleXform = vehicleTransform(vehiclePose);
+    const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - vehiclePose.rot, curv: c.curv } });
 
     const centerlineData = new Float32Array(centerline.length * 3);
     const maxPoint = new THREE.Vector2(0, 0);
@@ -125,14 +127,14 @@ export default class PathPlanner {
       slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(config, slWidth, slHeight),
       xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
-      optimizeCubicPaths.update(config),
-      optimizeQuinticPaths.update(config, { curv: 0 }),
-      graphSearch.update(config, xyCenterPoint, slCenterPoint)
+      ...optimizeCubicPaths.update(config, { curv: vehiclePose.curv }),
+      optimizeQuinticPaths.update(config, { curv: vehiclePose.curv, dCurv: 0, ddCurv: 0 }),
+      graphSearch.update(config, { speed: 0, curv: vehiclePose.curv, dCurv: 0, ddCurv: 0}, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
 
-    const lattice = this._buildLattice(lanePath, vehicleRot, vehicleXform);
+    const lattice = this._buildLattice(lanePath, vehiclePose.rot, vehicleXform);
 
     this.gpgpu.updateSharedTextures({
       centerline: {
@@ -160,13 +162,15 @@ export default class PathPlanner {
     const outputs = this.gpgpu.run();
     const costTable = this.gpgpu._graphSearchCostTable;
     const cubicPathParams = outputs[5];
+    const cubicPathFromVehicleParams = outputs[6];
+    const quinticPathFromVehicleParams = outputs[7];
 
     console.log(costTable);
     let bestEntry = [Number.POSITIVE_INFINITY];
     let bestEntryIndex;
     const numEntries = costTable.length / 4;
 
-    for (let i = config.lattice.numLatitudes * NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES; i < numEntries; i++) {
+    for (let i = 0; i < numEntries; i++) {
       const entryUnpacked = this._unpackCostTableIndex(i);
       const entry = [
         costTable[i * 4],
@@ -186,10 +190,10 @@ export default class PathPlanner {
     }
 
     const inverseVehicleXform = (new THREE.Matrix3()).getInverse(vehicleXform);
-    const bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, lattice).map(p => {
+    const bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehiclePose.curv, lattice).map(p => {
       return {
         pos: p.pos.applyMatrix3(inverseVehicleXform),
-        rot: p.rot + vehicleRot,
+        rot: p.rot + vehiclePose.rot,
         curv: p.curv
       };
     });
@@ -198,7 +202,7 @@ export default class PathPlanner {
     console.log(bestTrajectory);
 
 
-    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehicleRot, path: bestTrajectory };
+    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory };
   }
 
   _buildLattice(lanePath, vehicleRot, vehicleXform) {
@@ -238,6 +242,8 @@ export default class PathPlanner {
   }
 
   _unpackCostTableIndex(index) {
+    if (index < 0) return [-1, index + 2, null, null, null];
+
     const numPerTime = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES;
     const numPerLatitude = numPerTime * NUM_TIME_RANGES;
     const numPerStation = config.lattice.numLatitudes * numPerLatitude;
@@ -257,11 +263,11 @@ export default class PathPlanner {
     return [stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex];
   }
 
-  _reconstructTrajectory(index, costTable, cubicPathParams, lattice) {
+  _reconstructTrajectory(index, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehicleCurv, lattice) {
     let unpacked = this._unpackCostTableIndex(index);
     const nodes = [unpacked];
 
-    while (unpacked[0] > 0) {
+    while (unpacked[0] >= 0) {
       index = costTable[index * 4 + 3];
       unpacked = this._unpackCostTableIndex(index);
       nodes.unshift(unpacked);
@@ -273,34 +279,70 @@ export default class PathPlanner {
       const [prevStation, prevLatitude] = nodes[i];
       const [station, latitude] = nodes[i + 1];
 
-      const startIndex = (prevStation * config.lattice.numLatitudes + prevLatitude) * 4;
-      const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
+      let length;
+      let pathBuilder;
 
-      const start = {
-        pos: new THREE.Vector2(lattice[startIndex], lattice[startIndex + 1]),
-        rot: lattice[startIndex + 2],
-        curv: lattice[startIndex + 3]
-      };
+      if (prevStation < 0) {
+        const start = {
+          pos: new THREE.Vector2(0, 0),
+          rot: 0,
+          curv: vehicleCurv
+        };
 
-      const end = {
-        pos: new THREE.Vector2(lattice[endIndex], lattice[endIndex + 1]),
-        rot: lattice[endIndex + 2],
-        curv: lattice[endIndex + 3]
-      };
+        const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
+        const end = {
+          pos: new THREE.Vector2(lattice[endIndex], lattice[endIndex + 1]),
+          rot: lattice[endIndex + 2],
+          curv: lattice[endIndex + 3]
+        };
 
-      const slIndex = station * config.lattice.numLatitudes + latitude;
-      const connectivityIndex = (prevStation - station + config.lattice.stationConnectivity) * config.lattice.latitudeConnectivity + prevLatitude - latitude + Math.floor(config.lattice.latitudeConnectivity / 2);
-      const cubicPathIndex = (connectivityIndex * config.lattice.numStations * config.lattice.numLatitudes + slIndex) * 4;
+        if (prevLatitude == 0) { // Cubic path from vehicle to lattice node
+          length = cubicPathFromVehicleParams[endIndex + 2];
 
-      const length = cubicPathParams[cubicPathIndex + 2];
+          pathBuilder = new CubicPath(start, end, {
+            p1: cubicPathFromVehicleParams[endIndex],
+            p2: cubicPathFromVehicleParams[endIndex + 1],
+            sG: length
+          });
+        } else { // Quintic path from vehicle to lattice node
+          length = quinticPathFromVehicleParams[endIndex + 2];
 
-      const optimizer = new CubicPathOptimizer(start, end, {
-        p1: cubicPathParams[cubicPathIndex],
-        p2: cubicPathParams[cubicPathIndex + 1],
-        sG: length
-      });
+          pathBuilder = new QuinticPath(start, end, {
+            p3: quinticPathFromVehicleParams[endIndex],
+            p4: quinticPathFromVehicleParams[endIndex + 1],
+            sG: length
+          });
+        }
+      } else {
+        const startIndex = (prevStation * config.lattice.numLatitudes + prevLatitude) * 4;
+        const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
 
-      const path = optimizer.buildPath(Math.ceil(length / config.pathSamplingStep));
+        const start = {
+          pos: new THREE.Vector2(lattice[startIndex], lattice[startIndex + 1]),
+          rot: lattice[startIndex + 2],
+          curv: lattice[startIndex + 3]
+        };
+
+        const end = {
+          pos: new THREE.Vector2(lattice[endIndex], lattice[endIndex + 1]),
+          rot: lattice[endIndex + 2],
+          curv: lattice[endIndex + 3]
+        };
+
+        const slIndex = station * config.lattice.numLatitudes + latitude;
+        const connectivityIndex = (prevStation - station + config.lattice.stationConnectivity) * config.lattice.latitudeConnectivity + prevLatitude - latitude + Math.floor(config.lattice.latitudeConnectivity / 2);
+        const cubicPathIndex = (connectivityIndex * config.lattice.numStations * config.lattice.numLatitudes + slIndex) * 4;
+
+        length = cubicPathParams[cubicPathIndex + 2];
+
+        pathBuilder = new CubicPath(start, end, {
+          p1: cubicPathParams[cubicPathIndex],
+          p2: cubicPathParams[cubicPathIndex + 1],
+          sG: length
+        });
+      }
+
+      const path = pathBuilder.buildPath(Math.ceil(length / config.pathSamplingStep));
 
       if (i < nodes.length - 2) path.pop();
       points.push(...path);

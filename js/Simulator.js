@@ -1,7 +1,7 @@
 import Physics from "./physics/Physics.js";
 import Car from "./physics/Car.js";
 import Path from "./autonomy/Path.js";
-import CubicPathOptimizer from "./autonomy/path-planning/CubicPathOptimizer.js";
+import CubicPath from "./autonomy/path-planning/CubicPath.js";
 import AutonomousController from "./autonomy/control/AutonomousController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
@@ -81,7 +81,7 @@ export default class Simulator {
               /*
               const start = { x: 0, y: 0, rot: 0, curv: k0 };
               const end = { x: x, y: y, rot: r, curv: k1 };
-              const optimizer = new CubicPathOptimizer(start, end);
+              const optimizer = new CubicPath(start, end);
               const converged = optimizer.optimize();
               const cubicPath = optimizer.buildPath(100);
 

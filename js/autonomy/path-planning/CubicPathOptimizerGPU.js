@@ -1,6 +1,6 @@
 // DEPRECATED
 import GPGPU from "../../GPGPU.js";
-import CubicPathOptimizer from "./CubicPathOptimizer.js"
+import CubicPath from "./CubicPath.js"
 
 const kernel = `
 
@@ -164,7 +164,7 @@ vec4 kernel(vec4 start, vec4 end) {
 
 `;
 
-export default class CubicPathOptimizerGPU extends CubicPathOptimizer {
+export default class CubicPathOptimizerGPU extends CubicPath {
   static optimizePath(start, end) {
     const s = GPGPU.alloc(1, 4);
     const e = GPGPU.alloc(1, 4);
@@ -173,7 +173,7 @@ export default class CubicPathOptimizerGPU extends CubicPathOptimizer {
     e.set([end.x, end.y, end.rot, end.curv]);
 
     const result = GPGPU.run([s, e], kernel);
-    const optimizer = new CubicPathOptimizer(start, end, { p1: result[0], p2: result[1], sG: result[2] });
+    const optimizer = new CubicPath(start, end, { p1: result[0], p2: result[1], sG: result[2] });
     optimizer.converged = true;
     return optimizer;
   }

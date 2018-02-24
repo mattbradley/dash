@@ -181,19 +181,26 @@ vec4 optimize(vec4 start, vec4 end) {
 vec4 kernel() {
   ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
 
-  int endStation = indexes.x / numLatitudes;
-  int endLatitude = int(mod(float(indexes.x), float(numLatitudes)));
+  if (fromVehicle == 1) {
+    vec4 start = vec4(0, 0, 0, curvVehicle);
+    vec4 end = texelFetch(lattice, indexes, 0);
 
-  int startStation = endStation - stationConnectivity + indexes.y / latitudeConnectivity;
-  int startLatitude = endLatitude - latitudeConnectivity / 2 + int(mod(float(indexes.y), float(latitudeConnectivity)));
+    return optimize(start, end);
+  } else {
+    int endStation = indexes.x / numLatitudes;
+    int endLatitude = int(mod(float(indexes.x), float(numLatitudes)));
 
-  if (startStation < 0 || startStation >= numStations || startLatitude < 0 || startLatitude >= numLatitudes)
-    return vec4(0.0);
+    int startStation = endStation - stationConnectivity + indexes.y / latitudeConnectivity;
+    int startLatitude = endLatitude - latitudeConnectivity / 2 + int(mod(float(indexes.y), float(latitudeConnectivity)));
 
-  vec4 start = texelFetch(lattice, ivec2(startLatitude, startStation), 0);
-  vec4 end = texelFetch(lattice, ivec2(endLatitude, endStation), 0);
+    if (startStation < 0 || startStation >= numStations || startLatitude < 0 || startLatitude >= numLatitudes)
+      return vec4(0.0);
 
-  return optimize(start, end);
+    vec4 start = texelFetch(lattice, ivec2(startLatitude, startStation), 0);
+    vec4 end = texelFetch(lattice, ivec2(endLatitude, endStation), 0);
+
+    return optimize(start, end);
+  }
 }
 
 `;
@@ -201,29 +208,57 @@ vec4 kernel() {
 // Cubic spiral path optimizer
 export default {
   setUp() {
-    return {
-      kernel: OPTIMIZE_KERNEL,
-      output: { name: 'cubicPaths', read: true },
-      uniforms: {
-        lattice: { type: 'sharedTexture' },
-        numStations: { type: 'int' },
-        numLatitudes: { type: 'int' },
-        stationConnectivity: { type: 'int' },
-        latitudeConnectivity: { type: 'int' }
+    return [
+      { // Cubic paths between lattice nodes
+        kernel: OPTIMIZE_KERNEL,
+        output: { name: 'cubicPaths', read: true },
+        uniforms: {
+          lattice: { type: 'sharedTexture' },
+          numStations: { type: 'int' },
+          numLatitudes: { type: 'int' },
+          stationConnectivity: { type: 'int' },
+          latitudeConnectivity: { type: 'int' },
+          fromVehicle: { type: 'int' },
+          curvVehicle: { type: 'float' }
+        }
+      },
+      { // Cubic paths from vehicle to lattice nodes
+        kernel: OPTIMIZE_KERNEL,
+        output: { name: 'cubicPathsFromVehicle', read: true },
+        uniforms: {
+          lattice: { type: 'sharedTexture' },
+          numStations: { type: 'int' },
+          numLatitudes: { type: 'int' },
+          stationConnectivity: { type: 'int' },
+          latitudeConnectivity: { type: 'int' },
+          fromVehicle: { type: 'int' },
+          curvVehicle: { type: 'float' }
+        }
       }
-    };
+    ]
   },
 
-  update(config) {
-    return {
-      width: config.lattice.numStations * config.lattice.numLatitudes,
-      height: config.lattice.stationConnectivity * config.lattice.latitudeConnectivity,
-      uniforms: {
-        numStations: config.lattice.numStations,
-        numLatitudes: config.lattice.numLatitudes,
-        stationConnectivity: config.lattice.stationConnectivity,
-        latitudeConnectivity: config.lattice.latitudeConnectivity
-      }
-    };
+  update(config, pose) {
+    return [
+      { // Cubic paths between lattice nodes
+        width: config.lattice.numStations * config.lattice.numLatitudes,
+        height: config.lattice.stationConnectivity * config.lattice.latitudeConnectivity,
+        uniforms: {
+          numStations: config.lattice.numStations,
+          numLatitudes: config.lattice.numLatitudes,
+          stationConnectivity: config.lattice.stationConnectivity,
+          latitudeConnectivity: config.lattice.latitudeConnectivity,
+          fromVehicle: 0
+        }
+      },
+      { // Cubic paths from vehicle to lattice nodes
+        width: config.lattice.numLatitudes,
+        height: config.lattice.stationConnectivity,
+        uniforms: {
+          fromVehicle: 1,
+          curvVehicle: pose.curv
+        }
+      },
+    ]
   }
 }

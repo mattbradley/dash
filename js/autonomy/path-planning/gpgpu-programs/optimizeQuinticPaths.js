@@ -113,8 +113,8 @@ vec4 optimize(vec4 start, vec4 end) {
   dGoal.x = 0.0;
   dGoal.yzw = goal.yzw / RELAXATION_ITERATIONS_F;
   float d_K0 = start.w / RELAXATION_ITERATIONS_F;
-  float d_dK0 = dCurv / RELAXATION_ITERATIONS_F;
-  float d_ddK0 = ddCurv / RELAXATION_ITERATIONS_F;
+  float d_dK0 = dCurvVehicle / RELAXATION_ITERATIONS_F;
+  float d_ddK0 = ddCurvVehicle / RELAXATION_ITERATIONS_F;
 
   // Relax the goal to (x, 0, 0, 0)
   goal.yzw = vec3(0, 0, 0);
@@ -158,7 +158,7 @@ vec4 optimize(vec4 start, vec4 end) {
 vec4 kernel() {
   ivec2 latticeIndexes = ivec2(kernelPosition * vec2(kernelSize));
 
-  vec4 start = vec4(0, 0, 0, curv);
+  vec4 start = vec4(0, 0, 0, curvVehicle);
   vec4 end = texelFetch(lattice, latticeIndexes, 0);
 
   return optimize(start, end);
@@ -175,12 +175,12 @@ export default {
   setUp() {
     return {
       kernel: OPTIMIZE_KERNEL,
-      output: { name: 'quinticPaths', read: true },
+      output: { name: 'quinticPathsFromVehicle', read: true },
       uniforms: {
         lattice: { type: 'sharedTexture' },
-        curv: { type: 'float' },
-        dCurv: { type: 'float' },
-        ddCurv: { type: 'float' }
+        curvVehicle: { type: 'float' },
+        dCurvVehicle: { type: 'float' },
+        ddCurvVehicle: { type: 'float' }
       }
     };
   },
@@ -190,9 +190,9 @@ export default {
       width: config.lattice.numLatitudes,
       height: config.lattice.stationConnectivity,
       uniforms: {
-        curv: pose.curv,
-        dCurv: pose.dCurv || 0,
-        ddCurv: pose.ddCurv || 0
+        curvVehicle: pose.curv,
+        dCurvVehicle: pose.dCurv,
+        ddCurvVehicle: pose.ddCurv
       }
     };
   }

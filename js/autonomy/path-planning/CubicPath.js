@@ -7,7 +7,7 @@ const jacobian = new THREE.Matrix3();
 const invJacobian = new THREE.Matrix3();
 
 // Alternate reference implementation: https://github.com/ApolloAuto/apollo/blob/master/modules/planning/math/spiral_curve/cubic_spiral_curve.cc
-export default class CubicPathOptimizer {
+export default class CubicPath {
   constructor(start, end, params = null) {
     this.start = Object.assign({}, start);
     this.end = Object.assign({}, end);

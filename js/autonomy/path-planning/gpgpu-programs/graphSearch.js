@@ -31,6 +31,12 @@
  *
  * Since one cubic path can be shared between multiple trajectories, they need to be pre-optimized.
  *
+ * Quintic Paths:
+ *   Stations 0 through (numStations - 1) correspond to the stations on the lattice; however,
+ *   a new station (station -1) will be used to signifiy the single vehicle pose node. Either
+ *   a cubic path or quintic path can be used to connect this single node to the lattice
+ *   (depending on vehicle speed). At station -1, latitude 0 will correspond to a cubic path,
+ *   and latitude 1 will correspond to a quintic path. All other latitudes will be skipped.
  */
 
 const SOLVE_STATION_KERNEL = `
@@ -88,6 +94,51 @@ int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams, inout vec4 sampl
   return numSamples;
 }
 
+int sampleQuinticPath(vec4 start, vec4 end, vec4 quinticPathParams, inout vec4 samples[128], inout float curvRates[128]) {
+  float p0 = start.w;
+  float p1 = dCurvVehicle;
+  float p2 = ddCurvVehicle;
+  float p3 = quinticPathParams.x;
+  float p4 = quinticPathParams.y;
+  float p5 = end.w;
+  float sG = quinticPathParams.z;
+
+  int numSamples = int(ceil(sG / pathSamplingStep)) + 1;
+
+  float sG_2 = sG * sG;
+  float sG_3 = sG_2 * sG;
+
+  float a = p0;
+  float b = p1;
+  float c = p2 / 2.0;
+  float d = (-71.875 * p0 + 81.0 * p3 - 10.125 * p4 + p5 - 21.25 * p1 * sG - 2.75 * p2 * sG_2) / sG_3;
+  float e = (166.5 * p0 - 202.5 * p3 + 40.5 * p4 - 4.5 * p5 + 45.0 * p1 * sG + 4.5 * p2 * sG_2) / (sG_2 * sG_2);
+  float f = (-95.625 * p0 + 121.5 * p3 - 30.375 * p4 + 4.5 * p5 - 24.75 * p1 * sG - 2.25 * p2 * sG_2) / (sG_2 * sG_3);
+
+  samples[0] = start;
+
+  float ds = sG / float(numSamples - 1);
+  float s = ds;
+  vec2 dxy = vec2(0);
+  vec2 prevCosSin = vec2(cos(start.z), sin(start.z));
+
+  for (int i = 1; i < numSamples; i++) {
+    float rot = (((((f * s / 6.0 + e / 5.0) * s + d / 4.0) * s + c / 3.0) * s + b / 2.0) * s + a) * s + start.z;
+    float curv = ((((f * s + e) * s + d) * s + c) * s + b) * s + a;
+
+    vec2 cosSin = vec2(cos(rot), sin(rot));
+    dxy = dxy * vec2(float(i - 1) / float(i)) + (cosSin + prevCosSin) / vec2(2 * i);
+
+    samples[i] = vec4(dxy * vec2(s) + start.xy, rot, curv);
+    curvRates[i] = b + s * (2.0 * c + s * (3.0 * d + s * (4.0 * e + 5.0 * f * s)));
+
+    s += ds;
+    prevCosSin = cosSin;
+  }
+
+  return numSamples;
+}
+
 float staticCost(vec4 xytk) {
   vec2 xyTexCoords = (xytk.xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
   vec2 sl = texture(xyslMap, xyTexCoords).xy;
@@ -135,22 +186,55 @@ vec4 kernel() {
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
   float bestCost = 1000000000.0;
 
-  for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
+  for (int prevStation = max(station - stationConnectivity, -1); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
 
-    for (int prevLatitude = minLatitude; prevLatitude <= maxLatitude; prevLatitude++) {
-      int latitudeConnectivityIndex = prevLatitude - latitude + latitudeConnectivity / 2;
-      int connectivityIndex = stationConnectivityIndex * latitudeConnectivity + latitudeConnectivityIndex;
+    int latitudeStart, latitudeEnd;
+    if (prevStation >= 0) {
+      latitudeStart = minLatitude;
+      latitudeEnd = maxLatitude;
+    } else {
+      latitudeStart = 0;
+      latitudeEnd = 1;
+    }
 
-      vec4 pathStart = texelFetch(lattice, ivec2(prevLatitude, prevStation), 0);
-      vec4 cubicPathParams = texelFetch(cubicPaths, ivec2(slIndex, connectivityIndex), 0);
-
-      // If cubic path didn't converge
-      if (cubicPathParams.w == 0.0) continue;
-
+    for (int prevLatitude = latitudeStart; prevLatitude <= latitudeEnd; prevLatitude++) {
       vec4 pathSamples[128];
       float pathSampleCurvRates[128];
-      int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, pathSampleCurvRates);
+      int numSamples;
+      float pathLength;
+
+      if (prevStation >= 0) {
+        int latitudeConnectivityIndex = prevLatitude - latitude + latitudeConnectivity / 2;
+        int connectivityIndex = stationConnectivityIndex * latitudeConnectivity + latitudeConnectivityIndex;
+
+        vec4 pathStart = texelFetch(lattice, ivec2(prevLatitude, prevStation), 0);
+        vec4 cubicPathParams = texelFetch(cubicPaths, ivec2(slIndex, connectivityIndex), 0);
+
+        // If the path didn't converge
+        if (cubicPathParams.w == 0.0) continue;
+
+        numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, pathSampleCurvRates);
+        pathLength = cubicPathParams.z;
+      } else if (prevLatitude == 0) {
+        vec4 pathStart = vec4(0, 0, 0, curvVehicle);
+        vec4 cubicPathParams = texelFetch(cubicPathsFromVehicle, ivec2(latitude, station), 0);
+
+        // If the path didn't converge
+        if (cubicPathParams.w == 0.0) continue;
+
+        numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams, pathSamples, pathSampleCurvRates);
+        pathLength = cubicPathParams.z;
+      } else {
+        vec4 pathStart = vec4(0, 0, 0, curvVehicle);
+        vec4 quinticPathParams = texelFetch(quinticPathsFromVehicle, ivec2(latitude, station), 0);
+
+        // If the path didn't converge
+        if (quinticPathParams.w == 0.0) continue;
+
+        numSamples = sampleQuinticPath(pathStart, pathEnd, quinticPathParams, pathSamples, pathSampleCurvRates);
+        pathLength = quinticPathParams.z;
+      }
 
       float staticCostSum = 0.0;
 
@@ -177,16 +261,19 @@ vec4 kernel() {
             //   y: end speed
             //   z: end time
             //   w: parent index
-            vec4 costTableEntry = texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0);
+            vec4 costTableEntry =
+              prevStation >= 0 ?
+                texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0) :
+                vec4(cubicPathCost * velocityVehicle * velocityVehicle * float(1 - prevLatitude), velocityVehicle, 0, 0);
 
             // If cost entry is infinity
             if (costTableEntry.x == -1.0) continue;
 
             float initialVelocity = costTableEntry.y;
             float initialVelocitySq = initialVelocity * initialVelocity;
-            float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, cubicPathParams.z);
+            float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, pathLength);
 
-            float finalVelocitySq = 2.0 * acceleration * cubicPathParams.z + initialVelocitySq;
+            float finalVelocitySq = 2.0 * acceleration * pathLength + initialVelocitySq;
             float finalVelocity = max(smallV, sqrt(max(0.0, finalVelocitySq)));
 
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
@@ -195,12 +282,12 @@ vec4 kernel() {
             float finalTime = costTableEntry.z;
 
             if (acceleration == 0.0) {
-              finalTime += cubicPathParams.z / finalVelocity;
+              finalTime += pathLength / finalVelocity;
             } else if (finalVelocitySq <= 0.0) { // Calculate final time if the vehicle stops before the end of the trajectory
-              float distanceLeft = cubicPathParams.z - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
+              float distanceLeft = pathLength - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
               finalTime += (finalVelocity - initialVelocity) / acceleration + distanceLeft / smallV;
             } else {
-              finalTime += 2.0 * cubicPathParams.z / (finalVelocity + initialVelocity);
+              finalTime += 2.0 * pathLength / (finalVelocity + initialVelocity);
             }
 
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
@@ -211,7 +298,7 @@ vec4 kernel() {
             bestCost = terminalCost;
 
             float s = 0.0;
-            float ds = cubicPathParams.z / float(numSamples - 1);
+            float ds = pathLength / float(numSamples - 1);
             float dynamicCostSum = 0.0;
             float maxVelocity = 0.0;
             float maxLateralAcceleration = 0.0;
@@ -257,9 +344,13 @@ vec4 kernel() {
             dynamicCostSum += linearLateralAccelerationPenalty * maxLateralAcceleration;
 
             // The cost of a trajectory is the average sample cost scaled by the path length
-            float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * cubicPathParams.z + costTableEntry.x;
+            float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * pathLength + costTableEntry.x;
 
-            int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
+            int incomingIndex =
+              prevStation >= 0 ?
+                avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation) :
+                prevLatitude - 2; // -2 for cubic path, -1 for quintic path
+
             bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
           }
         }
@@ -286,11 +377,18 @@ export default {
         costTable: { type: 'sharedTexture', textureType: '2DArray' },
         xyslMap: { type: 'outputTexture' },
         cubicPaths: { type: 'outputTexture' },
+        cubicPathsFromVehicle: { type: 'outputTexture' },
+        quinticPathsFromVehicle: { type: 'outputTexture' },
         slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
+        velocityVehicle: { type: 'float' },
+        curvVehicle: { type: 'float' },
+        dCurvVehicle: { type: 'float' },
+        ddCurvVehicle: { type: 'float' },
         xyCenterPoint: { type: 'vec2' },
         xyGridCellSize: { type: 'float' },
         slCenterPoint: { type: 'vec2' },
         slGridCellSize: { type: 'float'},
+        cubicPathCost: { type: 'float' },
         laneCostSlope: { type: 'float'},
         laneShoulderCost: { type: 'float'},
         laneShoulderLatitude: { type: 'float'},
@@ -323,7 +421,7 @@ export default {
         const height = program.meta.lattice.numLatitudes;
         const costTable = new Float32Array(width * height * program.meta.lattice.numStations * 4);
 
-        for (let s = 1; s < program.meta.lattice.numStations; s++) {
+        for (let s = 0; s < program.meta.lattice.numStations; s++) {
           gpgpu.updateProgramUniforms(program, { station: s });
           draw();
 
@@ -338,7 +436,7 @@ export default {
     };
   },
 
-  update(config, xyCenterPoint, slCenterPoint) {
+  update(config, pose, xyCenterPoint, slCenterPoint) {
     return {
       width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
       height: config.lattice.numLatitudes,
@@ -346,10 +444,15 @@ export default {
         lattice: config.lattice
       },
       uniforms: {
+        velocityVehicle: pose.speed,
+        curvVehicle: pose.curv,
+        dCurvVehicle: pose.dCurv,
+        ddCurvVehicle: pose.ddCurv,
         xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
         xyGridCellSize: config.xyGridCellSize,
         slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
         slGridCellSize: config.slGridCellSize,
+        cubicPathCost: config.cubicPathCost,
         laneCostSlope: config.laneCostSlope,
         laneShoulderCost: config.laneShoulderCost,
         laneShoulderLatitude: config.laneShoulderLatitude,
