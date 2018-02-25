@@ -30,7 +30,7 @@ const config = {
   gridMargin: 10, // meters
   pathSamplingStep: 0.5, // meters
 
-  cubicPathCost: 0.1,
+  cubicPathPenalty: 0.1,
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 0.6, // meters
   hazardDilationS: 2, // meters
