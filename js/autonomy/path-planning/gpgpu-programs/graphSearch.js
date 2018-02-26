@@ -39,10 +39,10 @@
  *   and latitude 1 will correspond to a quintic path. All other latitudes will be skipped.
  */
 
-import { SHARED, SAMPLE_CUBIC_PATH_FN, SAMPLE_QUINTIC_PATH_FN } from "./graphSearchShared.js";
+import { SHARED_SHADER, SAMPLE_CUBIC_PATH_FN, SAMPLE_QUINTIC_PATH_FN, NUM_ACCELERATION_PROFILES, NUM_VELOCITY_RANGES, NUM_TIME_RANGES, SHARED_UNIFORMS, buildUniformValues } from "./graphSearchShared.js";
 
 const SOLVE_STATION_KERNEL =
-  SHARED +
+  SHARED_SHADER +
   SAMPLE_CUBIC_PATH_FN +
   SAMPLE_QUINTIC_PATH_FN +
 
@@ -131,7 +131,7 @@ vec4 kernel() {
           for (int prevAccel = 0; prevAccel < numAccelerations; prevAccel++) {
             int avtIndex = prevTime * numPerTime + prevVelocity * numAccelerations + prevAccel;
 
-            // Cost map entry:
+            // Cost table entry:
             //   x: cost so far
             //   y: end speed
             //   z: end time
@@ -145,25 +145,13 @@ vec4 kernel() {
             if (costTableEntry.x == -1.0) continue;
 
             float initialVelocity = costTableEntry.y;
-            float initialVelocitySq = initialVelocity * initialVelocity;
-            float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, pathLength);
-
-            float finalVelocitySq = 2.0 * acceleration * pathLength + initialVelocitySq;
-            float finalVelocity = max(smallV, sqrt(max(0.0, finalVelocitySq)));
+            vec3 avt = calculateAVT(accelerationIndex, initialVelocity, costTableEntry.z, pathLength);
+            float acceleration = avt.x;
+            float finalVelocity = avt.y;
+            float finalTime = avt.z;
 
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
             if (finalVelocity < minVelocity || finalVelocity >= maxVelocity) continue;
-
-            float finalTime = costTableEntry.z;
-
-            if (acceleration == 0.0) {
-              finalTime += pathLength / finalVelocity;
-            } else if (finalVelocitySq <= 0.0) { // Calculate final time if the vehicle stops before the end of the trajectory
-              float distanceLeft = pathLength - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
-              finalTime += (finalVelocity - initialVelocity) / acceleration + distanceLeft / smallV;
-            } else {
-              finalTime += 2.0 * pathLength / (finalVelocity + initialVelocity);
-            }
 
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
@@ -195,58 +183,34 @@ vec4 kernel() {
 
 `;
 
-const NUM_ACCELERATION_PROFILES = 8;
-const NUM_VELOCITY_RANGES = 4;
-const NUM_TIME_RANGES = 2;
-
 export default {
   setUp() {
     return {
       kernel: SOLVE_STATION_KERNEL,
       output: { name: 'graphSearch' },
       uniforms: {
+        ...SHARED_UNIFORMS,
         lattice: { type: 'sharedTexture' },
         costTable: { type: 'sharedTexture', textureType: '2DArray' },
-        xyslMap: { type: 'outputTexture' },
         cubicPaths: { type: 'outputTexture' },
         cubicPathsFromVehicle: { type: 'outputTexture' },
         quinticPathsFromVehicle: { type: 'outputTexture' },
-        slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
         velocityVehicle: { type: 'float' },
         curvVehicle: { type: 'float' },
         dCurvVehicle: { type: 'float' },
         ddCurvVehicle: { type: 'float' },
-        xyCenterPoint: { type: 'vec2' },
-        xyGridCellSize: { type: 'float' },
-        slCenterPoint: { type: 'vec2' },
-        slGridCellSize: { type: 'float'},
         cubicPathPenalty: { type: 'float' },
-        laneCostSlope: { type: 'float'},
-        laneShoulderCost: { type: 'float'},
-        laneShoulderLatitude: { type: 'float'},
-        obstacleHazardCost: { type: 'float' },
         extraTimePenalty: { type: 'float' },
-        speedLimit: { type: 'float' },
-        speedLimitPenalty: { type: 'float' },
-        hardAccelerationPenalty: { type: 'float' },
-        hardDecelerationPenalty: { type: 'float' },
-        lateralAccelerationLimit: { type: 'float' },
-        softLateralAccelerationPenalty: { type: 'float' },
-        linearLateralAccelerationPenalty: { type: 'float' },
-        dCurvatureMax: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
         numAccelerations: { type: 'int' },
         numVelocities: { type: 'int' },
         numTimes: { type: 'int' },
-        accelerationProfiles: { type: 'float', length: 5 },
-        finalVelocityProfiles: { type: 'float', length: 3 },
-        pathSamplingStep: { type: 'float' },
         stationConnectivity: { type: 'int' },
         latitudeConnectivity: { type: 'int' },
-        station: { type: 'int' },
         velocityRanges: { type: 'float', length: NUM_VELOCITY_RANGES + 1 },
-        timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 }
+        timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 },
+        station: { type: 'int' } // Updated in `drawProxy`
       },
       drawProxy: (gpgpu, program, draw) => {
         const width = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES;
@@ -276,36 +240,18 @@ export default {
         lattice: config.lattice
       },
       uniforms: {
+        ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
         velocityVehicle: pose.speed,
         curvVehicle: pose.curv,
         dCurvVehicle: pose.dCurv,
         ddCurvVehicle: pose.ddCurv,
-        xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
-        xyGridCellSize: config.xyGridCellSize,
-        slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
-        slGridCellSize: config.slGridCellSize,
         cubicPathPenalty: config.cubicPathPenalty,
-        laneCostSlope: config.laneCostSlope,
-        laneShoulderCost: config.laneShoulderCost,
-        laneShoulderLatitude: config.laneShoulderLatitude,
-        obstacleHazardCost: config.obstacleHazardCost,
         extraTimePenalty: config.extraTimePenalty,
-        speedLimit: config.speedLimit,
-        speedLimitPenalty: config.speedLimitPenalty,
-        hardAccelerationPenalty: config.hardAccelerationPenalty,
-        hardDecelerationPenalty: config.hardDecelerationPenalty,
-        lateralAccelerationLimit: config.lateralAccelerationLimit,
-        softLateralAccelerationPenalty: config.softLateralAccelerationPenalty,
-        linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
-        dCurvatureMax: config.dCurvatureMax,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,
         numAccelerations: NUM_ACCELERATION_PROFILES,
         numVelocities: NUM_VELOCITY_RANGES,
         numTimes: NUM_TIME_RANGES,
-        accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
-        finalVelocityProfiles: [0.99 * config.speedLimit, 1.0, 0.01],
-        pathSamplingStep: config.pathSamplingStep,
         stationConnectivity: config.lattice.stationConnectivity,
         latitudeConnectivity: config.lattice.latitudeConnectivity,
         velocityRanges: [0, config.speedLimit / 3, config.speedLimit * 2 / 3, config.speedLimit, 1000000],

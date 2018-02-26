@@ -1,4 +1,4 @@
-const SHARED = `
+const SHARED_SHADER = `
 
 const float smallV = 0.01;
 vec4 pathSamples[128];
@@ -87,6 +87,27 @@ float calculateDynamicCostSum(int numSamples, float pathLength, float initialVel
   dynamicCostSum += linearLateralAccelerationPenalty * maxLateralAcceleration;
 
   return dynamicCostSum;
+}
+
+vec3 calculateAVT(int accelerationIndex, float initialVelocity, float initialTime, float pathLength) {
+  float initialVelocitySq = initialVelocity * initialVelocity;
+  float acceleration = calculateAcceleration(accelerationIndex, initialVelocitySq, pathLength);
+
+  float finalVelocitySq = 2.0 * acceleration * pathLength + initialVelocitySq;
+  float finalVelocity = max(smallV, sqrt(max(0.0, finalVelocitySq)));
+
+  float finalTime = initialTime;
+
+  if (acceleration == 0.0) {
+    finalTime += pathLength / finalVelocity;
+  } else if (finalVelocitySq <= 0.0) { // Calculate final time if the vehicle stops before the end of the trajectory
+    float distanceLeft = pathLength - (smallV * smallV - initialVelocitySq) / (2.0 * acceleration);
+    finalTime += (finalVelocity - initialVelocity) / acceleration + distanceLeft / smallV;
+  } else {
+    finalTime += 2.0 * pathLength / (finalVelocity + initialVelocity);
+  }
+
+  return vec3(acceleration, finalVelocity, finalTime);
 }
 
 `;
@@ -185,5 +206,67 @@ int sampleQuinticPath(vec4 start, vec4 end, vec4 quinticPathParams) {
 
 `;
 
+const NUM_ACCELERATION_PROFILES = 8;
+const NUM_VELOCITY_RANGES = 4;
+const NUM_TIME_RANGES = 2;
 
-export { SHARED, SAMPLE_CUBIC_PATH_FN, SAMPLE_QUINTIC_PATH_FN }
+const SHARED_UNIFORMS = {
+  xyslMap: { type: 'outputTexture' },
+  slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
+  accelerationProfiles: { type: 'float', length: 5 },
+  finalVelocityProfiles: { type: 'float', length: 3 },
+  xyCenterPoint: { type: 'vec2' },
+  xyGridCellSize: { type: 'float' },
+  slCenterPoint: { type: 'vec2' },
+  slGridCellSize: { type: 'float'},
+  laneCostSlope: { type: 'float'},
+  laneShoulderCost: { type: 'float'},
+  laneShoulderLatitude: { type: 'float'},
+  obstacleHazardCost: { type: 'float' },
+  speedLimit: { type: 'float' },
+  speedLimitPenalty: { type: 'float' },
+  hardAccelerationPenalty: { type: 'float' },
+  hardDecelerationPenalty: { type: 'float' },
+  lateralAccelerationLimit: { type: 'float' },
+  softLateralAccelerationPenalty: { type: 'float' },
+  linearLateralAccelerationPenalty: { type: 'float' },
+  dCurvatureMax: { type: 'float' },
+  pathSamplingStep: { type: 'float' }
+};
+
+function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
+  return {
+    accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
+    finalVelocityProfiles: [0.99 * config.speedLimit, 1.0, 0.01],
+    xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
+    xyGridCellSize: config.xyGridCellSize,
+    slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
+    slGridCellSize: config.slGridCellSize,
+    laneCostSlope: config.laneCostSlope,
+    laneShoulderCost: config.laneShoulderCost,
+    laneShoulderLatitude: config.laneShoulderLatitude,
+    obstacleHazardCost: config.obstacleHazardCost,
+    speedLimit: config.speedLimit,
+    speedLimitPenalty: config.speedLimitPenalty,
+    hardAccelerationPenalty: config.hardAccelerationPenalty,
+    hardDecelerationPenalty: config.hardDecelerationPenalty,
+    lateralAccelerationLimit: config.lateralAccelerationLimit,
+    softLateralAccelerationPenalty: config.softLateralAccelerationPenalty,
+    linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
+    dCurvatureMax: config.dCurvatureMax,
+    pathSamplingStep: config.pathSamplingStep,
+  };
+}
+
+export {
+  SHARED_SHADER,
+  SAMPLE_CUBIC_PATH_FN,
+  SAMPLE_QUINTIC_PATH_FN,
+
+  NUM_ACCELERATION_PROFILES,
+  NUM_VELOCITY_RANGES,
+  NUM_TIME_RANGES,
+
+  SHARED_UNIFORMS,
+  buildUniformValues
+}

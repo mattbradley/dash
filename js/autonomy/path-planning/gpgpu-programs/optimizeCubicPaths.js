@@ -7,7 +7,7 @@
 // Shared:
 // lattice
 
-const OPTIMIZE_KERNEL = `
+const OPTIMIZE_CUBIC_SHARED = `
 
 const int NEWTON_ITERATIONS = 16;
 const int RELAXATION_ITERATIONS = 16;
@@ -171,6 +171,10 @@ vec4 optimize(vec4 start, vec4 end) {
   return vec4(p1, p2, sG, 0.0);
 }
 
+`;
+
+const OPTIMIZE_CUBIC_KERNEL = OPTIMIZE_CUBIC_SHARED + `
+
 // width: station * latitude index
 // height: station_conn * lattice_conn
 //
@@ -181,57 +185,55 @@ vec4 optimize(vec4 start, vec4 end) {
 vec4 kernel() {
   ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
 
-  if (fromVehicle == 1) {
-    vec4 start = vec4(0, 0, 0, curvVehicle);
-    vec4 end = texelFetch(lattice, indexes, 0);
+  int endStation = indexes.x / numLatitudes;
+  int endLatitude = int(mod(float(indexes.x), float(numLatitudes)));
 
-    return optimize(start, end);
-  } else {
-    int endStation = indexes.x / numLatitudes;
-    int endLatitude = int(mod(float(indexes.x), float(numLatitudes)));
+  int startStation = endStation - stationConnectivity + indexes.y / latitudeConnectivity;
+  int startLatitude = endLatitude - latitudeConnectivity / 2 + int(mod(float(indexes.y), float(latitudeConnectivity)));
 
-    int startStation = endStation - stationConnectivity + indexes.y / latitudeConnectivity;
-    int startLatitude = endLatitude - latitudeConnectivity / 2 + int(mod(float(indexes.y), float(latitudeConnectivity)));
+  if (startStation < 0 || startStation >= numStations || startLatitude < 0 || startLatitude >= numLatitudes)
+    return vec4(0.0);
 
-    if (startStation < 0 || startStation >= numStations || startLatitude < 0 || startLatitude >= numLatitudes)
-      return vec4(0.0);
+  vec4 start = texelFetch(lattice, ivec2(startLatitude, startStation), 0);
+  vec4 end = texelFetch(lattice, ivec2(endLatitude, endStation), 0);
 
-    vec4 start = texelFetch(lattice, ivec2(startLatitude, startStation), 0);
-    vec4 end = texelFetch(lattice, ivec2(endLatitude, endStation), 0);
-
-    return optimize(start, end);
-  }
+  return optimize(start, end);
 }
 
 `;
 
-// Cubic spiral path optimizer
+const OPTIMIZE_CUBIC_FROM_VEHICLE_KERNEL = OPTIMIZE_CUBIC_SHARED + `
+
+vec4 kernel() {
+  ivec2 indexes = ivec2(kernelPosition * vec2(kernelSize));
+
+  vec4 start = vec4(0, 0, 0, curvVehicle);
+  vec4 end = texelFetch(lattice, indexes, 0);
+
+  return optimize(start, end);
+}
+
+`;
+
 export default {
   setUp() {
     return [
       { // Cubic paths between lattice nodes
-        kernel: OPTIMIZE_KERNEL,
+        kernel: OPTIMIZE_CUBIC_KERNEL,
         output: { name: 'cubicPaths', read: true },
         uniforms: {
           lattice: { type: 'sharedTexture' },
           numStations: { type: 'int' },
           numLatitudes: { type: 'int' },
           stationConnectivity: { type: 'int' },
-          latitudeConnectivity: { type: 'int' },
-          fromVehicle: { type: 'int' },
-          curvVehicle: { type: 'float' }
+          latitudeConnectivity: { type: 'int' }
         }
       },
       { // Cubic paths from vehicle to lattice nodes
-        kernel: OPTIMIZE_KERNEL,
+        kernel: OPTIMIZE_CUBIC_FROM_VEHICLE_KERNEL,
         output: { name: 'cubicPathsFromVehicle', read: true },
         uniforms: {
           lattice: { type: 'sharedTexture' },
-          numStations: { type: 'int' },
-          numLatitudes: { type: 'int' },
-          stationConnectivity: { type: 'int' },
-          latitudeConnectivity: { type: 'int' },
-          fromVehicle: { type: 'int' },
           curvVehicle: { type: 'float' }
         }
       }
@@ -248,14 +250,12 @@ export default {
           numLatitudes: config.lattice.numLatitudes,
           stationConnectivity: config.lattice.stationConnectivity,
           latitudeConnectivity: config.lattice.latitudeConnectivity,
-          fromVehicle: 0
         }
       },
       { // Cubic paths from vehicle to lattice nodes
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity,
         uniforms: {
-          fromVehicle: 1,
           curvVehicle: pose.curv
         }
       },

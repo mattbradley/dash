@@ -8,6 +8,7 @@ import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
 import xyslMap from "./gpgpu-programs/xyslMap.js";
 import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
 import optimizeQuinticPaths from "./gpgpu-programs/optimizeQuinticPaths.js";
+import pathFromVehicleCosts from "./gpgpu-programs/pathFromVehicleCosts.js";
 import graphSearch from "./gpgpu-programs/graphSearch.js";
 
 const NUM_ACCELERATION_PROFILES = 8;
@@ -84,6 +85,7 @@ export default class PathPlanner {
       xyslMap.setUp(),
       ...optimizeCubicPaths.setUp(),
       optimizeQuinticPaths.setUp(),
+      ...pathFromVehicleCosts.setUp(),
       graphSearch.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
@@ -129,6 +131,7 @@ export default class PathPlanner {
       xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(config, { curv: vehiclePose.curv }),
       optimizeQuinticPaths.update(config, { curv: vehiclePose.curv, dCurv: 0, ddCurv: 0 }),
+      ...pathFromVehicleCosts.update(config, { speed: 0, curv: vehiclePose.curv }, xyCenterPoint, slCenterPoint),
       graphSearch.update(config, { speed: 0, curv: vehiclePose.curv, dCurv: 0, ddCurv: 0}, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
