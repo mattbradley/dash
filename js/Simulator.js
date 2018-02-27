@@ -237,7 +237,7 @@ export default class Simulator {
     start = performance.now();
     const sd = +new Date;
     console.log(new Date);
-    const { xysl, width, height, center, rot, path } = planner.plan(this.editor.lanePath, [obstacle]);
+    const { xysl, width, height, center, rot, path, vehiclePose } = planner.plan(this.editor.lanePath, [obstacle]);
     console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
     console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
     console.log(new Date);
@@ -262,21 +262,14 @@ export default class Simulator {
     const pathLine = new MeshLine();
     pathLine.setGeometry(pathGeometry);
 
-    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.8, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
     pathObject.renderOrder = 1;
     this.scene.add(pathObject);
 
-    const points = this.editor.lanePath.centerline;
-    const rotations = this.editor.lanePath.centerlineRotations;
-
-    const poses = points.map((p, i) => {
-      const rot = rotations[i];
-      return { pos: Car.frontToRearAxlePosition(p, rot), rot: rot };
-    });
     const followPath = new Path(path);
 
     autoController = new AutonomousController(followPath);
-    this.car.setPose(poses[0].pos.x, poses[0].pos.y, poses[0].rot);
+    this.car.setPose(vehiclePose.pos.x, vehiclePose.pos.y, vehiclePose.rot);
     //follow = true;
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });

@@ -75,56 +75,24 @@ vec4 kernel() {
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
   float bestCost = 1000000000.0;
 
-  for (int prevStation = max(station - stationConnectivity, -1); prevStation < station; prevStation++) {
+  for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
 
-    int latitudeStart, latitudeEnd;
-    if (prevStation >= 0) {
-      latitudeStart = minLatitude;
-      latitudeEnd = maxLatitude;
-    } else {
-      latitudeStart = 0;
-      latitudeEnd = 1;
-    }
+    for (int prevLatitude = minLatitude; prevLatitude <= maxLatitude; prevLatitude++) {
+      int latitudeConnectivityIndex = prevLatitude - latitude + latitudeConnectivity / 2;
+      int connectivityIndex = stationConnectivityIndex * latitudeConnectivity + latitudeConnectivityIndex;
 
-    for (int prevLatitude = latitudeStart; prevLatitude <= latitudeEnd; prevLatitude++) {
-      int numSamples;
-      float pathLength;
+      vec4 pathStart = texelFetch(lattice, ivec2(prevLatitude, prevStation), 0);
+      vec4 cubicPathParams = texelFetch(cubicPaths, ivec2(slIndex, connectivityIndex), 0);
 
-      if (prevStation >= 0) {
-        int latitudeConnectivityIndex = prevLatitude - latitude + latitudeConnectivity / 2;
-        int connectivityIndex = stationConnectivityIndex * latitudeConnectivity + latitudeConnectivityIndex;
+      // If the path didn't converge
+      if (cubicPathParams.w == 0.0) continue;
 
-        vec4 pathStart = texelFetch(lattice, ivec2(prevLatitude, prevStation), 0);
-        vec4 cubicPathParams = texelFetch(cubicPaths, ivec2(slIndex, connectivityIndex), 0);
+      int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams);
+      float pathLength = cubicPathParams.z;
 
-        // If the path didn't converge
-        if (cubicPathParams.w == 0.0) continue;
-
-        numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams);
-        pathLength = cubicPathParams.z;
-      } else if (prevLatitude == 0) {
-        vec4 pathStart = vec4(0, 0, 0, curvVehicle);
-        vec4 cubicPathParams = texelFetch(cubicPathsFromVehicle, ivec2(latitude, station), 0);
-
-        // If the path didn't converge
-        if (cubicPathParams.w == 0.0) continue;
-
-        numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams);
-        pathLength = cubicPathParams.z;
-      } else {
-        vec4 pathStart = vec4(0, 0, 0, curvVehicle);
-        vec4 quinticPathParams = texelFetch(quinticPathsFromVehicle, ivec2(latitude, station), 0);
-
-        // If the path didn't converge
-        if (quinticPathParams.w == 0.0) continue;
-
-        numSamples = sampleQuinticPath(pathStart, pathEnd, quinticPathParams);
-        pathLength = quinticPathParams.z;
-      }
-
-      float staticCostSum = calculateStaticCostSum(numSamples);
-      if (staticCostSum < 0.0) continue;
+      float averageStaticCost = calculateAverageStaticCost(numSamples);
+      if (averageStaticCost < 0.0) continue;
 
       for (int prevVelocity = 0; prevVelocity < numVelocities; prevVelocity++) {
         for (int prevTime = 0; prevTime < numTimes; prevTime++) {
@@ -136,16 +104,12 @@ vec4 kernel() {
             //   y: end speed
             //   z: end time
             //   w: parent index
-            vec4 costTableEntry =
-              prevStation >= 0 ?
-                texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0) :
-                vec4(cubicPathPenalty * velocityVehicle * velocityVehicle * float(1 - prevLatitude), velocityVehicle, 0, 0);
+            vec4 costTableEntry = texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0);
 
             // If cost entry is infinity
-            if (costTableEntry.x == -1.0) continue;
+            if (costTableEntry.x < 0.0) continue;
 
-            float initialVelocity = costTableEntry.y;
-            vec3 avt = calculateAVT(accelerationIndex, initialVelocity, costTableEntry.z, pathLength);
+            vec3 avt = calculateAVT(accelerationIndex, costTableEntry.y, costTableEntry.z, pathLength);
             float acceleration = avt.x;
             float finalVelocity = avt.y;
             float finalTime = avt.z;
@@ -156,24 +120,47 @@ vec4 kernel() {
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
-            float dynamicCostSum = calculateDynamicCostSum(numSamples, pathLength, initialVelocity, acceleration);
-            if (dynamicCostSum < 0.0) continue;
+            float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.y, acceleration);
+            if (averageDynamicCost < 0.0) continue;
 
             // The cost of a trajectory is the average sample cost scaled by the path length
-            float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * pathLength + costTableEntry.x;
+            float totalCost = (averageStaticCost + averageDynamicCost) * pathLength + costTableEntry.x;
 
             float terminalCost = totalCost + extraTimePenalty * finalTime;
             if (terminalCost >= bestCost) continue;
             bestCost = terminalCost;
 
-            int incomingIndex =
-              prevStation >= 0 ?
-                avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation) :
-                prevLatitude - 2; // -2 for cubic path, -1 for quintic path
-
+            int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
             bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
           }
         }
+      }
+    }
+  }
+
+  if (station < stationConnectivity) {
+    ivec2 slaIndex = ivec2(latitude, station * numAccelerations + accelerationIndex);
+
+    vec4 costTableEntry = texelFetch(cubicPathFromVehicleCosts, slaIndex, 0);
+    float terminalCost;
+
+    if (costTableEntry.x >= 0.0) {
+      terminalCost = costTableEntry.x + extraTimePenalty * costTableEntry.z;
+
+      if (terminalCost < bestCost) {
+        bestCost = terminalCost;
+        bestTrajectory = costTableEntry;
+      }
+    }
+
+    costTableEntry = texelFetch(quinticPathFromVehicleCosts, slaIndex, 0);
+
+    if (costTableEntry.x >= 0.0) {
+      terminalCost = costTableEntry.x + extraTimePenalty * costTableEntry.z;
+
+      if (terminalCost < bestCost) {
+        bestCost = terminalCost;
+        bestTrajectory = costTableEntry;
       }
     }
   }
@@ -193,13 +180,12 @@ export default {
         lattice: { type: 'sharedTexture' },
         costTable: { type: 'sharedTexture', textureType: '2DArray' },
         cubicPaths: { type: 'outputTexture' },
-        cubicPathsFromVehicle: { type: 'outputTexture' },
-        quinticPathsFromVehicle: { type: 'outputTexture' },
+        cubicPathFromVehicleCosts: { type: 'outputTexture' },
+        quinticPathFromVehicleCosts: { type: 'outputTexture' },
         velocityVehicle: { type: 'float' },
         curvVehicle: { type: 'float' },
         dCurvVehicle: { type: 'float' },
         ddCurvVehicle: { type: 'float' },
-        cubicPathPenalty: { type: 'float' },
         extraTimePenalty: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
@@ -245,7 +231,6 @@ export default {
         curvVehicle: pose.curv,
         dCurvVehicle: pose.dCurv,
         ddCurvVehicle: pose.ddCurv,
-        cubicPathPenalty: config.cubicPathPenalty,
         extraTimePenalty: config.extraTimePenalty,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,

@@ -34,24 +34,24 @@ float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleratio
   return 1.0;
 }
 
-float calculateStaticCostSum(int numSamples) {
-  float staticCostSum = 0.0;
+float calculateAverageStaticCost(int numSamples) {
+  float averageStaticCost = 0.0;
 
   for (int i = 0; i < numSamples; i++) {
     float cost = sampleStaticCost(pathSamples[i]);
 
     if (cost < 0.0) return cost;
 
-    staticCostSum += cost;
+    averageStaticCost += cost;
   }
 
-  return staticCostSum;
+  return averageStaticCost / float(numSamples);
 }
 
-float calculateDynamicCostSum(int numSamples, float pathLength, float initialVelocity, float acceleration) {
+float calculateAverageDynamicCost(int numSamples, float pathLength, float initialVelocity, float acceleration) {
   float s = 0.0;
   float ds = pathLength / float(numSamples - 1);
-  float dynamicCostSum = 0.0;
+  float averageDynamicCost = 0.0;
   float maxVelocity = 0.0;
   float maxLateralAcceleration = 0.0;
 
@@ -71,22 +71,24 @@ float calculateDynamicCostSum(int numSamples, float pathLength, float initialVel
     float cost = sampleDynamicCost(pathSample, time, velocity, acceleration);
     if (cost < 0.0) return cost;
 
-    dynamicCostSum += cost;
+    averageDynamicCost += cost;
     s += ds;
   }
 
+  averageDynamicCost /= float(numSamples);
+
   // Apply speeding penality if any velocity along the trajectory is over the speed limit
-  dynamicCostSum += step(speedLimit, maxVelocity) * speedLimitPenalty;
+  averageDynamicCost += step(speedLimit, maxVelocity) * speedLimitPenalty;
 
   // Apply hard acceleration/deceleration penalties if the acceleration/deceleration exceeds the soft limits
-  dynamicCostSum += step(accelerationProfiles[2] + 0.0001, acceleration) * hardAccelerationPenalty;
-  dynamicCostSum += (1.0 - step(accelerationProfiles[3], acceleration)) * hardDecelerationPenalty;
+  averageDynamicCost += step(accelerationProfiles[2] + 0.0001, acceleration) * hardAccelerationPenalty;
+  averageDynamicCost += (1.0 - step(accelerationProfiles[3], acceleration)) * hardDecelerationPenalty;
 
   // Penalize lateral acceleration
-  dynamicCostSum += step(lateralAccelerationLimit, maxLateralAcceleration) * softLateralAccelerationPenalty;
-  dynamicCostSum += linearLateralAccelerationPenalty * maxLateralAcceleration;
+  averageDynamicCost += step(lateralAccelerationLimit, maxLateralAcceleration) * softLateralAccelerationPenalty;
+  averageDynamicCost += linearLateralAccelerationPenalty * maxLateralAcceleration;
 
-  return dynamicCostSum;
+  return averageDynamicCost;
 }
 
 vec3 calculateAVT(int accelerationIndex, float initialVelocity, float initialTime, float pathLength) {

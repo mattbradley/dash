@@ -95,7 +95,15 @@ export default class PathPlanner {
   plan(lanePath, obstacles) {
     const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
 
-    const vehiclePose = centerlineRaw[0];
+    const vehiclePose = {
+      pos: centerlineRaw[0].pos.clone().sub(centerlineRaw[1].pos).normalize().multiplyScalar(10).add(centerlineRaw[0].pos),
+      rot: centerlineRaw[0].rot,
+      curv: 0,
+      dCurv: 0,
+      ddCurv: 0,
+      speed: 0
+    };
+
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(vehiclePose);
     const centerline = centerlineRaw.map(c => { return { pos: c.pos.clone().applyMatrix3(vehicleXform), rot: c.rot - vehiclePose.rot, curv: c.curv } });
@@ -129,10 +137,10 @@ export default class PathPlanner {
       slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(config, slWidth, slHeight),
       xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
-      ...optimizeCubicPaths.update(config, { curv: vehiclePose.curv }),
-      optimizeQuinticPaths.update(config, { curv: vehiclePose.curv, dCurv: 0, ddCurv: 0 }),
-      ...pathFromVehicleCosts.update(config, { speed: 0, curv: vehiclePose.curv }, xyCenterPoint, slCenterPoint),
-      graphSearch.update(config, { speed: 0, curv: vehiclePose.curv, dCurv: 0, ddCurv: 0}, xyCenterPoint, slCenterPoint)
+      ...optimizeCubicPaths.update(config, vehiclePose),
+      optimizeQuinticPaths.update(config, vehiclePose),
+      ...pathFromVehicleCosts.update(config, vehiclePose, xyCenterPoint, slCenterPoint),
+      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -162,7 +170,9 @@ export default class PathPlanner {
       }
     });
 
+    let start = performance.now();
     const outputs = this.gpgpu.run();
+    console.log(`Planner GPU time: ${(performance.now() - start) / 1000}s`);
     const costTable = this.gpgpu._graphSearchCostTable;
     const cubicPathParams = outputs[5];
     const cubicPathFromVehicleParams = outputs[6];
@@ -182,7 +192,7 @@ export default class PathPlanner {
         costTable[i * 4 + 3]
       ];
 
-      if (entry[0] == -1) continue;
+      if (entry[0] < 0) continue;
 
       entry[0] += this._terminalCost(entryUnpacked, entry);
 
@@ -205,7 +215,7 @@ export default class PathPlanner {
     console.log(bestTrajectory);
 
 
-    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory };
+    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
   }
 
   _buildLattice(lanePath, vehicleRot, vehicleXform) {
@@ -269,11 +279,14 @@ export default class PathPlanner {
   _reconstructTrajectory(index, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehicleCurv, lattice) {
     let unpacked = this._unpackCostTableIndex(index);
     const nodes = [unpacked];
+    console.log(index + ": " + unpacked);
 
-    while (unpacked[0] >= 0) {
+    let count = 0;
+    while (unpacked[0] >= 0 && count++ < 100) {
       index = costTable[index * 4 + 3];
       unpacked = this._unpackCostTableIndex(index);
       nodes.unshift(unpacked);
+      console.log(index + ": " + unpacked);
     }
 
     const points = [];

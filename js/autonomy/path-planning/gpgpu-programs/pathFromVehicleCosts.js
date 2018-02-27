@@ -27,19 +27,19 @@ vec4 kernel() {
   int numSamples = ${pathType == 'cubic' ? 'sampleCubicPath' : 'sampleQuinticPath'}(pathStart, pathEnd, pathParams);
   float pathLength = pathParams.z;
 
-  float staticCostSum = calculateStaticCostSum(numSamples);
-  if (staticCostSum < 0.0) return vec4(-1);
+  float averageStaticCost = calculateAverageStaticCost(numSamples);
+  if (averageStaticCost < 0.0) return vec4(-1);
 
   vec3 avt = calculateAVT(accelerationIndex, velocityVehicle, 0.0, pathLength);
   float acceleration = avt.x;
   float finalVelocity = avt.y;
   float finalTime = avt.z;
 
-  float dynamicCostSum = calculateDynamicCostSum(numSamples, pathLength, velocityVehicle, acceleration);
-  if (dynamicCostSum < 0.0) return vec4(-1);
+  float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, velocityVehicle, acceleration);
+  if (averageDynamicCost < 0.0) return vec4(-1);
 
   // The cost of a trajectory is the average sample cost scaled by the path length
-  float totalCost = (dynamicCostSum + staticCostSum) / float(numSamples) * pathLength;
+  float totalCost = (averageStaticCost + averageDynamicCost + ${pathType == 'cubic' ? '(cubicPathPenalty * velocityVehicle * velocityVehicle)' : '0.0'}) * pathLength;
 
   return vec4(totalCost, finalVelocity, finalTime, ${pathType == 'cubic' ? '-2' : '-1'});
 }
@@ -59,7 +59,8 @@ export default {
           pathsFromVehicle: { type: 'outputTexture', name: 'cubicPathsFromVehicle' },
           velocityVehicle: { type: 'float' },
           curvVehicle: { type: 'float' },
-          numAccelerations: { type: 'int' }
+          numAccelerations: { type: 'int' },
+          cubicPathPenalty: { type: 'float' }
         }
       },
       {
@@ -88,7 +89,8 @@ export default {
           ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
           velocityVehicle: pose.speed,
           curvVehicle: pose.curv,
-          numAccelerations: NUM_ACCELERATION_PROFILES
+          numAccelerations: NUM_ACCELERATION_PROFILES,
+          cubicPathPenalty: config.cubicPathPenalty
         }
       },
       {

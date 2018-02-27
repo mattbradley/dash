@@ -258,7 +258,7 @@ export default {
         uniforms: {
           curvVehicle: pose.curv
         }
-      },
-    ]
+      }
+    ];
   }
 }
