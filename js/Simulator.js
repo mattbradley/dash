@@ -23,6 +23,8 @@ export default class Simulator {
   constructor(geolocation, domElement) {
     this.geolocation = geolocation;
 
+    this.pathPlannerWorker = new Worker('workers/dist/PathPlannerWorker.js');
+
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
@@ -231,10 +233,11 @@ export default class Simulator {
     obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
     this.scene.add(obsObj);
 
-    let start = performance.now();
+    this.pathPlannerWorker.postMessage({ lanePath: this.editor.lanePath, obstacles: [obstacle] });
+    return;
     const planner = new PathPlanner();
-    console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
-    start = performance.now();
+
+    let start = performance.now();
     const sd = +new Date;
     console.log(new Date);
     const { xysl, width, height, center, rot, path, vehiclePose } = planner.plan(this.editor.lanePath, [obstacle]);

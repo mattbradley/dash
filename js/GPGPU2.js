@@ -205,7 +205,15 @@ export default class {
   }
 
   _setUpGL() {
-    const canvas = document.createElement('canvas');
+    let canvas;
+
+    if (self.document)
+      canvas = document.createElement('canvas');
+    else if (self.OffscreenCanvas)
+      canvas = new OffscreenCanvas(0, 0);
+    else
+      throw new Error('Could not create a canvas.');
+
     const attr = { alpha: false, antialias: false };
     this.gl = canvas.getContext("webgl2", attr) || canvas.getContext("experimental-webgl2", attr);
 
@@ -423,7 +431,7 @@ void main() {
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, outputTexture, 0);
     const frameBufferStatus = (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) == this.gl.FRAMEBUFFER_COMPLETE);
     if (!frameBufferStatus)
-      throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible');
+      throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible.');
 
     if (program.output && program.output.name)
       this.outputTextures[program.output.name] = outputTexture;

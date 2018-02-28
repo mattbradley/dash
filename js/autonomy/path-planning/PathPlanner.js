@@ -1,4 +1,4 @@
-import GPGPU from "./../../GPGPU2.js";
+import GPGPU from "../../GPGPU2.js";
 import Car from "../../physics/Car.js";
 import CubicPath from "./CubicPath.js";
 import QuinticPath from "./QuinticPath.js";
@@ -78,6 +78,7 @@ const config = {
 
 export default class PathPlanner {
   constructor() {
+    let start = performance.now();
     const programs = [
       xyObstacleGrid.setUp(),
       slObstacleGrid.setUp(),
@@ -90,6 +91,7 @@ export default class PathPlanner {
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
     this.gpgpu = new GPGPU(programs);
+    console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
   }
 
   plan(lanePath, obstacles) {
@@ -178,7 +180,6 @@ export default class PathPlanner {
     const cubicPathFromVehicleParams = outputs[6];
     const quinticPathFromVehicleParams = outputs[7];
 
-    console.log(costTable);
     let bestEntry = [Number.POSITIVE_INFINITY];
     let bestEntryIndex;
     const numEntries = costTable.length / 4;
@@ -210,10 +211,6 @@ export default class PathPlanner {
         curv: p.curv
       };
     });
-
-    console.log(bestEntryIndex, bestEntry);
-    console.log(bestTrajectory);
-
 
     return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
   }
@@ -279,15 +276,14 @@ export default class PathPlanner {
   _reconstructTrajectory(index, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehicleCurv, lattice) {
     let unpacked = this._unpackCostTableIndex(index);
     const nodes = [unpacked];
-    console.log(index + ": " + unpacked);
 
     let count = 0;
     while (unpacked[0] >= 0 && count++ < 100) {
       index = costTable[index * 4 + 3];
       unpacked = this._unpackCostTableIndex(index);
       nodes.unshift(unpacked);
-      console.log(index + ": " + unpacked);
     }
+    if (count >= 100) throw new Error('Infinite loop encountered while reconstructing trajectory.');
 
     const points = [];
 
