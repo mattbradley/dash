@@ -21,25 +21,24 @@ export default class Car {
   }
 
   get pose() {
-    const rearAxlePos = this.rearAxlePosition;
-    return { pos: new THREE.Vector2(rearAxlePos[0], rearAxlePos[1]), rot: this.rotation };
+    return { pos: this.rearAxlePosition, rot: this.rotation };
   }
 
   get position() {
     const pos = this.body.GetPosition();
-    return [pos.get_x(), pos.get_y()];
+    return new THREE.Vector2(pos.get_x(), pos.get_y());
   }
 
   get rearAxlePosition() {
-    const [x, y] = this.position;
+    const { x, y } = this.position;
     const rot = this.rotation;
-    return [x + Math.cos(rot) * Car.REAR_AXLE_POS, y + Math.sin(rot) * Car.REAR_AXLE_POS];
+    return new THREE.Vector2(x + Math.cos(rot) * Car.REAR_AXLE_POS, y + Math.sin(rot) * Car.REAR_AXLE_POS);
   }
 
   get frontAxlePosition() {
-    const [x, y] = this.position;
+    const { x, y } = this.position;
     const rot = this.rotation;
-    return [x + Math.cos(rot) * Car.FRONT_AXLE_POS, y + Math.sin(rot) * Car.FRONT_AXLE_POS];
+    return new THREE.Vector2(x + Math.cos(rot) * Car.FRONT_AXLE_POS, y + Math.sin(rot) * Car.FRONT_AXLE_POS);
   }
 
   get rotation() {

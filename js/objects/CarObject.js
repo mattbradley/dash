@@ -45,7 +45,7 @@ export default class CarObject extends THREE.Object3D {
 
   updateCar() {
     const carPosition = this.car.position;
-    this.position.set(carPosition[0], 0, carPosition[1]);
+    this.position.set(carPosition.x, 0, carPosition.y);
     this.rotation.y = -this.car.rotation;
 
     const wheelAngle = this.car.wheelAngle;

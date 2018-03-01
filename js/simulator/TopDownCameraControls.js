@@ -2,16 +2,28 @@ const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 let panning = false;
 
 export default class TopDownCameraControls {
-  constructor(canvas, camera) {
-    this.canvas = canvas;
+  constructor(domElement, camera) {
+    this.domElement = domElement;
     this.camera = camera;
+    this.allowPanning = false;
+    this.enabled = true;
+
+    this.mouseDown = this.mouseDown.bind(this);
+    this.mouseMove = this.mouseMove.bind(this);
+    this.mouseUp = this.mouseUp.bind(this);
+    this.wheel = this.wheel.bind(this);
+
+    this.domElement.addEventListener('mousedown', this.mouseDown);
+    this.domElement.addEventListener('mousemove', this.mouseMove);
+    this.domElement.addEventListener('mouseup', this.mouseUp);
+    this.domElement.addEventListener('wheel', this.wheel);
   }
 
-  enable() {
+  reset(prevCamera) {
     const lookAt = new THREE.Vector3(0, 0, -1);
-    lookAt.applyQuaternion(this.camera.quaternion);
+    lookAt.applyQuaternion(prevCamera.quaternion);
 
-    const ray = new THREE.Ray(this.camera.position, lookAt);
+    const ray = new THREE.Ray(prevCamera.position, lookAt);
     const intersection = ray.intersectPlane(groundPlane);
 
     if (intersection) {
@@ -21,33 +33,16 @@ export default class TopDownCameraControls {
     }
 
     this.camera.rotation.set(-Math.PI / 2, 0, 0);
-
-    this.mouseDown = this.mouseDown.bind(this);
-    this.mouseMove = this.mouseMove.bind(this);
-    this.mouseUp = this.mouseUp.bind(this);
-    this.wheel = this.wheel.bind(this);
-
-    this.canvas.addEventListener('mousedown', this.mouseDown);
-    this.canvas.addEventListener('mousemove', this.mouseMove);
-    this.canvas.addEventListener('mouseup', this.mouseUp);
-    this.canvas.addEventListener('wheel', this.wheel);
-  }
-
-  disable() {
-    this.canvas.removeEventListener('mousedown', this.mouseDown);
-    this.canvas.removeEventListener('mousemove', this.mouseMove);
-    this.canvas.removeEventListener('mouseup', this.mouseUp);
-    this.canvas.removeEventListener('wheel', this.wheel);
   }
 
   mouseDown(event) {
-    if (event.button != 0) return;
+    if (!this.enabled || !this.allowPanning || event.button != 0) return;
     panning = true;
   }
 
   mouseMove(event) {
     if (panning) {
-      const distance = 2 * this.camera.position.y * Math.tan((this.camera.fov / 2) * Math.PI / 180) / this.canvas.clientHeight;
+      const distance = 2 * this.camera.position.y * Math.tan((this.camera.fov / 2) * Math.PI / 180) / this.domElement.clientHeight;
       this.camera.position.x -= distance * event.movementX;
       this.camera.position.z -= distance * event.movementY;
     }
@@ -59,6 +54,8 @@ export default class TopDownCameraControls {
   }
 
   wheel(event) {
+    if (!this.enabled) return;
+
     event.preventDefault();
 
     this.camera.position.y *= Math.pow(0.995, -event.deltaY);

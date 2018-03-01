@@ -17,8 +17,6 @@ import StaticObstacle from "./autonomy/path-planning/StaticObstacle.js";
 
 const savedPoints = [[-631.6930144348489,-33.67084242671334],[-593.9903716035712,-30.01039166639495],[-568.8247726263819,-27.814121210204082],[-540.090234157882,-25.16029440897316],[-514.0095224906171,-22.597978876750254],[-490.21659254854706,-20.401708420559153],[-461.2075202730249,-18.02241542635234],[-431.0088015003984,-15.27707735611351],[-415.4518857690462,-13.72138578297814],[-374.45483725347833,-9.877912484643838],[-348.0080805101781,-7.681642028452778],[-324.6727069131497,-5.576882841269789],[-301.88640093016795,-3.7466574611105914],[-280.5642752513121,-2.099454618967302],[-257.22890165428305,0.3713496442476072],[-231.7887688700697,2.7506426384545577],[-206.25712481684943,4.855401825637642],[-184.20290898593072,6.594115936788864],[-164.61949741822764,7.600739895876428],[-148.87955914885873,7.692251164884394],[-130.668816616275,7.051672281828685],[-114.37981073285812,6.228070860757045],[-97.816271042417,4.580868018613763],[-77.86681439868158,2.567620100438636],[-56.54468871982702,-0.36074050781607614],[-37.51034476617124,-2.740033502023039],[-20.123203654659157,-5.027815227222064],[1.9310121762591272,-6.5835068003573936],[31.855197141862007,-9.420356139604014],[57.478352464090754,-11.52511532678712],[81.91186128921566,-13.629874513970247],[106.80292645938118,-17.74788161932838],[119.33997031347181,-20.676242227583085],[147.34241862990802,-29.00376770730759],[165.0040935484445,-35.86711288290456],[182.0213328603885,-44.68906886380947],[193.71989952976497,-52.36994596996584],[206.36380491989868,-60.99616179687965],[220.18938371097997,-71.27672038511945],[244.01063607808462,-89.26100493931415],[257.9203489672942,-99.60177833721384],[273.9348210436872,-111.68126584626495],[288.8511578919844,-122.84564066523595],[302.9438933192096,-133.46094787015875],[317.4941850914762,-144.3507888821061],[338.3587544252924,-159.9077046134596],[351.9939335074796,-170.33998928036596],[371.21129999914933,-184.61574724560788],[392.07586933296307,-200.26417424596977],[407.99883014034856,-212.25215048601177],[422.36609937459855,-222.86745769093483],[437.5569700299214,-234.21485504792182],[452.93086322325786,-246.0198087499508],[466.47453103643613,-256.0860483408265],[484.9598073760437,-269.9042499610264],[499.235565341286,-280.70257970396545],[519.0019994470048,-295.61891655226304],[533.2777574122471,-306.4172462952034],[548.5601393365735,-317.7646436521925],[565.7642579100728,-330.9422663893375],[581.5041961794415,-342.4726862843406],[597.9762246008769,-354.7351963314076]];
 
-let follow = false;
-
 export default class Simulator {
   constructor(geolocation, domElement) {
     this.geolocation = geolocation;
@@ -31,13 +29,7 @@ export default class Simulator {
     this.renderer.shadowMap.enabled = true;
     domElement.appendChild(this.renderer.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.camera.position.set(0, 20, 20);
-    this.camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-    this.topDownControls = new TopDownCameraControls(this.renderer.domElement, this.camera);
-
-    this.orbitControls = new THREE.OrbitControls(this.camera);
+    this._setUpCameras(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x111111);
@@ -53,7 +45,8 @@ export default class Simulator {
     const carObject = new CarObject(this.car);
     this.scene.add(carObject);
 
-    this.carController = new ManualController();
+    this.manualCarController = new ManualController();
+    this.autonomousCarController = null;
 
     this.dashboard = new Dashboard(this.car);
 
@@ -61,12 +54,13 @@ export default class Simulator {
     this.simulatedTime = 0;
 
     window.addEventListener('resize', () => {
-      this.camera.aspect = domElement.clientWidth / domElement.clientHeight;
-      this.camera.updateProjectionMatrix();
+      this._updateCameraAspects(domElement.clientWidth / domElement.clientHeight);
       this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
     });
 
-    requestAnimationFrame(render.bind(this));
+    this.manualMode();
+
+    requestAnimationFrame(step.bind(this));
 
     /*
     let count = 0;
@@ -126,10 +120,78 @@ export default class Simulator {
     */
   }
 
-  enableEditor() {
+  _setUpCameras(domElement) {
+    this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.freeCamera.position.set(0, 20, 20);
+    this.freeCamera.lookAt(0, 0, 0);
+    this.freeOrbitControls = new THREE.OrbitControls(this.freeCamera);
+    this.freeOrbitControls.enabled = true;
+
+    this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.chaseCamera.position.set(-20, 10, 0);
+    this.chaseOrbitControls = new THREE.OrbitControls(this.chaseCamera);
+    this.chaseOrbitControls.enablePan = false;
+    this.chaseOrbitControls.enabled = false;
+
+    this.topDownCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.topDownCamera.position.set(0, 50, 0);
+    this.topDownCamera.lookAt(0, 0, 0);
+    this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
+    this.topDownCamera.enabled = false;
+
+    this.camera = this.freeCamera;
+  }
+
+  _updateCameraAspects(aspect) {
+    this.freeCamera.aspect = aspect;
+    this.freeCamera.updateProjectionMatrix();
+    this.chaseCamera.aspect = aspect;
+    this.chaseCamera.updateProjectionMatrix();
+  }
+
+  editorMode() {
     this.editor.enabled = true;
-    this.orbitControls.enabled = false;
+    this.freeOrbitControls.enabled = false;
     this.topDownControls.enable();
+  }
+
+  manualMode() {
+    this.editor.enabled = false;
+    this.freeOrbitControls.enabled = true;
+
+    this.carController = this.manualCarController;
+  }
+
+  autonomousMode() {
+    this.editor.enabled = false;
+    this.freeOrbitControls.enabled = true;
+
+    this.carController = this.autonomousCarController;
+  }
+
+  changeCamera(mode) {
+    switch (mode) {
+      case "chase":
+        this.freeOrbitControls.enabled = false;
+        this.topDownControls.enabled = false;
+        this.chaseOrbitControls.enabled = true;
+        this.camera = this.chaseCamera;
+        break;
+      case "free":
+        this.chaseOrbitControls.enabled = false;
+        this.topDownControls.enabled = false;
+        this.freeOrbitControls.enabled = true;
+        this.camera = this.freeCamera;
+        break;
+      case "topDown":
+        this.freeOrbitControls.enabled = false;
+        this.chaseOrbitControls.enabled = false;
+        this.topDownControls.enabled = true;
+        this.camera = this.topDownCamera;
+        break;
+      default:
+        console.log(`Unknown camera mode: ${mode}`);
+    }
   }
 
   go() {
@@ -151,7 +213,6 @@ export default class Simulator {
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
     this.editor.enabled = false;
-    follow = true;
   }
 
   go2() {
@@ -174,7 +235,6 @@ export default class Simulator {
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
     this.editor.enabled = false;
-    follow = true;
   }
 
   go3() {
@@ -203,13 +263,11 @@ export default class Simulator {
     frontGeometry.vertices.push(...path.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
 
-    follow = true;
   }
 
   go4() {
     this.editor.enabled = false;
-    this.orbitControls.enabled = true;
-    this.topDownControls.disable();
+    this.freeOrbitControls.enabled = true;
 
     const circleGeom = new THREE.CircleGeometry(0.15, 32);
     const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
@@ -233,8 +291,7 @@ export default class Simulator {
     obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
     this.scene.add(obsObj);
 
-    this.pathPlannerWorker.postMessage({ lanePath: this.editor.lanePath, obstacles: [obstacle] });
-    return;
+    //this.pathPlannerWorker.postMessage({ lanePath: this.editor.lanePath, obstacles: [obstacle] });
     const planner = new PathPlanner();
 
     let start = performance.now();
@@ -271,9 +328,9 @@ export default class Simulator {
 
     const followPath = new Path(path);
 
-    autoController = new AutonomousController(followPath);
+    this.autonomousCarController = new AutonomousController(followPath);
+    this.autonomousMode();
     this.car.setPose(vehiclePose.pos.x, vehiclePose.pos.y, vehiclePose.rot);
-    //follow = true;
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();
@@ -282,10 +339,8 @@ export default class Simulator {
   }
 }
 
-let autoController = null;
-
-function render(timestamp) {
-  requestAnimationFrame(render.bind(this));
+function step(timestamp) {
+  requestAnimationFrame(step.bind(this));
 
   if (this.prevTimestamp == null) {
     this.prevTimestamp = timestamp;
@@ -296,21 +351,29 @@ function render(timestamp) {
   this.simulatedTime += dt;
   this.prevTimestamp = timestamp;
 
-  const controls = this.carController.control(this.car.pose, this.car.wheelAngle, this.car.speed, dt);
-  if (autoController) {
-    const autoControls = autoController.control(this.car.pose, this.car.wheelAngle, this.car.speed, dt);
-    controls.steer = autoControls.steer;
-  }
+  const prevCarPosition = this.car.position;
+  const prevCarRotation = this.car.rotation;
+
+  const controls =
+    this.carController ?
+    this.carController.control(this.car.pose, this.car.wheelAngle, this.car.speed, dt) :
+    { gas: 0, brake: 1, steer: 0 };
+
   this.car.update(controls, dt);
   this.physics.step(dt);
   //console.log(car.speed * 2.23694);
 
   const carPosition = this.car.position;
   const carRotation = this.car.rotation;
-  if (follow) {
-    this.camera.position.set(carPosition[0] - 0.20 * Math.cos(carRotation), 30, carPosition[1] - 0.20 * Math.sin(carRotation));
-    this.camera.lookAt(carPosition[0], 0, carPosition[1]);
-  }
+
+  this.chaseCamera.position.add({ x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y });
+  this.chaseOrbitControls.target.set(carPosition.x, 0, carPosition.y);
+  this.chaseOrbitControls.rotateLeft(carRotation - prevCarRotation);
+  this.chaseOrbitControls.update();
+
+  this.topDownCamera.position.setX(carPosition.x);
+  this.topDownCamera.position.setZ(carPosition.y);
+  this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
 
   this.dashboard.update(controls);
 

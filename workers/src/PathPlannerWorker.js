@@ -17,12 +17,15 @@ onmessage = function(e) {
   console.log(lanePath);
   console.log(obstacles);
 
-  let start = performance.now();
-  const sd = +new Date;
-  console.log(new Date);
-  const { xysl, width, height, center, rot, path, vehiclePose } = pathPlanner.plan(lanePath, obstacles);
-  console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
-  console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
-  console.log(new Date);
-  console.log(`Grid size: ${width}x${height}`);
+  let count = 0;
+  while (count++ < 100) {
+    let start = performance.now();
+    const sd = +new Date;
+    console.log(new Date);
+    const { xysl, width, height, center, rot, path, vehiclePose } = pathPlanner.plan(lanePath, obstacles);
+    console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
+    console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
+    console.log(new Date);
+    console.log(`Grid size: ${width}x${height}`);
+  }
 };

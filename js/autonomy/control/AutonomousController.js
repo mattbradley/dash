@@ -7,6 +7,7 @@ export default class AutonomousController {
     this.state = 'stopped';
     this.closestFrontPathPos = null;
     this.prevPhiError = 0;
+    this.targetSpeed = 5;
   }
 
   control(pose, wheelAngle, speed, dt) {
@@ -45,8 +46,12 @@ export default class AutonomousController {
     */
 
     const steer = Math.clamp(phiError / dt / Car.MAX_STEER_SPEED, -1, 1);
-    const gas = 0;
-    const brake = 0;
+    let gas = 0;
+    let brake = 0;
+
+    const speedError = 0.5 * (this.targetSpeed - speed);
+    if (speedError > 0) gas = speedError;
+    else if (speedError < 0) brake = -speedError;
 
     return { gas, brake, steer };
   }
