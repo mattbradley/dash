@@ -23,6 +23,9 @@ export default class Simulator {
 
     this.pathPlannerWorker = new Worker('workers/dist/PathPlannerWorker.js');
 
+    this.physics = new Physics();
+    this.car = this.physics.createCar();
+
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
@@ -38,9 +41,6 @@ export default class Simulator {
 
     const map = new MapObject(this.geolocation);
     this.scene.add(map);
-
-    this.physics = new Physics();
-    this.car = this.physics.createCar();
 
     const carObject = new CarObject(this.car);
     this.scene.add(carObject);
@@ -61,63 +61,6 @@ export default class Simulator {
     this.manualMode();
 
     requestAnimationFrame(step.bind(this));
-
-    /*
-    let count = 0;
-    let failed = 0;
-    const gpuStarts = GPGPU.alloc(Math.pow(16, 5), 4);
-    const gpuEnds = GPGPU.alloc(Math.pow(16, 5), 4);
-    const startDate = +new Date;
-
-    for (let x = 1; x <= 50; x += 49/15) {
-      for (let y = -50; y <= 50; y += 100/15) {
-        for (let r = -Math.PI / 2; r <= Math.PI / 2; r += Math.PI/15) {
-          for (let k0 = -0.19; k0 <= 0.19; k0 += 0.38 / 15) {
-            for (let k1 = -0.19; k1 <= 0.19; k1 += 0.38 / 15) {
-              /*
-              const start = { x: 0, y: 0, rot: 0, curv: k0 };
-              const end = { x: x, y: y, rot: r, curv: k1 };
-              const optimizer = new CubicPath(start, end);
-              const converged = optimizer.optimize();
-              const cubicPath = optimizer.buildPath(100);
-
-              const pathGeometry = new THREE.Geometry();
-              pathGeometry.setFromPoints(cubicPath.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
-              const pathLine = new MeshLine();
-              pathLine.setGeometry(pathGeometry);
-
-              const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: converged ? new THREE.Color(0x40ffaa) : new THREE.Color(0xffaa40), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
-              pathObject.renderOrder = 1;
-              this.scene.add(pathObject);
-
-              count++;
-              if (!converged) failed++;
-              if (count % 10000 == 0) {
-                console.log(`Count: ${count} (${failed} failed)`);
-              }
-
-              gpuStarts[count * 4 + 0] = 0;
-              gpuStarts[count * 4 + 1] = 0;
-              gpuStarts[count * 4 + 2] = 0;
-              gpuStarts[count * 4 + 3] = k0;
-              gpuEnds[count * 4 + 0] = x;
-              gpuEnds[count * 4 + 1] = y;
-              gpuEnds[count * 4 + 2] = r;
-              gpuEnds[count * 4 + 3] = k1;
-
-              count++;
-            }
-          }
-        }
-      }
-    }
-
-    const optimized = CubicPathOptimizerGPU.optimizePaths(gpuStarts, gpuEnds);
-    for (let i = 0; i < count; i++) {
-      if (optimized[i * 4 + 3] == 0) failed++;
-    }
-    console.log(`Final count: ${count} (${failed} failed) in ${((+new Date) - startDate) / 1000} seconds`);
-    */
   }
 
   _setUpCameras(domElement) {
@@ -128,7 +71,7 @@ export default class Simulator {
     this.freeOrbitControls.enabled = true;
 
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.chaseCamera.position.set(-20, 10, 0);
+    this._resetChaseCamera();
     this.chaseOrbitControls = new THREE.OrbitControls(this.chaseCamera);
     this.chaseOrbitControls.enablePan = false;
     this.chaseOrbitControls.enabled = false;
@@ -139,7 +82,31 @@ export default class Simulator {
     this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
     this.topDownCamera.enabled = false;
 
-    this.camera = this.freeCamera;
+    this.cameraButtons = {};
+
+    ['free', 'chase', 'topDown'].forEach(c => {
+      const cameraButton = document.getElementById(`camera-${c}`);
+      cameraButton.addEventListener('click', () => this.changeCamera(c));
+      this.cameraButtons[c] = cameraButton;
+    });
+
+    this.changeCamera('chase');
+  }
+
+  _resetFreeCamera() {
+    this.freeCamera.position.copy(this.chaseCamera.position);
+    this.freeCamera.rotation.copy(this.chaseCamera.rotation);
+  }
+
+  _resetChaseCamera() {
+    const pos = this.car.position;
+    const dirVector = THREE.Vector2.fromAngle(this.car.rotation).multiplyScalar(-20);
+    this.chaseCamera.position.set(pos.x + dirVector.x, 10, pos.y + dirVector.y);
+    this.chaseCamera.lookAt(pos.x, 0, pos.y);
+  }
+
+  _resetTopDownCamera() {
+    this.topDownCamera.position.setY(50);
   }
 
   _updateCameraAspects(aspect) {
@@ -171,26 +138,53 @@ export default class Simulator {
 
   changeCamera(mode) {
     switch (mode) {
-      case "chase":
-        this.freeOrbitControls.enabled = false;
-        this.topDownControls.enabled = false;
-        this.chaseOrbitControls.enabled = true;
-        this.camera = this.chaseCamera;
-        break;
       case "free":
         this.chaseOrbitControls.enabled = false;
         this.topDownControls.enabled = false;
         this.freeOrbitControls.enabled = true;
-        this.camera = this.freeCamera;
+
+        if (this.camera == this.freeCamera)
+          this._resetFreeCamera();
+        else
+          this.camera = this.freeCamera;
+
+        break;
+      case "chase":
+        this.freeOrbitControls.enabled = false;
+        this.topDownControls.enabled = false;
+        this.chaseOrbitControls.enabled = true;
+
+        if (this.camera == this.chaseCamera)
+          this._resetChaseCamera();
+        else
+          this.camera = this.chaseCamera;
+
         break;
       case "topDown":
         this.freeOrbitControls.enabled = false;
         this.chaseOrbitControls.enabled = false;
         this.topDownControls.enabled = true;
-        this.camera = this.topDownCamera;
+
+        if (this.camera == this.topDownCamera)
+          this._resetTopDownCamera();
+        else
+          this.camera = this.topDownCamera;
+
         break;
       default:
         console.log(`Unknown camera mode: ${mode}`);
+        return;
+    }
+
+    for (const c in this.cameraButtons) {
+      const classes = this.cameraButtons[c].classList;
+      if (c == mode) {
+        classes.remove('is-outlined');
+        classes.add('is-selected');
+      } else {
+        classes.add('is-outlined');
+        classes.remove('is-selected');
+      }
     }
   }
 
@@ -366,7 +360,8 @@ function step(timestamp) {
   const carPosition = this.car.position;
   const carRotation = this.car.rotation;
 
-  this.chaseCamera.position.add({ x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y });
+  const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
+  this.chaseCamera.position.add(positionOffset);
   this.chaseOrbitControls.target.set(carPosition.x, 0, carPosition.y);
   this.chaseOrbitControls.rotateLeft(carRotation - prevCarRotation);
   this.chaseOrbitControls.update();

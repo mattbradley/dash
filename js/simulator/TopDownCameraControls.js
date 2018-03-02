@@ -5,7 +5,7 @@ export default class TopDownCameraControls {
   constructor(domElement, camera) {
     this.domElement = domElement;
     this.camera = camera;
-    this.allowPanning = false;
+    this.enablePanning = false;
     this.enabled = true;
 
     this.mouseDown = this.mouseDown.bind(this);
@@ -36,7 +36,7 @@ export default class TopDownCameraControls {
   }
 
   mouseDown(event) {
-    if (!this.enabled || !this.allowPanning || event.button != 0) return;
+    if (!this.enabled || !this.enablePanning || event.button != 0) return;
     panning = true;
   }
 
