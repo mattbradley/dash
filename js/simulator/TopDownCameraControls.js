@@ -36,7 +36,7 @@ export default class TopDownCameraControls {
   }
 
   mouseDown(event) {
-    if (!this.enabled || !this.enablePanning || event.button != 0) return;
+    if (!this.enabled || !this.enablePanning || event.button != 2) return;
     panning = true;
   }
 
@@ -49,7 +49,7 @@ export default class TopDownCameraControls {
   }
 
   mouseUp(event) {
-    if (event.button != 0) return;
+    if (event.button != 2) return;
     panning = false;
   }
 

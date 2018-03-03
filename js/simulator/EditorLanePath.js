@@ -36,17 +36,24 @@ export default class Editor {
     canvas.addEventListener('mouseup', this.mouseUp);
     canvas.addEventListener('contextmenu', e => this.enabled && e.preventDefault());
 
-    this.centerlineObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0x004080), lineWidth: 0.1, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    const editorClearOptions = document.getElementById('editor-clear-options');
+    document.getElementById('editor-clear').addEventListener('click', event => {
+      event.stopPropagation();
+      editorClearOptions.classList.toggle('is-hidden');
+    });
+    document.addEventListener('click', () => editorClearOptions.classList.add('is-hidden'));
+
+    this.centerlineObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0x004080), lineWidth: 0.2, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.centerlineObject.rotation.x = Math.PI / 2;
     this.centerlineObject.renderOrder = 1;
     this.group.add(this.centerlineObject);
 
-    this.leftBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.05, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.leftBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.leftBoundaryObject.rotation.x = Math.PI / 2;
     this.leftBoundaryObject.renderOrder = 1;
     this.group.add(this.leftBoundaryObject);
 
-    this.rightBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.05, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.rightBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.rightBoundaryObject.rotation.x = Math.PI / 2;
     this.rightBoundaryObject.renderOrder = 1;
     this.group.add(this.rightBoundaryObject);
@@ -70,7 +77,7 @@ export default class Editor {
   }
 
   addPoint(pos) {
-    const point = new THREE.Mesh(new THREE.CircleGeometry(0.25, 32), new THREE.MeshBasicMaterial({ color: 0x0080ff, depthTest: false, transparent: true, opacity: 0.7 }));
+    const point = new THREE.Mesh(new THREE.CircleGeometry(0.4, 32), new THREE.MeshBasicMaterial({ color: 0x0080ff, depthTest: false, transparent: true, opacity: 0.7 }));
     point.rotation.x = -Math.PI / 2;
     point.position.set(pos.x, 0, pos.y);
     point.userData = { index: this.pointIndex++ };
@@ -78,6 +85,8 @@ export default class Editor {
     this.pointsGroup.add(point);
     this.points.push(point);
     this.lanePath.addAnchor(pos);
+
+    return point;
   }
 
   updatePoint(object, pos) {
@@ -94,14 +103,12 @@ export default class Editor {
   }
 
   mouseDown(event) {
-    if (!this.enabled) return;
-    if (event.button != 0) return;
+    if (!this.enabled || event.button != 0) return;
 
     this.mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
     this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-
     const picked = this.raycaster.intersectObjects(this.points)[0];
 
     if (picked) {
@@ -132,11 +139,9 @@ export default class Editor {
   }
 
   mouseUp(event) {
-    if (!this.enabled) return;
-    if (event.button != 0) return;
+    if (!this.enabled || event.button != 0) return;
 
     this.draggingPoint = null;
-
     if (!this.mouseMoved) {
       const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection != null) {

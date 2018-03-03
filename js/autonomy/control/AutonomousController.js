@@ -16,27 +16,42 @@ export default class AutonomousController {
     const [nextIndex, progress] = this.findNextIndex(frontAxlePos);
     this.nextIndex = nextIndex;
 
-    this.closestFrontPathPos = projectPointOnSegment(frontAxlePos, this.path.poses[this.nextIndex - 1].frontPos, this.path.poses[this.nextIndex].frontPos)[0];
+    let gas = 0;
+    let brake = 0;
 
-    // Determine the desired heading at the specific point on the front path by lerping between prevHeading and nextHeading using progress as the weight
-    const prevHeading = this.nextIndex > 1 ? pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 2].frontPos).angle() : pathPoses[0].rot;
-    const nextHeading = this.nextIndex < pathPoses.length - 1 ? pathPoses[nextIndex + 1].frontPos.clone().sub(pathPoses[nextIndex - 1].frontPos).angle() : pathPoses[pathPoses.length - 1].rot;
-    const desiredHeading = prevHeading + (nextHeading - prevHeading) * progress;
+    let phi; // phi is the desired wheel deflection
 
-    // Determine if the front axle is to the left or right of the front path
-    const pathVec = pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 1].frontPos).normalize();
-    const zero = new THREE.Vector2(0, 0);
-    const left = pathVec.clone().rotateAround(zero, Math.PI / 2).add(this.closestFrontPathPos);
-    const right = pathVec.clone().rotateAround(zero, -Math.PI / 2).add(this.closestFrontPathPos);
-    const dir = frontAxlePos.distanceToSquared(left) < frontAxlePos.distanceToSquared(right) ? -1 : 1;
+    if (nextIndex >= pathPoses.length - 1 && progress >= 1) {
+      gas = 0;
+      brake = 1;
+      phi = 0;
+    } else {
+      const speedError = 0.5 * (this.targetSpeed - speed);
+      if (speedError > 0) gas = speedError;
+      else if (speedError < 0) brake = -speedError;
 
-    const k = 4;
-    const gain = 0.1;
-    const crossTrackError = frontAxlePos.distanceTo(this.closestFrontPathPos);
-    const headingError = Math.wrapAngle(pose.rot - desiredHeading);
+      this.closestFrontPathPos = projectPointOnSegment(frontAxlePos, this.path.poses[this.nextIndex - 1].frontPos, this.path.poses[this.nextIndex].frontPos)[0];
 
-    // phi is the desired wheel deflection
-    const phi = -headingError + gain * Math.atan(k * dir * crossTrackError / speed);
+      // Determine the desired heading at the specific point on the front path by lerping between prevHeading and nextHeading using progress as the weight
+      const prevHeading = this.nextIndex > 1 ? pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 2].frontPos).angle() : pathPoses[0].rot;
+      const nextHeading = this.nextIndex < pathPoses.length - 1 ? pathPoses[nextIndex + 1].frontPos.clone().sub(pathPoses[nextIndex - 1].frontPos).angle() : pathPoses[pathPoses.length - 1].rot;
+      const desiredHeading = prevHeading + (nextHeading - prevHeading) * progress;
+
+      // Determine if the front axle is to the left or right of the front path
+      const pathVec = pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 1].frontPos).normalize();
+      const zero = new THREE.Vector2(0, 0);
+      const left = pathVec.clone().rotateAround(zero, Math.PI / 2).add(this.closestFrontPathPos);
+      const right = pathVec.clone().rotateAround(zero, -Math.PI / 2).add(this.closestFrontPathPos);
+      const dir = frontAxlePos.distanceToSquared(left) < frontAxlePos.distanceToSquared(right) ? -1 : 1;
+
+      const k = 4;
+      const gain = 0.8;
+      const crossTrackError = frontAxlePos.distanceTo(this.closestFrontPathPos);
+      const headingError = Math.wrapAngle(pose.rot - desiredHeading);
+
+      phi = -headingError + gain * Math.atan(k * dir * crossTrackError / speed);
+    }
+
     const phiError = phi - wheelAngle;
     /*
     const dPhiError = (phiError - this.prevPhiError) / dt;
@@ -46,12 +61,6 @@ export default class AutonomousController {
     */
 
     const steer = Math.clamp(phiError / dt / Car.MAX_STEER_SPEED, -1, 1);
-    let gas = 0;
-    let brake = 0;
-
-    const speedError = 0.5 * (this.targetSpeed - speed);
-    if (speedError > 0) gas = speedError;
-    else if (speedError < 0) brake = -speedError;
 
     return { gas, brake, steer };
   }

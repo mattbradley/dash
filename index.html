@@ -22,23 +22,81 @@
                     </div>
                 </div>
             </div>
-            <div id="toolbar" class="gui-box">
-                <div class="button is-static is-pulled-left" style="background: transparent; border: none;">
-                    <span class="icon is-medium has-text-grey-light">
-                        <i class="fas fa-lg fa-camera"></i>
+            <div id="modes" class="gui-box">
+                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
+                    <span class="icon is-medium has-text-grey-lighter">
+                        <i class="fas fa-lg fa-car"></i>
                     </span>
                 </div>
-                <div class="field has-addons" style="padding-left: 8px;">
+                <div class="buttons has-addons" style="padding-left: 8px;">
+                    <span id="mode-manual" class="button is-small is-dark is-outlined is-inverted">Manual</span>
+                    <span id="mode-autonomous" class="button is-small is-dark is-outlined is-inverted">Autonomous</span>
+                </div>
+            </div>
+            <div id="editor-enabler" class="gui-box">
+                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
+                    <span class="icon is-medium has-text-grey-lighter">
+                        <i class="fas fa-lg fa-road"></i>
+                    </span>
+                </div>
+                <div class="field is-grouped" style="padding-left: 8px;">
                     <p class="control">
-                        <span id="camera-chase" class="button is-dark is-outlined is-inverted">Chase</span>
-                    </p>
-                    <p class="control">
-                        <span id="camera-topDown" class="button is-dark is-outlined is-inverted">Top Down</span>
-                    </p>
-                    <p class="control">
-                        <span id="camera-free" class="button is-dark is-outlined is-inverted">Free</span>
+                        <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
                     </p>
                 </div>
+            </div>
+            <div id="editor-controls" class="gui-box is-hidden">
+                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
+                    <span class="icon is-medium has-text-grey-lighter">
+                        <i class="fas fa-lg fa-road"></i>
+                    </span>
+                </div>
+                <div class="field-body" style="padding-left: 8px;">
+                    <div class="field has-addons">
+                        <p class="control">
+                            <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Path</span>
+                        </p>
+                        <p class="control">
+                            <span id="editor-obstacles" class="button is-small is-dark is-outlined is-inverted">Obstacles</span>
+                        </p>
+                    </div>
+                    <div class="field" style="position: relative;">
+                        <p class="control">
+                            <span id="editor-clear" class="button is-small is-danger">Clear&hellip;</span>
+                            <div id="editor-clear-options" class="gui-box is-hidden">
+                                <div class="buttons">
+                                    <span id="editor-clear-all" class="button is-small is-danger">All</span>
+                                    <span id="editor-clear-obstacles" class="button is-small is-warning">Obstacles</span>
+                                    <span id="editor-clear-path" class="button is-small is-warning">Path</span>
+                                </div>
+                            </div>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
+                            <span id="editor-save" class="button is-small is-info">Save</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div id="cameras" class="gui-box">
+                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
+                    <span class="icon is-medium has-text-grey-lighter">
+                        <i class="fas fa-lg fa-eye"></i>
+                    </span>
+                </div>
+                <div class="buttons has-addons" style="padding-left: 8px;">
+                    <span id="camera-chase" class="button is-small is-dark is-outlined is-inverted">Chase</span>
+                    <span id="camera-topDown" class="button is-small is-dark is-outlined is-inverted">Top Down</span>
+                    <span id="camera-free" class="button is-small is-dark is-outlined is-inverted">Free</span>
+                </div>
+            </div>
+            <div class="modal">
+                <div class="modal-background"></div>
+                    <div class="modal-content">
+                        <!-- Any other Bulma elements you want -->
+                    </div>
+                <button class="modal-close is-large" aria-label="close"></button>
             </div>
         </div>
         <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>
