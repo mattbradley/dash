@@ -22,9 +22,12 @@ export default class Dashboard {
     this.gearDom = document.getElementById('gear');
     this.gasDom = document.getElementById('gas');
     this.brakeDom = document.getElementById('brake');
+    this.speedDom = document.getElementById('speed');
+    this.stationDom = document.getElementById('station');
+    this.latitudeDom = document.getElementById('latitude');
   }
 
-  update(controls) {
+  update(controls, speed, station, latitude) {
     if (!this.wheelDom) return;
 
     const wheelTurn = Math.clamp(this.car.wheelAngle / Car.MAX_WHEEL_ANGLE * 0.95, -1, +1);
@@ -56,5 +59,9 @@ export default class Dashboard {
     this.gearDom.innerText = controls.gas < 0 ? 'R' : 'D';
     this.brakeDom.style.clipPath = `inset(50% 50% 0 ${50 - controls.brake * 25}%)`;
     this.gasDom.style.clipPath = `inset(50% ${50 - Math.abs(controls.gas) * 25}% 0 50%)`;
+
+    this.speedDom.innerHTML = speed.toFixed(2);
+    this.stationDom.innerHTML = station !== null ? station.toFixed(2) : '&mdash;';
+    this.latitudeDom.innerHTML = latitude !== null ? latitude.toFixed(2) : '&mdash;';
   }
 }

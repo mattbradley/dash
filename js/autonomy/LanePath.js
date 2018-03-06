@@ -7,8 +7,11 @@ const rightBoundaryGeometry = new THREE.Geometry();
 
 export default class {
   constructor() {
+    if (pointsPerSegment < 3) throw new Error('There must be at least 2 points per LanePath segment.');
+
     this.anchors = [];
     this.centerlines = [];
+    this.sampleLengths = [];
     this.arcLengths = [];
     this.rotations = [];
     this.leftBoundaries = [];
@@ -38,30 +41,37 @@ export default class {
 
   sampleStations(startStation, num, interval) {
     const samples = [];
-    let index = 0;
-    let segmentIndex = 0;
+    let anchorIndex = 0;
+    let sampleIndex = 0;
     let totalLength = 0;
     let nextStation = startStation;
-    let [p0, p1, p2, p3] = this.anchorsForSplineIndex(index);
+    let [p0, p1, p2, p3] = this.anchorsForSplineIndex(anchorIndex);
+
+    while (totalLength + this.arcLengths[anchorIndex] < nextStation) {
+      totalLength += this.arcLengths[anchorIndex];
+
+      if (++anchorIndex >= this.arcLengths.length)
+        throw new Error(`Exhausted lane path before reaching ${num} centerline samples at ${interval}m intervals.`);
+    }
 
     for (let i = 0; i < num; i++) {
-      let length = this.arcLengths[index][segmentIndex];
+      let length = this.sampleLengths[anchorIndex][sampleIndex];
       while (totalLength + length < nextStation) {
         totalLength += length;
 
-        if (++segmentIndex >= this.arcLengths[index].length) {
-          segmentIndex = 0;
+        if (++sampleIndex >= this.sampleLengths[anchorIndex].length) {
+          sampleIndex = 0;
 
-          if (++index >= this.arcLengths.length)
+          if (++anchorIndex >= this.sampleLengths.length)
             throw new Error(`Exhausted lane path before reaching ${num} centerline samples at ${interval}m intervals.`);
 
-          [p0, p1, p2, p3] = this.anchorsForSplineIndex(index);
+          [p0, p1, p2, p3] = this.anchorsForSplineIndex(anchorIndex);
         }
 
-        length = this.arcLengths[index][segmentIndex];
+        length = this.sampleLengths[anchorIndex][sampleIndex];
       }
 
-      const weight = (segmentIndex + (nextStation - totalLength) / length) / this.arcLengths[index].length;
+      const weight = (sampleIndex + (nextStation - totalLength) / length) / this.sampleLengths[anchorIndex].length;
       const pos = catmullRomVec(weight, p0, p1, p2, p3);
       const tangent = tangentAt(weight, p0, p1, p2, p3);
       const rot = Math.atan2(tangent.y, tangent.x);
@@ -72,6 +82,97 @@ export default class {
     }
 
     return samples;
+  }
+
+  stationLatitudeFromPosition(position, aroundAnchorIndex = null) {
+    const [anchorIndex, sampleIndex, sampleStation, prevSampleStation] = this._findClosestSample(position, aroundAnchorIndex);
+
+    let prevPoint;
+    let nextPoint;
+    let prevStation;
+    let nextStation;
+
+    if (anchorIndex == 0 && sampleIndex == 0) {
+      prevPoint = this.centerlines[anchorIndex][sampleIndex];
+      nextPoint = this.centerlines[anchorIndex][sampleIndex + 1];
+      prevStation = 0;
+      nextStation = this.sampleLengths[anchorIndex][sampleIndex];
+    } else if (anchorIndex == this.centerlines.length - 1 && sampleIndex == this.centerlines[anchorIndex].length - 1) {
+      prevPoint = this.centerlines[anchorIndex][sampleIndex - 1];
+      nextPoint = this.centerlines[anchorIndex][sampleIndex];
+      prevStation = prevSampleStation;
+      nextStation = sampleStation;
+    } else {
+      prevPoint = sampleIndex == 0 ? this.centerlines[anchorIndex - 1][this.centerlines[anchorIndex - 1].length - 1] : this.centerlines[anchorIndex][sampleIndex - 1];
+      nextPoint = sampleIndex == this.centerlines[anchorIndex].length - 1 ? this.centerlines[anchorIndex + 1][0] : this.centerlines[anchorIndex][sampleIndex + 1];
+
+      if (position.distanceToSquared(prevPoint) < position.distanceToSquared(nextPoint)) {
+        prevPoint = prevPoint;
+        nextPoint = this.centerlines[anchorIndex][sampleIndex];
+        prevStation = prevSampleStation;
+        nextStation = sampleStation;
+      } else {
+        prevPoint = this.centerlines[anchorIndex][sampleIndex];
+        nextPoint = nextPoint;
+        prevStation = sampleStation;
+        nextStation = sampleStation + this.sampleLengths[anchorIndex][sampleIndex];
+      }
+    }
+
+    const distSqr = prevPoint.distanceToSquared(nextPoint);
+    const progress = Math.clamp(position.clone().sub(prevPoint).dot(nextPoint.clone().sub(prevPoint)) / distSqr, 0, 1);
+    const projectedPosition = nextPoint.clone().sub(prevPoint).multiplyScalar(progress).add(prevPoint);
+
+    const station = prevStation + (nextStation - prevStation) * progress;
+    const latitude = Math.sign((nextPoint.x - prevPoint.x) * (position.y - prevPoint.y) - (nextPoint.y - prevPoint.y) * (position.x - prevPoint.x)) * position.distanceTo(projectedPosition);
+
+    return [station, latitude, anchorIndex];
+  }
+
+  _findClosestSample(position, aroundAnchorIndex = null) {
+    let closest = Number.POSITIVE_INFINITY;
+    let bestAnchorIndex;
+    let bestSampleIndex;
+    let bestStation;
+    let bestPrevStation;
+
+    let currStation = 0;
+    let prevStation = 0;
+
+    let startAnchorIndex = 0;
+    let endAnchorIndex = this.centerlines.length - 1;
+
+    if (aroundAnchorIndex !== null) {
+      startAnchorIndex = Math.max(0, aroundAnchorIndex - 1);
+      endAnchorIndex = Math.min(this.centerlines.length - 1, aroundAnchorIndex + 1);
+    }
+
+    if (startAnchorIndex > 0) {
+      for (let anchorIndex = 0; anchorIndex < startAnchorIndex; anchorIndex++) {
+        currStation += this.arcLengths[anchorIndex];
+      }
+
+      prevStation = currStation - this.sampleLengths[startAnchorIndex - 1][this.sampleLengths[startAnchorIndex - 1].length - 1];
+    }
+
+    for (let anchorIndex = startAnchorIndex; anchorIndex <= endAnchorIndex; anchorIndex++) {
+      const centerline = this.centerlines[anchorIndex];
+      for (let sampleIndex = 0; sampleIndex < centerline.length; sampleIndex++) {
+        const distSq = position.distanceToSquared(centerline[sampleIndex]);
+        if (distSq < closest) {
+          closest = distSq;
+          bestAnchorIndex = anchorIndex;
+          bestSampleIndex = sampleIndex;
+          bestStation = currStation;
+          bestPrevStation = prevStation;
+        }
+
+        prevStation = currStation;
+        currStation += this.sampleLengths[anchorIndex][sampleIndex];
+      }
+    }
+
+    return [bestAnchorIndex, bestSampleIndex, bestStation, bestPrevStation];
   }
 
   addAnchor(position) {
@@ -122,10 +223,11 @@ export default class {
     lengths.push(prevPoint.distanceTo(p2));
 
     this.centerlines[index] = points;
-    this.arcLengths[index] = lengths;
+    this.sampleLengths[index] = lengths;
     this.rotations[index] = pointRotations;
     this.leftBoundaries[index] = leftBoundary;
     this.rightBoundaries[index] = rightBoundary;
+    this.arcLengths[index] = lengths.reduce((sum, l) => sum + l);
   }
 
   anchorsForSplineIndex(index) {

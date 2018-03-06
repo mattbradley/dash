@@ -33,7 +33,8 @@ export default class Simulator {
     this._setUpCameras(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x111111, 0.0025);
+    this.sceneFog = new THREE.FogExp2(0x111111, 0.0025);
+    this.scene.fog = this.sceneFog;
     this.scene.background = new THREE.Color(0x111111);
 
     this.editor = new Editor(this.renderer.domElement, this.editorCamera, this.scene);
@@ -51,6 +52,8 @@ export default class Simulator {
     this.paused = false;
 
     this.prevTimestamp = null;
+    this.frameCounter = 0;
+    this.fpsTime = 0;
     this.simulatedTime = 0;
 
     window.addEventListener('resize', () => {
@@ -66,14 +69,15 @@ export default class Simulator {
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-save').addEventListener('click', this.finalizeEditor.bind(this));
 
-    this.dashboardBox = document.getElementById('dashboard');
-    this.camerasBox = document.getElementById('cameras');
-    this.modesBox = document.getElementById('modes');
-    this.editorEnablerBox = document.getElementById('editor-enabler');
-    this.editorControlsBox = document.getElementById('editor-controls');
+    this.simModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('sim-mode-box'), 0);
+    this.editModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('edit-mode-box'), 0);
+
+    this.fpsBox = document.getElementById('fps');
 
     this.enableManualMode();
     this.changeCamera('chase');
+
+    this.aroundAnchorIndex = null;
 
     requestAnimationFrame(step.bind(this));
   }
@@ -81,12 +85,14 @@ export default class Simulator {
   _setUpCameras(domElement) {
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.chaseCameraControls = new THREE.OrbitControls(this.chaseCamera, domElement);
+    this.chaseCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.chaseCameraControls.enablePan = false;
     this.chaseCameraControls.enabled = false;
     this._resetChaseCamera();
 
     this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.freeCameraControls = new THREE.OrbitControls(this.freeCamera, domElement);
+    this.freeCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.freeCameraControls.enabled = true;
     this._resetFreeCamera();
 
@@ -146,16 +152,17 @@ export default class Simulator {
     this.topDownControls.enabled = false;
     this.freeCameraControls.enabled = false;
 
-    this.dashboardBox.classList.add('is-hidden');
-    this.camerasBox.classList.add('is-hidden');
-    this.modesBox.classList.add('is-hidden');
-    this.editorEnablerBox.classList.add('is-hidden');
-    this.editorControlsBox.classList.remove('is-hidden');
+    this.scene.fog = null;
+
+    this.simModeBoxes.forEach(el => el.classList.add('is-hidden'));
+    this.editModeBoxes.forEach(el => el.classList.remove('is-hidden'));
   }
 
   finalizeEditor() {
     this.editor.enabled = false;
     this.editorCameraControls.enabled = false;
+
+    this.scene.fog = this.sceneFog;
 
     if (this.previousCamera == this.chaseCamera)
       this.chaseCameraControls.enabled = true;
@@ -166,11 +173,8 @@ export default class Simulator {
     else
       this.changeCamera('chase');
 
-    this.dashboardBox.classList.remove('is-hidden');
-    this.camerasBox.classList.remove('is-hidden');
-    this.modesBox.classList.remove('is-hidden');
-    this.editorEnablerBox.classList.remove('is-hidden');
-    this.editorControlsBox.classList.add('is-hidden');
+    this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
+    this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
     
     this.go();
   }
@@ -346,6 +350,8 @@ function step(timestamp) {
 
     const carPosition = this.car.position;
     const carRotation = this.car.rotation;
+    const carRearAxle = this.car.rearAxlePosition;
+    const carSpeed = this.car.speed;
 
     const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
     this.chaseCamera.position.add(positionOffset);
@@ -357,7 +363,27 @@ function step(timestamp) {
     this.topDownCamera.position.setZ(carPosition.y);
     this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
 
-    this.dashboard.update(controls);
+    let station = null;
+    let latitude = null;
+
+    if (this.editor.lanePath.anchors.length > 1) {
+      const [s, l, aroundAnchorIndex] = this.editor.lanePath.stationLatitudeFromPosition(carRearAxle, this.aroundAnchorIndex);
+      this.aroundAnchorIndex = aroundAnchorIndex;
+
+      station = s;
+      latitude = l;
+    }
+
+    this.dashboard.update(controls, carSpeed, station, latitude);
+  }
+
+  this.frameCounter++;
+  this.fpsTime += timestamp - this.prevTimestamp;
+  if (this.fpsTime >= 1000) {
+    const fps = this.frameCounter / (this.fpsTime / 1000);
+    this.frameCounter = 0;
+    this.fpsTime = 0;
+    this.fpsBox.innerHTML = fps.toFixed(1);
   }
 
   this.renderer.render(this.scene, this.camera);

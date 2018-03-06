@@ -6,8 +6,8 @@
 	</head>
 	<body>
         <div id="container">
-            <div id="dashboard" class="gui-box">
-                <div id="controls">
+            <div id="dashboard" class="gui-box sim-mode-box">
+                <div id="controls" class="is-pulled-left">
                     <div id="brake"></div>
                     <div id="gas"></div>
                     <div id="gear"></div>
@@ -21,8 +21,30 @@
                         </div>
                     </div>
                 </div>
+                <div id="stats" class="is-pulled-right columns">
+                    <div class="column has-text-centered">
+                        <div class="heading has-text-grey">Speed</div>
+                        <div id="speed" class="is-size-6 has-text-grey-lighter has-text-weight-bold">&mdash;</div>
+                        <div class="is-size-7 has-text-grey">m/s</div>
+                    </div>
+                    <div class="column has-text-centered">
+                        <div class="heading has-text-grey">Station</div>
+                        <div id="station" class="is-size-6 has-text-grey-lighter has-text-weight-bold">&mdash;</div>
+                        <div class="is-size-7 has-text-grey">meters</div>
+                    </div>
+                    <div class="column has-text-centered">
+                        <div class="heading has-text-grey">Latitude</div>
+                        <div id="latitude" class="is-size-6 has-text-grey-lighter has-text-weight-bold">&mdash;</div>
+                        <div class="is-size-7 has-text-grey">meters</div>
+                    </div>
+                </div>
             </div>
-            <div id="modes" class="gui-box">
+            <div id="fps-box" class="gui-box">
+                <div class="is-size-7 has-text-grey-light">
+                    <span id="fps">&mdash;</span> fps
+                </div>
+            </div>
+            <div id="modes" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-car"></i>
@@ -33,7 +55,7 @@
                     <span id="mode-autonomous" class="button is-small is-dark is-outlined is-inverted">Autonomous</span>
                 </div>
             </div>
-            <div id="editor-enabler" class="gui-box">
+            <div id="editor-enabler" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-road"></i>
@@ -45,7 +67,7 @@
                     </p>
                 </div>
             </div>
-            <div id="editor-controls" class="gui-box is-hidden">
+            <div id="editor-controls" class="gui-box edit-mode-box is-hidden">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-road"></i>
@@ -79,7 +101,7 @@
                     </div>
                 </div>
             </div>
-            <div id="cameras" class="gui-box">
+            <div id="cameras" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-eye"></i>
