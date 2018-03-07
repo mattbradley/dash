@@ -74,7 +74,7 @@ export default {
     };
   },
 
-  update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint) {
+  update(config, xyWidth, xyHeight, xyCenterPoint) {
     return {
       width: xyWidth,
       height: xyHeight,

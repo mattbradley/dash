@@ -4,20 +4,20 @@ export default class ManualController {
 
     document.addEventListener('keydown', event => {
       switch (event.key) {
-        case 'w': this.carKeys.forward = true; break;
-        case 's': this.carKeys.backward = true; break;
-        case 'a': this.carKeys.left = true; break;
-        case 'd': this.carKeys.right = true; break;
+        case 'w': case 'W': this.carKeys.forward = true; break;
+        case 's': case 'S': this.carKeys.backward = true; break;
+        case 'a': case 'A': this.carKeys.left = true; break;
+        case 'd': case 'D': this.carKeys.right = true; break;
         case ' ': this.carKeys.brake = true; break;
       }
     });
 
     document.addEventListener('keyup', event => {
       switch (event.key) {
-        case 'w': this.carKeys.forward = false; break;
-        case 's': this.carKeys.backward = false; break;
-        case 'a': this.carKeys.left = false; break;
-        case 'd': this.carKeys.right = false; break;
+        case 'w': case 'W': this.carKeys.forward = false; break;
+        case 's': case 'S': this.carKeys.backward = false; break;
+        case 'a': case 'A': this.carKeys.left = false; break;
+        case 'd': case 'D': this.carKeys.right = false; break;
         case ' ': this.carKeys.brake = false; break;
       }
     });

@@ -19,9 +19,9 @@ float sampleStaticCost(vec4 xytk) {
   vec2 sl = texture(xyslMap, xyTexCoords).xy;
 
   vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slObstacleGrid, 0)) / vec2(slGridCellSize) + 0.5;
-  float obstacleCost = texture(slObstacleGrid, slTexCoords).x;
+  float obstacleCost = texture(slObstacleGrid, slTexCoords).r;
 
-  if (obstacleCost == 1.0) return -1.0; // Infinite cost
+  if (obstacleCost >= 0.75) return -1.0; // Infinite cost
   obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
 
   float absLatitude = abs(sl.y);
@@ -233,7 +233,8 @@ const SHARED_UNIFORMS = {
   softLateralAccelerationPenalty: { type: 'float' },
   linearLateralAccelerationPenalty: { type: 'float' },
   dCurvatureMax: { type: 'float' },
-  pathSamplingStep: { type: 'float' }
+  pathSamplingStep: { type: 'float' },
+  rearAxleToCenter: { type: 'float' }
 };
 
 function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
@@ -257,6 +258,7 @@ function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
     linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
     dCurvatureMax: config.dCurvatureMax,
     pathSamplingStep: config.pathSamplingStep,
+    rearAxleToCenter: config.rearAxleToCenter
   };
 }
 

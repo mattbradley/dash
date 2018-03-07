@@ -1,8 +1,12 @@
 import Car from "../physics/Car.js";
 
+const MPS_TO_MPH = 2.23694;
+const METERS_TO_FEET = 3.28084;
+
 export default class Dashboard {
   constructor(car) {
     this.car = car;
+    this.units = 'metric';
 
     if (document.readyState == 'complete') {
       this.fetchDomElements.call(this);
@@ -25,10 +29,45 @@ export default class Dashboard {
     this.speedDom = document.getElementById('speed');
     this.stationDom = document.getElementById('station');
     this.latitudeDom = document.getElementById('latitude');
+
+    this.speedUnitsDom = document.getElementById('speed-units');
+    this.stationUnitsDom = document.getElementById('station-units');
+    this.latitudeUnitsDom = document.getElementById('latitude-units');
+
+    [this.speedUnitsDom, this.stationUnitsDom, this.latitudeUnitsDom].forEach(el => {
+      el.addEventListener('click', event => {
+        this.toggleUnits();
+      });
+    });
+  }
+
+  toggleUnits() {
+    let speedUnits;
+    let distanceUnits;
+
+    if (this.units == 'metric') {
+      this.units = 'imperial';
+      speedUnits = 'mph';
+      distanceUnits = 'feet';
+    } else {
+      this.units = 'metric';
+      speedUnits = 'm/s';
+      distanceUnits = 'meters';
+    }
+
+    this.speedUnitsDom.innerHTML = speedUnits;
+    this.stationUnitsDom.innerHTML = distanceUnits;
+    this.latitudeUnitsDom.innerHTML = distanceUnits;
   }
 
   update(controls, speed, station, latitude) {
     if (!this.wheelDom) return;
+
+    if (this.units == 'imperial') {
+      speed *= MPS_TO_MPH;
+      station = station !== null ? station * METERS_TO_FEET : null;
+      latitude = latitude !== null ? latitude * METERS_TO_FEET : null;
+    }
 
     const wheelTurn = Math.clamp(this.car.wheelAngle / Car.MAX_WHEEL_ANGLE * 0.95, -1, +1);
 

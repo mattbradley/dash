@@ -1,4 +1,4 @@
-import GPGPU from "../../GPGPU2.js";
+import GPGPU from "../../GPGPU.js";
 import Car from "../../physics/Car.js";
 import CubicPath from "./CubicPath.js";
 import QuinticPath from "./QuinticPath.js";
@@ -10,6 +10,7 @@ import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
 import optimizeQuinticPaths from "./gpgpu-programs/optimizeQuinticPaths.js";
 import pathFromVehicleCosts from "./gpgpu-programs/pathFromVehicleCosts.js";
 import graphSearch from "./gpgpu-programs/graphSearch.js";
+import xyObstacleCostGrid from "./gpgpu-programs/xyObstacleCostGrid.js";
 
 const NUM_ACCELERATION_PROFILES = 8;
 const NUM_VELOCITY_RANGES = 4;
@@ -33,17 +34,17 @@ const config = {
 
   cubicPathPenalty: 0.1,
 
-  lethalDilationS: Car.HALF_CAR_LENGTH + 0.6, // meters
+  lethalDilationS: Car.HALF_CAR_LENGTH + 2, // meters
   hazardDilationS: 2, // meters
-  lethalDilationL: Car.HALF_CAR_WIDTH + 0.3, //meters
+  lethalDilationL: Car.HALF_CAR_WIDTH + 0.5, //meters
   hazardDilationL: 1, // meters
 
   obstacleHazardCost: 10,
 
   laneWidth: 3.7, // meters
-  laneShoulderCost: 5,
+  laneShoulderCost: 10,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 0.5, // cost / meter
+  laneCostSlope: 5, // cost / meter
 
   stationReachDiscount: -10,
   extraTimePenalty: 10,
@@ -58,7 +59,9 @@ const config = {
   softLateralAccelerationPenalty: 10,
   linearLateralAccelerationPenalty: 1,
 
-  dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE
+  dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
+
+  rearAxleToCenter: -Car.REAR_AXLE_POS
 };
 
 /* Obstacle cost map:
@@ -87,7 +90,8 @@ export default class PathPlanner {
       ...optimizeCubicPaths.setUp(),
       optimizeQuinticPaths.setUp(),
       ...pathFromVehicleCosts.setUp(),
-      graphSearch.setUp()
+      graphSearch.setUp(),
+      xyObstacleCostGrid.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
     this.gpgpu = new GPGPU(programs);
@@ -142,7 +146,8 @@ export default class PathPlanner {
       ...optimizeCubicPaths.update(config, vehiclePose),
       optimizeQuinticPaths.update(config, vehiclePose),
       ...pathFromVehicleCosts.update(config, vehiclePose, xyCenterPoint, slCenterPoint),
-      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint)
+      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint),
+      xyObstacleCostGrid.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -212,7 +217,7 @@ export default class PathPlanner {
       };
     });
 
-    return { xysl: outputs[4], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
+    return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
   }
 
   _buildLattice(lanePath, vehicleRot, vehicleXform) {

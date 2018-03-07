@@ -1,5 +1,4 @@
 import GPGPU from "../../GPGPU.js";
-import CubicPathOptimizer from "./CubicPathOptimizerGPU.js";
 
 const SPATIAL_HORIZON = 100; // meters
 const LANE_WIDTH = 3.7; // meters
@@ -40,50 +39,5 @@ export default class {
     }
 
     this.lattice = lattice;
-  }
-
-  optimizePaths() {
-    const start = performance.now();
-    const halfLatitudeConnectivity = Math.floor(LATITUDE_CONNECTIVITY / 2);
-    const latitudeConnections = NUM_LATITUDES * LATITUDE_CONNECTIVITY - halfLatitudeConnectivity * (halfLatitudeConnectivity + 1);
-    const stationConnections = NUM_STATIONS * STATION_CONNECTIVITY - STATION_CONNECTIVITY * (STATION_CONNECTIVITY + 1) / 2;
-    const numPaths = latitudeConnections * stationConnections;
-
-    const pathStarts = GPGPU.alloc(numPaths, 4);
-    const pathEnds = GPGPU.alloc(numPaths, 4);
-    let index = 0;
-
-    for (let s1 = 0; s1 < NUM_STATIONS; s1++) {
-      for (let l1 = 0; l1 < NUM_LATITUDES; l1++) {
-        for (let s2 = s1 + 1; s2 <= s1 + STATION_CONNECTIVITY && s2 < NUM_STATIONS; s2++) {
-          const start = this.lattice[s1][l1];
-
-          for (let l2 = Math.max(l1 - halfLatitudeConnectivity, 0); l2 <= l1 + halfLatitudeConnectivity && l2 < NUM_LATITUDES; l2++) {
-            const end = this.lattice[s2][l2];
-
-            pathStarts[index] = start.pos.x;
-            pathEnds[index++] = end.pos.x;
-
-            pathStarts[index] = start.pos.y;
-            pathEnds[index++] = end.pos.y;
-
-            pathStarts[index] = start.rot;
-            pathEnds[index++] = end.rot;
-
-            pathStarts[index] = start.curv;
-            pathEnds[index++] = end.curv;
-          }
-        }
-      }
-    }
-
-    const paths = CubicPathOptimizer.optimizePaths(pathStarts, pathEnds);
-    console.log(`Optimized ${numPaths} paths in ${(performance.now() - start) / 1000} seconds`);
-
-    let converged = 0;
-    for (let i = 0; i < numPaths; i++)
-      if (paths[i * 4 + 3] != 0) converged++;
-
-    console.log(`${converged} out of ${numPaths} converged`);
   }
 }

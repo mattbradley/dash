@@ -6,11 +6,11 @@ import AutonomousController from "./autonomy/control/AutonomousController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
-import Editor from "./simulator/EditorLanePath.js";
+import Editor from "./simulator/Editor.js";
+import OrbitControls from "./simulator/OrbitControls.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
 import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";
-import CubicPathOptimizerGPU from "./autonomy/path-planning/CubicPathOptimizerGPU.js";
 import RoadLattice from "./autonomy/path-planning/RoadLattice.js";
 import PathPlanner from "./autonomy/path-planning/PathPlanner.js";
 import StaticObstacle from "./autonomy/path-planning/StaticObstacle.js";
@@ -84,14 +84,14 @@ export default class Simulator {
 
   _setUpCameras(domElement) {
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.chaseCameraControls = new THREE.OrbitControls(this.chaseCamera, domElement);
+    this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
     this.chaseCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.chaseCameraControls.enablePan = false;
     this.chaseCameraControls.enabled = false;
     this._resetChaseCamera();
 
     this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.freeCameraControls = new THREE.OrbitControls(this.freeCamera, domElement);
+    this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
     this.freeCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.freeCameraControls.enabled = true;
     this._resetFreeCamera();
@@ -283,13 +283,13 @@ export default class Simulator {
     let start = performance.now();
     const sd = +new Date;
     console.log(new Date);
-    const { xysl, width, height, center, rot, path, vehiclePose } = planner.plan(this.editor.lanePath, [obstacle]);
+    const { xysl, xyObstacle, width, height, center, rot, path, vehiclePose } = planner.plan(this.editor.lanePath, [obstacle]);
     console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
     console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
     console.log(new Date);
     console.log(`Grid size: ${width}x${height}`);
 
-    const xyslTex = new THREE.DataTexture(xysl, width, height, THREE.RGBAFormat, THREE.FloatType);
+    const xyslTex = new THREE.DataTexture(xyObstacle, width, height, THREE.RGBAFormat, THREE.FloatType);
     xyslTex.flipY = true;
     //xyslTex.magFilter = THREE.LinearFilter;
     xyslTex.needsUpdate = true;
@@ -346,7 +346,6 @@ function step(timestamp) {
 
     this.car.update(controls, dt);
     this.physics.step(dt);
-    //console.log(car.speed * 2.23694);
 
     const carPosition = this.car.position;
     const carRotation = this.car.rotation;

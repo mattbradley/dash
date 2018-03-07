@@ -70,34 +70,3 @@ export default {
     ];
   }
 }
-
-/*
-export default function(config, slWidth, slHeight) {
-  return [
-    { // SL-space obstacle grid S dilation
-      kernel: SL_OBSTACLE_DILATION_KERNEL,
-      width: slWidth,
-      height: slHeight,
-      output: { name: 'slObstacleGridStationDilated' },
-      uniforms: {
-        slObstacleGrid: { type: 'outputTexture' },
-        delta: [1 / slWidth, 0],
-        lethalDilation: { type: 'int', value: Math.ceil(config.lethalDilationS / config.slGridCellSize) },
-        hazardDilation: { type: 'int', value: Math.ceil(config.hazardDilationS / config.slGridCellSize) }
-      }
-    },
-    { // SL-space obstacle grid L dilation
-      kernel: SL_OBSTACLE_DILATION_KERNEL,
-      width: slWidth,
-      height: slHeight,
-      output: { name: 'slObstacleGridDilated' },
-      uniforms: {
-        slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridStationDilated' },
-        delta: [0, 1 / slHeight],
-        lethalDilation: { type: 'int', value: Math.ceil(config.lethalDilationL / config.slGridCellSize) },
-        hazardDilation: { type: 'int', value: Math.ceil(config.hazardDilationL / config.slGridCellSize) }
-      }
-    }
-  ];
-}
-*/

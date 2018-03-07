@@ -56,6 +56,7 @@ export default class Car {
   setPose(x, y, rotation) {
     this.destroyBodies();
 
+    // Translate so that x and y become the center of the vehicle (instead of the center of the rear axle)
     x -= Car.REAR_AXLE_POS * Math.cos(rotation);
     y -= Car.REAR_AXLE_POS * Math.sin(rotation);
 
