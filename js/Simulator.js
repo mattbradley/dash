@@ -20,6 +20,7 @@ export default class Simulator {
     this.geolocation = geolocation;
 
     this.pathPlannerWorker = new Worker('workers/dist/PathPlannerWorker.js');
+    this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
 
     this.physics = new Physics();
     this.car = this.physics.createCar();
@@ -49,8 +50,12 @@ export default class Simulator {
     this.autonomousCarController = null;
 
     this.dashboard = new Dashboard(this.car);
-    this.paused = false;
 
+    this.plannerReady = false;
+    this.plannedPathGroup = new THREE.Group();
+    this.scene.add(this.plannedPathGroup);
+
+    this.paused = false;
     this.prevTimestamp = null;
     this.frameCounter = 0;
     this.fpsTime = 0;
@@ -175,8 +180,14 @@ export default class Simulator {
 
     this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
+
+    const centerline = this.editor.lanePath.centerline;
+    const pos = centerline[0].clone().sub(centerline[1]).normalize().multiplyScalar(10).add(centerline[0])
+    const dir = centerline[1].clone().sub(centerline[0]);
+    const rot = Math.atan2(dir.y, dir.x);
+    this.car.setPose(pos.x, pos.y, rot);
     
-    this.go();
+    this.plannerReady = true;
   }
 
   enableManualMode() {
@@ -249,6 +260,59 @@ export default class Simulator {
         classes.remove('is-selected');
       }
     }
+  }
+
+  startPlanner(pose, station) {
+    this.plannerReady = false;
+    this.pathPlannerWorker.postMessage({
+      vehiclePose: pose,
+      vehicleStation: station,
+      lanePath: this.editor.lanePath,
+      obstacles: []
+    });
+  }
+
+  receivePlannedPath(event) {
+    const { path } = event.data;
+
+    this.scene.remove(this.plannedPathGroup);
+    this.plannedPathGroup = new THREE.Group();
+    this.scene.add(this.plannedPathGroup);
+
+    const circleGeom = new THREE.CircleGeometry(0.15, 32);
+    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
+
+    const lattice = new RoadLattice(this.editor.lanePath);
+    lattice.lattice.forEach(cells => {
+      cells.forEach(c => {
+        const circle = new THREE.Mesh(circleGeom, circleMat);
+        circle.position.set(c.pos.x, 0, c.pos.y);
+        circle.rotation.x = -Math.PI / 2;
+        this.plannedPathGroup.add(circle);
+      });
+    });
+
+    const pathGeometry = new THREE.Geometry();
+    pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
+    const pathLine = new MeshLine();
+    pathLine.setGeometry(pathGeometry);
+
+    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+    pathObject.renderOrder = 1;
+    this.plannedPathGroup.add(pathObject);
+
+    const followPath = new Path(path);
+
+    this.autonomousCarController = new AutonomousController(followPath);
+    if (this.carController != this.manualCarController)
+      this.carController = this.autonomousCarController;
+
+    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
+    const frontGeometry = new THREE.Geometry();
+    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
+    this.plannedPathGroup.add(new THREE.Line(frontGeometry, frontMaterial));
+
+    this.plannerReady = true;
   }
 
   go() {
@@ -372,6 +436,9 @@ function step(timestamp) {
       station = s;
       latitude = l;
     }
+
+    if (this.plannerReady)
+      this.startPlanner(this.car.pose, station);
 
     this.dashboard.update(controls, carSpeed, station, latitude);
   }

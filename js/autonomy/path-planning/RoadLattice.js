@@ -17,10 +17,10 @@ if (LATITUDE_CONNECTIVITY > NUM_LATITUDES)
   throw new Error("LATITUDE_CONNECTIVITY cannot be larger than NUM_LATITUDES.");
 
 export default class {
-  constructor(lanePath) {
+  constructor(lanePath, vehicleStation) {
     const stationInterval = SPATIAL_HORIZON / NUM_STATIONS;
     // TODO: try transforming points into vehicle space
-    const centerline = lanePath.sampleStations(stationInterval, NUM_STATIONS, stationInterval);
+    const centerline = lanePath.sampleStations(vehicleStation + stationInterval, NUM_STATIONS, stationInterval);
     const lattice = new Array(NUM_STATIONS);
     const offset = Math.floor(NUM_LATITUDES / 2);
 

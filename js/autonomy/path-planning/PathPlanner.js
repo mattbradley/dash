@@ -98,17 +98,17 @@ export default class PathPlanner {
     console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
   }
 
-  plan(lanePath, obstacles) {
-    const centerlineRaw = lanePath.sampleStations(0, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
+  plan(vehiclePose, vehicleStation, lanePath, obstacles) {
+    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
 
-    const vehiclePose = {
+    /*vehiclePose = {
       pos: centerlineRaw[0].pos.clone().sub(centerlineRaw[1].pos).normalize().multiplyScalar(10).add(centerlineRaw[0].pos),
       rot: centerlineRaw[0].rot,
       curv: 0,
       dCurv: 0,
       ddCurv: 0,
       speed: 0
-    };
+    };*/
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(vehiclePose);
@@ -152,7 +152,7 @@ export default class PathPlanner {
       this.gpgpu.updateProgram(i, p);
     }
 
-    const lattice = this._buildLattice(lanePath, vehiclePose.rot, vehicleXform);
+    const lattice = this._buildLattice(lanePath, vehicleStation, vehiclePose.rot, vehicleXform);
 
     this.gpgpu.updateSharedTextures({
       centerline: {
@@ -220,9 +220,9 @@ export default class PathPlanner {
     return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
   }
 
-  _buildLattice(lanePath, vehicleRot, vehicleXform) {
+  _buildLattice(lanePath, vehicleStation, vehicleRot, vehicleXform) {
     const stationInterval = config.spatialHorizon / config.lattice.numStations;
-    const centerline = lanePath.sampleStations(stationInterval, config.lattice.numStations, stationInterval);
+    const centerline = lanePath.sampleStations(vehicleStation + stationInterval, config.lattice.numStations, stationInterval);
     const offset = Math.floor(config.lattice.numLatitudes / 2);
     const lattice = new Float32Array(config.lattice.numStations * config.lattice.numLatitudes * 4);
     let index = 0;

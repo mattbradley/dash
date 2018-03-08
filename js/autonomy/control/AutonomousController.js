@@ -4,7 +4,6 @@ export default class AutonomousController {
   constructor(path) {
     this.path = path;
     this.nextIndex = 1;
-    this.state = 'stopped';
     this.closestFrontPathPos = null;
     this.prevPhiError = 0;
     this.targetSpeed = 5;

@@ -21,7 +21,7 @@ export default class Car {
   }
 
   get pose() {
-    return { pos: this.rearAxlePosition, rot: this.rotation };
+    return { pos: this.rearAxlePosition, rot: this.rotation, speed: this.speed, curv: this.curvature, dCurv: 0, ddCurv: 0 };
   }
 
   get position() {
@@ -51,6 +51,10 @@ export default class Car {
 
   get wheelAngle() {
     return Math.wrapAngle(this.leftFrontWheel.joint.GetJointAngle());
+  }
+
+  get curvature() {
+    return Math.tan(this.wheelAngle) / Car.WHEEL_BASE;
   }
 
   setPose(x, y, rotation) {
