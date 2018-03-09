@@ -1,7 +1,7 @@
 const OPTIMIZE_KERNEL = `
 
-const int NEWTON_ITERATIONS = 16;
-const int RELAXATION_ITERATIONS = 16;
+const int NEWTON_ITERATIONS = 32;
+const int RELAXATION_ITERATIONS = 32;
 const float CONVERGENCE_ERROR = 0.01;
 
 // These two consts must stay in sync.
@@ -145,7 +145,10 @@ vec4 optimize(vec4 start, vec4 end) {
 
   for (int i = 0; i < NEWTON_ITERATIONS; i++) {
     vec4 result = iterate(goal, p0, p1, p2, p3, p4, p5, sG);
-    if (result.w == 1.0) return result;
+    if (result.w == 1.0) {
+      result.w = step(0.0, result.z);
+      return result;
+    }
 
     p3 = result.x;
     p4 = result.y;

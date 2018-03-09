@@ -1,4 +1,4 @@
-const pointsPerSegment = 20;
+//const pointsPerSegment = 20;
 const halfLaneWidth = 3.7 / 2;
 
 const centerlineGeometry = new THREE.Geometry();
@@ -7,7 +7,7 @@ const rightBoundaryGeometry = new THREE.Geometry();
 
 export default class {
   constructor() {
-    if (pointsPerSegment < 3) throw new Error('There must be at least 2 points per LanePath segment.');
+    //if (pointsPerSegment < 3) throw new Error('There must be at least 2 points per LanePath segment.');
 
     this.anchors = [];
     this.centerlines = [];
@@ -45,7 +45,6 @@ export default class {
     let sampleIndex = 0;
     let totalLength = 0;
     let nextStation = startStation;
-    let [p0, p1, p2, p3] = this.anchorsForSplineIndex(anchorIndex);
 
     while (totalLength + this.arcLengths[anchorIndex] < nextStation) {
       totalLength += this.arcLengths[anchorIndex];
@@ -64,13 +63,12 @@ export default class {
 
           if (++anchorIndex >= this.sampleLengths.length)
             throw new Error(`Exhausted lane path before reaching ${num} centerline samples at ${interval}m intervals.`);
-
-          [p0, p1, p2, p3] = this.anchorsForSplineIndex(anchorIndex);
         }
 
         length = this.sampleLengths[anchorIndex][sampleIndex];
       }
 
+      const [p0, p1, p2, p3] = this.anchorsForSplineIndex(anchorIndex);
       const weight = (sampleIndex + (nextStation - totalLength) / length) / this.sampleLengths[anchorIndex].length;
       const pos = catmullRomVec(weight, p0, p1, p2, p3);
       const tangent = tangentAt(weight, p0, p1, p2, p3);
@@ -106,21 +104,21 @@ export default class {
       prevPoint = sampleIndex == 0 ? this.centerlines[anchorIndex - 1][this.centerlines[anchorIndex - 1].length - 1] : this.centerlines[anchorIndex][sampleIndex - 1];
       nextPoint = sampleIndex == this.centerlines[anchorIndex].length - 1 ? this.centerlines[anchorIndex + 1][0] : this.centerlines[anchorIndex][sampleIndex + 1];
 
-      if (position.distanceToSquared(prevPoint) < position.distanceToSquared(nextPoint)) {
-        prevPoint = prevPoint;
-        nextPoint = this.centerlines[anchorIndex][sampleIndex];
+      const possibleNext = this.centerlines[anchorIndex][sampleIndex];
+      const possibleProgress = position.clone().sub(prevPoint).dot(possibleNext.clone().sub(prevPoint)) / prevPoint.distanceToSquared(possibleNext);
+
+      if (possibleProgress < 1) {
+        nextPoint = possibleNext;
         prevStation = prevSampleStation;
         nextStation = sampleStation;
       } else {
-        prevPoint = this.centerlines[anchorIndex][sampleIndex];
-        nextPoint = nextPoint;
+        prevPoint = possibleNext;
         prevStation = sampleStation;
         nextStation = sampleStation + this.sampleLengths[anchorIndex][sampleIndex];
       }
     }
 
-    const distSqr = prevPoint.distanceToSquared(nextPoint);
-    const progress = Math.clamp(position.clone().sub(prevPoint).dot(nextPoint.clone().sub(prevPoint)) / distSqr, 0, 1);
+    const progress = Math.clamp(position.clone().sub(prevPoint).dot(nextPoint.clone().sub(prevPoint)) / prevPoint.distanceToSquared(nextPoint), 0, 1);
     const projectedPosition = nextPoint.clone().sub(prevPoint).multiplyScalar(progress).add(prevPoint);
 
     const station = prevStation + (nextStation - prevStation) * progress;
@@ -200,6 +198,7 @@ export default class {
     const rightBoundary = [];
     let prevPoint = null;
 
+    const pointsPerSegment = Math.ceil(p1.distanceTo(p2) / 1);
     const numPoints = index == this.anchors.length - 2 ? pointsPerSegment + 1 : pointsPerSegment;
 
     for (let i = 0; i < numPoints; i++) {

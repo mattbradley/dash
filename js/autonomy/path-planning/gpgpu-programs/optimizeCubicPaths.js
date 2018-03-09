@@ -161,7 +161,10 @@ vec4 optimize(vec4 start, vec4 end) {
 
   for (int i = 0; i < NEWTON_ITERATIONS; i++) {
     vec4 result = iterate(goal, p0, p1, p2, p3, sG);
-    if (result.w == 1.0) return result;
+    if (result.w == 1.0) {
+      result.w = step(0.0, result.z);
+      return result;
+    }
 
     p1 = result.x;
     p2 = result.y;

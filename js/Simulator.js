@@ -168,6 +168,7 @@ export default class Simulator {
     this.editorCameraControls.enabled = false;
 
     this.scene.fog = this.sceneFog;
+    this.camera = this.previousCamera;
 
     if (this.previousCamera == this.chaseCamera)
       this.chaseCameraControls.enabled = true;
@@ -186,6 +187,10 @@ export default class Simulator {
     const dir = centerline[1].clone().sub(centerline[0]);
     const rot = Math.atan2(dir.y, dir.x);
     this.car.setPose(pos.x, pos.y, rot);
+
+    this._resetFreeCamera();
+    this._resetChaseCamera();
+    this._resetTopDownCamera();
     
     this.plannerReady = true;
   }
@@ -273,7 +278,12 @@ export default class Simulator {
   }
 
   receivePlannedPath(event) {
-    const { path } = event.data;
+    const { path, vehiclePose, vehicleStation, latticeStartStation } = event.data;
+    console.log(latticeStartStation);
+
+    this.plannerReady = true;
+
+    if (path === null) return;
 
     this.scene.remove(this.plannedPathGroup);
     this.plannedPathGroup = new THREE.Group();
@@ -282,7 +292,7 @@ export default class Simulator {
     const circleGeom = new THREE.CircleGeometry(0.15, 32);
     const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
 
-    const lattice = new RoadLattice(this.editor.lanePath);
+    const lattice = new RoadLattice(this.editor.lanePath, latticeStartStation);
     lattice.lattice.forEach(cells => {
       cells.forEach(c => {
         const circle = new THREE.Mesh(circleGeom, circleMat);
@@ -311,8 +321,6 @@ export default class Simulator {
     const frontGeometry = new THREE.Geometry();
     frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.plannedPathGroup.add(new THREE.Line(frontGeometry, frontMaterial));
-
-    this.plannerReady = true;
   }
 
   go() {

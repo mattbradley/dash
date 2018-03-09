@@ -9,7 +9,6 @@ export default class Editor {
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
-    this.mouseMoved = false;
     this.dragOffset = new THREE.Vector3();
     this.draggingPoint = null;
     this.pointIndex = 0;
@@ -116,15 +115,16 @@ export default class Editor {
       this.dragOffset.copy(picked.object.position).sub(picked.point);
       event.stopImmediatePropagation();
     } else {
-      this.mouseMoved = false;
+      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+      if (intersection != null) {
+        this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
+        this.redraw();
+      }
     }
   }
 
   mouseMove(event) {
-    if (!this.enabled) return;
-
-    this.mouseMoved = true;
-    if (this.draggingPoint == null) return;
+    if (!this.enabled || this.draggingPoint == null) return;
 
     this.mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
     this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
@@ -142,12 +142,5 @@ export default class Editor {
     if (!this.enabled || event.button != 0) return;
 
     this.draggingPoint = null;
-    if (!this.mouseMoved) {
-      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
-      if (intersection != null) {
-        this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
-        this.redraw();
-      }
-    }
   }
 }

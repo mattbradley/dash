@@ -50,7 +50,7 @@ vec4 kernel() {
   vec2 projectedPos = (next - prev) * vec2(progress) + prev;
 
   return vec4(
-    (float(prevIndex) + progress) * stationInterval,
+    (float(prevIndex) + progress) * centerlineStationInterval,
     sign(determinant(mat2(next - prev, xy - prev))) * distance(xy, projectedPos),
     0,
     0
@@ -69,7 +69,7 @@ export default {
         centerline: { type: 'sharedTexture' },
         xyCenterPoint: { type: 'vec2' },
         xyGridCellSize: { type: 'float'},
-        stationInterval: { type: 'float'}
+        centerlineStationInterval: { type: 'float'}
       }
     };
   },
@@ -81,7 +81,7 @@ export default {
       uniforms: {
         xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
         xyGridCellSize: config.xyGridCellSize,
-        stationInterval: config.stationInterval
+        centerlineStationInterval: config.centerlineStationInterval
       }
     };
   }

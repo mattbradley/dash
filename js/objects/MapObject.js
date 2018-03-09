@@ -7,6 +7,7 @@ export default class MapObject extends THREE.Object3D {
 
     const tileSize = this.tileSizeInMeters();
     const grid = new THREE.GridHelper(MapObject.HALF_NUM_TILES * 4 * tileSize, MapObject.HALF_NUM_TILES * 4, 0x333333, 0x333333);
+    grid.renderOrder = -1;
     grid.material.depthTest = false;
     grid.position.add(new THREE.Vector3(-tileSize / 2, 0, -tileSize / 2));
     this.add(grid);

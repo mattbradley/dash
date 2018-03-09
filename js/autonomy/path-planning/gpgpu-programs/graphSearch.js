@@ -39,6 +39,8 @@
  *   and latitude 1 will correspond to a quintic path. All other latitudes will be skipped.
  */
 
+// TODO: penalty when acceleration changes from one vertex to another
+
 import { SHARED_SHADER, SAMPLE_CUBIC_PATH_FN, SAMPLE_QUINTIC_PATH_FN, NUM_ACCELERATION_PROFILES, NUM_VELOCITY_RANGES, NUM_TIME_RANGES, SHARED_UNIFORMS, buildUniformValues } from "./graphSearchShared.js";
 
 const SOLVE_STATION_KERNEL =

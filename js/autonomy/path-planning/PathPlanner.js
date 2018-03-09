@@ -18,7 +18,7 @@ const NUM_TIME_RANGES = 2;
 
 const config = {
   spatialHorizon: 100, // meters
-  stationInterval: 0.5, // meters
+  centerlineStationInterval: 0.5, // meters
 
   lattice: {
     numStations: 10,
@@ -81,6 +81,9 @@ const config = {
 
 export default class PathPlanner {
   constructor() {
+    this.previousPlan = null;
+    this.previousStartStation = null;
+
     let start = performance.now();
     const programs = [
       xyObstacleGrid.setUp(),
@@ -99,16 +102,7 @@ export default class PathPlanner {
   }
 
   plan(vehiclePose, vehicleStation, lanePath, obstacles) {
-    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(config.spatialHorizon / config.stationInterval) + 1, config.stationInterval);
-
-    /*vehiclePose = {
-      pos: centerlineRaw[0].pos.clone().sub(centerlineRaw[1].pos).normalize().multiplyScalar(10).add(centerlineRaw[0].pos),
-      rot: centerlineRaw[0].rot,
-      curv: 0,
-      dCurv: 0,
-      ddCurv: 0,
-      speed: 0
-    };*/
+    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(config.spatialHorizon / config.centerlineStationInterval) + 1, config.centerlineStationInterval);
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(vehiclePose);
@@ -152,7 +146,17 @@ export default class PathPlanner {
       this.gpgpu.updateProgram(i, p);
     }
 
-    const lattice = this._buildLattice(lanePath, vehicleStation, vehiclePose.rot, vehicleXform);
+    let startStation;
+
+    if (this.previousStartStation === null || vehicleStation > this.previousStartStation) {
+      const latticeStationInterval = this._latticeStationInterval();
+      startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
+      this.previousStartStation = startStation;
+    } else {
+      startStation = this.previousStartStation;
+    }
+
+    const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
     this.gpgpu.updateSharedTextures({
       centerline: {
@@ -162,18 +166,18 @@ export default class PathPlanner {
         filter: 'linear',
         data: centerlineData
       },
-      lattice: {
-        width: config.lattice.numLatitudes,
-        height: config.lattice.numStations,
-        channels: 4,
-        data: lattice
-      },
       costTable: {
         width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
         height: config.lattice.numLatitudes,
         depth: config.lattice.numStations,
         channels: 4,
         textureType: '2DArray'
+      },
+      lattice: {
+        width: config.lattice.numLatitudes,
+        height: config.lattice.numStations,
+        channels: 4,
+        data: lattice
       }
     });
 
@@ -209,20 +213,25 @@ export default class PathPlanner {
     }
 
     const inverseVehicleXform = (new THREE.Matrix3()).getInverse(vehicleXform);
-    const bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehiclePose.curv, lattice).map(p => {
-      return {
-        pos: p.pos.applyMatrix3(inverseVehicleXform),
-        rot: p.rot + vehiclePose.rot,
-        curv: p.curv
-      };
-    });
+    let bestTrajectory;
+    
+    if (isFinite(bestEntry[0])) {
+      bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehiclePose.curv, lattice).map(p => {
+        return {
+          pos: p.pos.applyMatrix3(inverseVehicleXform),
+          rot: p.rot + vehiclePose.rot,
+          curv: p.curv
+        };
+      });
+    } else {
+      bestTrajectory = null;
+    }
 
-    return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, vehiclePose: vehiclePose };
+    return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, latticeStartStation: this.previousStartStation };
   }
 
-  _buildLattice(lanePath, vehicleStation, vehicleRot, vehicleXform) {
-    const stationInterval = config.spatialHorizon / config.lattice.numStations;
-    const centerline = lanePath.sampleStations(vehicleStation + stationInterval, config.lattice.numStations, stationInterval);
+  _buildLattice(lanePath, startStation, vehicleRot, vehicleXform) {
+    const centerline = lanePath.sampleStations(startStation, config.lattice.numStations, this._latticeStationInterval());
     const offset = Math.floor(config.lattice.numLatitudes / 2);
     const lattice = new Float32Array(config.lattice.numStations * config.lattice.numLatitudes * 4);
     let index = 0;
@@ -244,6 +253,10 @@ export default class PathPlanner {
     }
 
     return lattice;
+  }
+
+  _latticeStationInterval() {
+    return config.spatialHorizon / config.lattice.numStations;
   }
 
   _terminalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
