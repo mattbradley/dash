@@ -12,13 +12,7 @@ onmessage = function(event) {
   Object.setPrototypeOf(lanePath, LanePath.prototype);
   obstacles.forEach(o => Object.setPrototypeOf(o, StaticObstacle.prototype));
 
-  let start = performance.now();
-  const sd = +new Date;
-  console.log(new Date);
   const { path, width, height, latticeStartStation } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, obstacles);
-  console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
-  console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
-  console.log(`Grid size: ${width}x${height}`);
 
   self.postMessage({ path, vehiclePose, vehicleStation, latticeStartStation });
 };

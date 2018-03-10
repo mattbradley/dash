@@ -14,6 +14,9 @@ import GPGPU from "./GPGPU.js";
 import RoadLattice from "./autonomy/path-planning/RoadLattice.js";
 import PathPlanner from "./autonomy/path-planning/PathPlanner.js";
 import StaticObstacle from "./autonomy/path-planning/StaticObstacle.js";
+import MovingAverage from "./autonomy/MovingAverage.js";
+
+const FRAME_TIMESTEP = 1 / 60;
 
 export default class Simulator {
   constructor(geolocation, domElement) {
@@ -59,7 +62,10 @@ export default class Simulator {
     this.prevTimestamp = null;
     this.frameCounter = 0;
     this.fpsTime = 0;
+    this.fps = 1 / FRAME_TIMESTEP;
     this.simulatedTime = 0;
+    this.lastPlanTime = null;
+    this.averagePlanTime = new MovingAverage(20);
 
     window.addEventListener('resize', () => {
       this._updateCameraAspects(domElement.clientWidth / domElement.clientHeight);
@@ -191,7 +197,7 @@ export default class Simulator {
     this._resetFreeCamera();
     this._resetChaseCamera();
     this._resetTopDownCamera();
-    
+
     this.plannerReady = true;
   }
 
@@ -201,7 +207,7 @@ export default class Simulator {
     this.autonomousModeButton.classList.add('is-outlined');
     this.autonomousModeButton.classList.remove('is-selected');
 
-    this.carController = this.manualCarController;
+    this.carControllerMode = 'manual';
   }
 
   enableAutonomousMode() {
@@ -210,7 +216,7 @@ export default class Simulator {
     this.manualModeButton.classList.add('is-outlined');
     this.manualModeButton.classList.remove('is-selected');
 
-    this.carController = this.autonomousCarController;
+    this.carControllerMode = 'autonomous';
   }
 
   changeCamera(mode) {
@@ -269,8 +275,24 @@ export default class Simulator {
 
   startPlanner(pose, station) {
     this.plannerReady = false;
+    this.lastPlanTime = performance.now();
+
+    // In order to create a stable trajectory between successive planning
+    // cycles, we must compensate for the latency between when a planning cycle
+    // starts and when it ends. The average planning time is used to forward
+    // simulate the vehicle to the pose it is expected to have when the
+    // planning actually finishes.
+
+    let predictedPose;
+
+    if (false && this.autonomousCarController && this.carControllerMode == 'autonomous') {
+      predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, this.averagePlanTime.average * this.fps * FRAME_TIMESTEP);
+    } else {
+      predictedPose = pose;
+    }
+
     this.pathPlannerWorker.postMessage({
-      vehiclePose: pose,
+      vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
       obstacles: []
@@ -279,11 +301,13 @@ export default class Simulator {
 
   receivePlannedPath(event) {
     const { path, vehiclePose, vehicleStation, latticeStartStation } = event.data;
-    console.log(latticeStartStation);
 
+    this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
     this.plannerReady = true;
 
     if (path === null) return;
+
+    path.forEach(p => Object.setPrototypeOf(p.pos, THREE.Vector2.prototype));
 
     this.scene.remove(this.plannedPathGroup);
     this.plannedPathGroup = new THREE.Group();
@@ -314,8 +338,6 @@ export default class Simulator {
     const followPath = new Path(path);
 
     this.autonomousCarController = new AutonomousController(followPath);
-    if (this.carController != this.manualCarController)
-      this.carController = this.autonomousCarController;
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();
@@ -405,16 +427,17 @@ function step(timestamp) {
   }
 
   if (!this.editor.enabled || this.paused) {
-    const dt = Math.min((timestamp - this.prevTimestamp) / 1000, 1 / 30);
+    //const dt = Math.min((timestamp - this.prevTimestamp) / 1000, 1 / 30);
+    const dt = FRAME_TIMESTEP;
     this.simulatedTime += dt;
 
     const prevCarPosition = this.car.position;
     const prevCarRotation = this.car.rotation;
 
-    const controls =
-      this.carController ?
-      this.carController.control(this.car.pose, this.car.wheelAngle, this.car.speed, dt) :
-      { gas: 0, brake: 1, steer: 0 };
+    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt) : { steer: 0, brake: 1, gas: 0 };
+    const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
+
+    const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
 
     this.car.update(controls, dt);
     this.physics.step(dt);
@@ -422,7 +445,7 @@ function step(timestamp) {
     const carPosition = this.car.position;
     const carRotation = this.car.rotation;
     const carRearAxle = this.car.rearAxlePosition;
-    const carSpeed = this.car.speed;
+    const carVelocity = this.car.velocity;
 
     const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
     this.chaseCamera.position.add(positionOffset);
@@ -448,16 +471,16 @@ function step(timestamp) {
     if (this.plannerReady)
       this.startPlanner(this.car.pose, station);
 
-    this.dashboard.update(controls, carSpeed, station, latitude);
+    this.dashboard.update(controls, carVelocity, station, latitude, this.simulatedTime, this.averagePlanTime.average);
   }
 
   this.frameCounter++;
   this.fpsTime += timestamp - this.prevTimestamp;
   if (this.fpsTime >= 1000) {
-    const fps = this.frameCounter / (this.fpsTime / 1000);
+    this.fps = this.frameCounter / (this.fpsTime / 1000);
     this.frameCounter = 0;
     this.fpsTime = 0;
-    this.fpsBox.innerHTML = fps.toFixed(1);
+    this.fpsBox.innerHTML = this.fps.toFixed(1);
   }
 
   this.renderer.render(this.scene, this.camera);

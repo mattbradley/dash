@@ -35,7 +35,7 @@ float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleratio
 }
 
 float calculateAverageStaticCost(int numSamples) {
-  float averageStaticCost = 0.0;
+  float averageStaticCost = 0.0
 
   for (int i = 0; i < numSamples; i++) {
     float cost = sampleStaticCost(pathSamples[i]);
@@ -45,7 +45,12 @@ float calculateAverageStaticCost(int numSamples) {
     averageStaticCost += cost;
   }
 
-  return averageStaticCost / float(numSamples);
+  averageStaticCost /= float(numSamples);
+
+  // Add a moderate cost to all paths so there is room to add discounts without going below 0
+  averageStaticCost += 1000.0
+
+  return averageStaticCost;
 }
 
 float calculateAverageDynamicCost(int numSamples, float pathLength, float initialVelocity, float acceleration) {
@@ -240,7 +245,7 @@ const SHARED_UNIFORMS = {
 function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
   return {
     accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
-    finalVelocityProfiles: [0.99 * config.speedLimit, 1.0, 0.01],
+    finalVelocityProfiles: [0.999 * config.speedLimit, 1.0, 0.01],
     xyCenterPoint: [xyCenterPoint.x, xyCenterPoint.y],
     xyGridCellSize: config.xyGridCellSize,
     slCenterPoint: [slCenterPoint.x, slCenterPoint.y],

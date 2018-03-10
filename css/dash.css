@@ -65,7 +65,7 @@ canvas { width: 100%; height: 100% }
 }
 
 #stats {
-    padding: 8px;
+    padding: 8px 8px 8px 0;
     width: 300px;
     line-height: 1.2;
 }

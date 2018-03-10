@@ -87,7 +87,7 @@ export default {
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
           ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
-          velocityVehicle: pose.speed,
+          velocityVehicle: pose.velocity,
           curvVehicle: pose.curv,
           numAccelerations: NUM_ACCELERATION_PROFILES,
           cubicPathPenalty: config.cubicPathPenalty
@@ -98,7 +98,7 @@ export default {
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
           ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
-          velocityVehicle: pose.speed,
+          velocityVehicle: pose.velocity,
           curvVehicle: pose.curv,
           dCurvVehicle: pose.dCurv,
           ddCurvVehicle: pose.ddCurv,

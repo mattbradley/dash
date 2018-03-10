@@ -49,8 +49,8 @@ const config = {
   stationReachDiscount: -10,
   extraTimePenalty: 10,
 
-  speedLimit: 25, // m/s
-  speedLimitPenalty: 25,
+  speedLimit: 15, // m/s
+  speedLimitPenalty: 50,
 
   hardAccelerationPenalty: 10,
   hardDecelerationPenalty: 10,
@@ -98,7 +98,7 @@ export default class PathPlanner {
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
     this.gpgpu = new GPGPU(programs);
-    console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
+    //console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
   }
 
   plan(vehiclePose, vehicleStation, lanePath, obstacles) {
@@ -183,7 +183,7 @@ export default class PathPlanner {
 
     let start = performance.now();
     const outputs = this.gpgpu.run();
-    console.log(`Planner GPU time: ${(performance.now() - start) / 1000}s`);
+    //console.log(`Planner GPU time: ${(performance.now() - start) / 1000}s`);
     const costTable = this.gpgpu._graphSearchCostTable;
     const cubicPathParams = outputs[5];
     const cubicPathFromVehicleParams = outputs[6];
@@ -216,12 +216,19 @@ export default class PathPlanner {
     let bestTrajectory;
     
     if (isFinite(bestEntry[0])) {
-      bestTrajectory = this._reconstructTrajectory(bestEntryIndex, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehiclePose.curv, lattice).map(p => {
-        return {
-          pos: p.pos.applyMatrix3(inverseVehicleXform),
-          rot: p.rot + vehiclePose.rot,
-          curv: p.curv
-        };
+      bestTrajectory = this._reconstructTrajectory(
+        bestEntryIndex,
+        costTable,
+        cubicPathParams,
+        cubicPathFromVehicleParams,
+        quinticPathFromVehicleParams,
+        vehiclePose,
+        lattice
+      );
+
+      bestTrajectory.forEach(p => {
+        p.pos = p.pos.applyMatrix3(inverseVehicleXform);
+        p.rot += vehiclePose.rot;
       });
     } else {
       bestTrajectory = null;
@@ -291,14 +298,19 @@ export default class PathPlanner {
     return [stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex];
   }
 
-  _reconstructTrajectory(index, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehicleCurv, lattice) {
+  _reconstructTrajectory(index, costTable, cubicPathParams, cubicPathFromVehicleParams, quinticPathFromVehicleParams, vehiclePose, lattice) {
     let unpacked = this._unpackCostTableIndex(index);
+    unpacked.push(costTable[index * 4 + 1]);
     const nodes = [unpacked];
 
     let count = 0;
     while (unpacked[0] >= 0 && count++ < 100) {
       index = costTable[index * 4 + 3];
       unpacked = this._unpackCostTableIndex(index);
+
+      const finalVelocity = unpacked[0] >= 0 ? costTable[index * 4 + 1] : vehiclePose.velocity;
+      unpacked.push(finalVelocity);
+
       nodes.unshift(unpacked);
     }
     if (count >= 100) throw new Error('Infinite loop encountered while reconstructing trajectory.');
@@ -306,8 +318,8 @@ export default class PathPlanner {
     const points = [];
 
     for (let i = 0; i < nodes.length - 1; i++) {
-      const [prevStation, prevLatitude] = nodes[i];
-      const [station, latitude] = nodes[i + 1];
+      const [prevStation, prevLatitude, _pt, _pv, _pa, prevVelocity] = nodes[i];
+      const [station, latitude, _t, _v, _a, velocity] = nodes[i + 1];
 
       let length;
       let pathBuilder;
@@ -316,7 +328,7 @@ export default class PathPlanner {
         const start = {
           pos: new THREE.Vector2(0, 0),
           rot: 0,
-          curv: vehicleCurv
+          curv: vehiclePose.curv
         };
 
         const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
@@ -373,6 +385,12 @@ export default class PathPlanner {
       }
 
       const path = pathBuilder.buildPath(Math.ceil(length / config.pathSamplingStep));
+      const dV = (velocity - prevVelocity) / (path.length - 1);
+      let currentVelocity = prevVelocity;
+      for (let i = 0; i < path.length; i++) {
+        path[i].velocity = currentVelocity;
+        currentVelocity += dV;
+      }
 
       if (i < nodes.length - 2) path.pop();
       points.push(...path);

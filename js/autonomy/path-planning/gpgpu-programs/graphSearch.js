@@ -25,7 +25,7 @@
  *
  * Cost Map Elements:
  *   * Traversal cost so far
- *   * Ending speed
+ *   * Ending velocity
  *   * Ending time
  *   * Index of parent node
  *
@@ -35,7 +35,7 @@
  *   Stations 0 through (numStations - 1) correspond to the stations on the lattice; however,
  *   a new station (station -1) will be used to signifiy the single vehicle pose node. Either
  *   a cubic path or quintic path can be used to connect this single node to the lattice
- *   (depending on vehicle speed). At station -1, latitude 0 will correspond to a cubic path,
+ *   (depending on vehicle velocity). At station -1, latitude 0 will correspond to a cubic path,
  *   and latitude 1 will correspond to a quintic path. All other latitudes will be skipped.
  */
 
@@ -77,6 +77,13 @@ vec4 kernel() {
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
   float bestCost = 1000000000.0;
 
+/*
+  float hysteresisDiscount =
+    (slIndex == firstLatticePoint || slIndex == secondLatticePoint) ?
+    0 :
+    0;
+*/
+
   for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
 
@@ -103,7 +110,7 @@ vec4 kernel() {
 
             // Cost table entry:
             //   x: cost so far
-            //   y: end speed
+            //   y: end velocity
             //   z: end time
             //   w: parent index
             vec4 costTableEntry = texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0);
@@ -229,7 +236,7 @@ export default {
       },
       uniforms: {
         ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
-        velocityVehicle: pose.speed,
+        velocityVehicle: pose.velocity,
         curvVehicle: pose.curv,
         dCurvVehicle: pose.dCurv,
         ddCurvVehicle: pose.ddCurv,

@@ -29,6 +29,7 @@ export default class Dashboard {
     this.speedDom = document.getElementById('speed');
     this.stationDom = document.getElementById('station');
     this.latitudeDom = document.getElementById('latitude');
+    this.planTimeDom = document.getElementById('plan-time');
 
     this.speedUnitsDom = document.getElementById('speed-units');
     this.stationUnitsDom = document.getElementById('station-units');
@@ -60,7 +61,7 @@ export default class Dashboard {
     this.latitudeUnitsDom.innerHTML = distanceUnits;
   }
 
-  update(controls, speed, station, latitude) {
+  update(controls, speed, station, latitude, elaspedTime, planTime) {
     if (!this.wheelDom) return;
 
     if (this.units == 'imperial') {
@@ -102,5 +103,6 @@ export default class Dashboard {
     this.speedDom.innerHTML = speed.toFixed(2);
     this.stationDom.innerHTML = station !== null ? station.toFixed(2) : '&mdash;';
     this.latitudeDom.innerHTML = latitude !== null ? latitude.toFixed(2) : '&mdash;';
+    this.planTimeDom.innerHTML = planTime !== null ? (planTime * 1000).toFixed(0) : '&mdash;';
   }
 }
