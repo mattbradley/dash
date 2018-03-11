@@ -100,8 +100,8 @@ export default class Dashboard {
     this.brakeDom.style.clipPath = `inset(50% 50% 0 ${50 - controls.brake * 25}%)`;
     this.gasDom.style.clipPath = `inset(50% ${50 - Math.abs(controls.gas) * 25}% 0 50%)`;
 
-    this.speedDom.innerHTML = speed.toFixed(2);
-    this.stationDom.innerHTML = station !== null ? station.toFixed(2) : '&mdash;';
+    this.speedDom.innerHTML = speed.toFixed(1);
+    this.stationDom.innerHTML = station !== null ? station.toFixed(1) : '&mdash;';
     this.latitudeDom.innerHTML = latitude !== null ? latitude.toFixed(2) : '&mdash;';
     this.planTimeDom.innerHTML = planTime !== null ? (planTime * 1000).toFixed(0) : '&mdash;';
   }
