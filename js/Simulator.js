@@ -283,13 +283,13 @@ export default class Simulator {
     // simulate the vehicle to the pose it is expected to have when the
     // planning actually finishes.
 
-    let predictedPose;
+    let predictedPose = pose;
 
-    if (false && this.autonomousCarController && this.carControllerMode == 'autonomous') {
+    /* Commenting out since it's kinda buggy at the moment.
+    if (this.autonomousCarController && this.carControllerMode == 'autonomous') {
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, this.averagePlanTime.average * this.fps * FRAME_TIMESTEP);
-    } else {
-      predictedPose = pose;
     }
+    */
 
     this.pathPlannerWorker.postMessage({
       vehiclePose: predictedPose,

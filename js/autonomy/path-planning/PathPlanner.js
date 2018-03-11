@@ -49,9 +49,9 @@ const config = {
   stationReachDiscount: 200,
   extraTimePenalty: 10,
 
-  hysteresisDiscount: 50,
+  hysteresisDiscount: 100,
 
-  speedLimit: 15, // m/s
+  speedLimit: 20, // m/s
   speedLimitPenalty: 50,
 
   hardAccelerationPenalty: 10,
@@ -59,7 +59,7 @@ const config = {
 
   lateralAccelerationLimit: 3, // m/s^2
   softLateralAccelerationPenalty: 10,
-  linearLateralAccelerationPenalty: 1,
+  linearLateralAccelerationPenalty: 0.1,
 
   dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
 
@@ -240,6 +240,9 @@ export default class PathPlanner {
         p.rot += vehiclePose.rot;
       });
     }
+
+    if (firstLatticePoint == this.previousFirstLatticePoint && secondLatticePoint == this.previousSecondLatticePoint)
+      bestTrajectory = null;
 
     this.previousFirstLatticePoint = firstLatticePoint;
     this.previousSecondLatticePoint = secondLatticePoint;
