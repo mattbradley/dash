@@ -77,12 +77,7 @@ vec4 kernel() {
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
   float bestCost = 1000000000.0;
 
-/*
-  float hysteresisDiscount =
-    (slIndex == firstLatticePoint || slIndex == secondLatticePoint) ?
-    0 :
-    0;
-*/
+  float hysteresisAdjustment = (slIndex == firstLatticePoint || slIndex == secondLatticePoint) ?  0.0 : hysteresisDiscount;
 
   for (int prevStation = max(station - stationConnectivity, 0); prevStation < station; prevStation++) {
     int stationConnectivityIndex = prevStation - station + stationConnectivity;
@@ -102,6 +97,8 @@ vec4 kernel() {
 
       float averageStaticCost = calculateAverageStaticCost(numSamples);
       if (averageStaticCost < 0.0) continue;
+
+      averageStaticCost += hysteresisAdjustment;
 
       for (int prevVelocity = 0; prevVelocity < numVelocities; prevVelocity++) {
         for (int prevTime = 0; prevTime < numTimes; prevTime++) {
@@ -191,11 +188,14 @@ export default {
         cubicPaths: { type: 'outputTexture' },
         cubicPathFromVehicleCosts: { type: 'outputTexture' },
         quinticPathFromVehicleCosts: { type: 'outputTexture' },
+        firstLatticePoint: { type: 'int' },
+        secondLatticePoint: { type: 'int' },
         velocityVehicle: { type: 'float' },
         curvVehicle: { type: 'float' },
         dCurvVehicle: { type: 'float' },
         ddCurvVehicle: { type: 'float' },
         extraTimePenalty: { type: 'float' },
+        hysteresisDiscount: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
         numAccelerations: { type: 'int' },
@@ -227,7 +227,7 @@ export default {
     };
   },
 
-  update(config, pose, xyCenterPoint, slCenterPoint) {
+  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint) {
     return {
       width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
       height: config.lattice.numLatitudes,
@@ -236,11 +236,14 @@ export default {
       },
       uniforms: {
         ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+        firstLatticePoint: firstLatticePoint,
+        secondLatticePoint: secondLatticePoint,
         velocityVehicle: pose.velocity,
         curvVehicle: pose.curv,
         dCurvVehicle: pose.dCurv,
         ddCurvVehicle: pose.ddCurv,
         extraTimePenalty: config.extraTimePenalty,
+        hysteresisDiscount: config.hysteresisDiscount,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,
         numAccelerations: NUM_ACCELERATION_PROFILES,

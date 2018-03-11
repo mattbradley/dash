@@ -96,7 +96,7 @@ export default class AutonomousController {
       const checkSteer = Math.clamp((phi - wheelAngle) / dt / Car.MAX_STEER_SPEED, -1, 1);
 
       if (Math.abs(checkSteer) > 0.5) {
-        console.log(checkSteer);
+        //console.log(checkSteer);
       }
     }
 

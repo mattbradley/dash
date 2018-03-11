@@ -46,8 +46,10 @@ const config = {
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 5, // cost / meter
 
-  stationReachDiscount: -10,
+  stationReachDiscount: 200,
   extraTimePenalty: 10,
+
+  hysteresisDiscount: 50,
 
   speedLimit: 15, // m/s
   speedLimitPenalty: 50,
@@ -83,6 +85,8 @@ export default class PathPlanner {
   constructor() {
     this.previousPlan = null;
     this.previousStartStation = null;
+    this.previousFirstLatticePoint = -1;
+    this.previousSecondLatticePoint = -1;
 
     let start = performance.now();
     const programs = [
@@ -132,6 +136,21 @@ export default class PathPlanner {
     const slWidth = Math.ceil(config.spatialHorizon / config.slGridCellSize);
     const slHeight = Math.ceil((config.laneWidth + config.gridMargin * 2) / config.slGridCellSize);
 
+    let startStation;
+
+    // TODO: if the number of latitudes changes, then the first and second lattice points are invalidated
+    if (this.previousStartStation === null || vehicleStation > this.previousStartStation) {
+      const latticeStationInterval = this._latticeStationInterval();
+      startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
+      this.previousStartStation = startStation;
+      this.previousFirstLatticePoint = this.previousSecondLatticePoint;
+      this.previousSecondLatticePoint = -1;
+    } else {
+      startStation = this.previousStartStation;
+    }
+
+    const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
+
     for (const [i, p] of [
       xyObstacleGrid.update(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
       slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
@@ -139,24 +158,12 @@ export default class PathPlanner {
       xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(config, vehiclePose),
       optimizeQuinticPaths.update(config, vehiclePose),
-      ...pathFromVehicleCosts.update(config, vehiclePose, xyCenterPoint, slCenterPoint),
-      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint),
+      ...pathFromVehicleCosts.update(config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
+      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
       xyObstacleCostGrid.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
-
-    let startStation;
-
-    if (this.previousStartStation === null || vehicleStation > this.previousStartStation) {
-      const latticeStationInterval = this._latticeStationInterval();
-      startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
-      this.previousStartStation = startStation;
-    } else {
-      startStation = this.previousStartStation;
-    }
-
-    const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
     this.gpgpu.updateSharedTextures({
       centerline: {
@@ -213,10 +220,12 @@ export default class PathPlanner {
     }
 
     const inverseVehicleXform = (new THREE.Matrix3()).getInverse(vehicleXform);
-    let bestTrajectory;
+    let bestTrajectory = null;
+    let firstLatticePoint = -1;
+    let secondLatticePoint = -1;
     
     if (isFinite(bestEntry[0])) {
-      bestTrajectory = this._reconstructTrajectory(
+      [bestTrajectory, firstLatticePoint, secondLatticePoint] = this._reconstructTrajectory(
         bestEntryIndex,
         costTable,
         cubicPathParams,
@@ -230,9 +239,10 @@ export default class PathPlanner {
         p.pos = p.pos.applyMatrix3(inverseVehicleXform);
         p.rot += vehiclePose.rot;
       });
-    } else {
-      bestTrajectory = null;
     }
+
+    this.previousFirstLatticePoint = firstLatticePoint;
+    this.previousSecondLatticePoint = secondLatticePoint;
 
     return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, latticeStartStation: this.previousStartStation };
   }
@@ -273,7 +283,7 @@ export default class PathPlanner {
 
     const station = (config.spatialHorizon / config.lattice.numStations) * (stationIndex + 1);
 
-    return config.stationReachDiscount * station + config.extraTimePenalty * finalTime;
+    return station * -config.stationReachDiscount + finalTime * config.extraTimePenalty;
   }
 
   _unpackCostTableIndex(index) {
@@ -396,7 +406,16 @@ export default class PathPlanner {
       points.push(...path);
     }
 
-    return points;
+    let firstLatticePoint = -1;
+    let secondLatticePoint = -1;
+
+    if (nodes.length >= 2)
+      firstLatticePoint = nodes[1][0] * config.lattice.numLatitudes + nodes[1][1];
+
+    if (nodes.length >= 3)
+      secondLatticePoint = nodes[2][0] * config.lattice.numLatitudes + nodes[2][1];
+
+    return [points, firstLatticePoint, secondLatticePoint];
   }
 }
 

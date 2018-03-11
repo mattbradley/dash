@@ -30,6 +30,10 @@ vec4 kernel() {
   float averageStaticCost = calculateAverageStaticCost(numSamples);
   if (averageStaticCost < 0.0) return vec4(-1);
 
+  int slIndex = station * kernelSize.x + latitude;
+  float hysteresisAdjustment = (slIndex == firstLatticePoint || slIndex == secondLatticePoint) ?  0.0 : hysteresisDiscount;
+  averageStaticCost += hysteresisAdjustment;
+
   vec3 avt = calculateAVT(accelerationIndex, velocityVehicle, 0.0, pathLength);
   float acceleration = avt.x;
   float finalVelocity = avt.y;
@@ -57,10 +61,13 @@ export default {
           ...SHARED_UNIFORMS,
           lattice: { type: 'sharedTexture' },
           pathsFromVehicle: { type: 'outputTexture', name: 'cubicPathsFromVehicle' },
+          firstLatticePoint: { type: 'int' },
+          secondLatticePoint: { type: 'int' },
           velocityVehicle: { type: 'float' },
           curvVehicle: { type: 'float' },
           numAccelerations: { type: 'int' },
-          cubicPathPenalty: { type: 'float' }
+          cubicPathPenalty: { type: 'float' },
+          hysteresisDiscount: { type: 'float' }
         }
       },
       {
@@ -70,27 +77,33 @@ export default {
           ...SHARED_UNIFORMS,
           lattice: { type: 'sharedTexture' },
           pathsFromVehicle: { type: 'outputTexture', name: 'quinticPathsFromVehicle' },
+          firstLatticePoint: { type: 'int' },
+          secondLatticePoint: { type: 'int' },
           velocityVehicle: { type: 'float' },
           curvVehicle: { type: 'float' },
           dCurvVehicle: { type: 'float' },
           ddCurvVehicle: { type: 'float' },
-          numAccelerations: { type: 'int' }
+          numAccelerations: { type: 'int' },
+          hysteresisDiscount: { type: 'float' }
         }
       }
     ];
   },
 
-  update(config, pose, xyCenterPoint, slCenterPoint) {
+  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint) {
     return [
       {
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
           ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+          firstLatticePoint: firstLatticePoint,
+          secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,
           curvVehicle: pose.curv,
           numAccelerations: NUM_ACCELERATION_PROFILES,
-          cubicPathPenalty: config.cubicPathPenalty
+          cubicPathPenalty: config.cubicPathPenalty,
+          hysteresisDiscount: config.hysteresisDiscount
         }
       },
       {
@@ -98,11 +111,14 @@ export default {
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
           ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+          firstLatticePoint: firstLatticePoint,
+          secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,
           curvVehicle: pose.curv,
           dCurvVehicle: pose.dCurv,
           ddCurvVehicle: pose.ddCurv,
-          numAccelerations: NUM_ACCELERATION_PROFILES
+          numAccelerations: NUM_ACCELERATION_PROFILES,
+          hysteresisDiscount: config.hysteresisDiscount
         }
       }
     ];
