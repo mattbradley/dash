@@ -4,8 +4,13 @@ export default class AutonomousController {
   constructor(path) {
     this.path = path;
     this.nextIndex = 1;
-    this.closestFrontPathPos = null;
     this.prevPhiError = 0;
+    this.prevVelocity = 0;
+  }
+
+  replacePath(path) {
+    this.path = path;
+    this.nextIndex = 1;
   }
 
   predictPoseAfterTime(currentPose, predictionTime) {
@@ -63,12 +68,25 @@ export default class AutonomousController {
       brake = 1;
       phi = 0;
     } else {
-      let targetVelocity = pathPoses[this.nextIndex].velocity;
-      const velocityError = 0.75 * (targetVelocity - velocity);
-      if (velocityError > 0) gas = velocityError;
-      else if (velocityError < 0) brake = -velocityError;
+      const kp_a = 0.5;
+      const kd_a = 0.5;
+      const kff_a = 0.5;
 
-      this.closestFrontPathPos = projectPointOnSegment(frontAxlePos, pathPoses[this.nextIndex - 1].frontPos, pathPoses[this.nextIndex].frontPos)[0];
+      const currentAccel = (velocity - this.prevVelocity) / dt;
+      const prevNextDist = pathPoses[this.nextIndex].pos.distanceTo(pathPoses[this.nextIndex - 1].pos);
+      const targetVelocity = Math.sqrt(2 * pathPoses[nextIndex].acceleration * prevNextDist * Math.clamp(progress, 0, 1) + pathPoses[this.nextIndex - 1].velocity * pathPoses[this.nextIndex - 1].velocity);
+      const diffVelocity = targetVelocity - velocity;
+      const diffAccel = pathPoses[this.nextIndex].acceleration - currentAccel;
+      const targetAccel = kp_a * diffVelocity + kd_a * diffAccel + kff_a * pathPoses[this.nextIndex].acceleration;
+
+      if (targetAccel > 0)
+        gas = Math.min(targetAccel / Car.MAX_GAS_ACCEL, 1);
+      else
+        brake = Math.min(-targetAccel / Car.MAX_BRAKE_DECEL, 1);
+
+      this.prevVelocity = velocity;
+
+      const closestFrontPathPos = projectPointOnSegment(frontAxlePos, pathPoses[this.nextIndex - 1].frontPos, pathPoses[this.nextIndex].frontPos)[0];
 
       // Determine the desired heading at the specific point on the front path by lerping between prevHeading and nextHeading using progress as the weight
       const prevHeading = this.nextIndex > 1 ? pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 2].frontPos).angle() : pathPoses[0].rot;
@@ -78,13 +96,13 @@ export default class AutonomousController {
       // Determine if the front axle is to the left or right of the front path
       const pathVec = pathPoses[nextIndex].frontPos.clone().sub(pathPoses[nextIndex - 1].frontPos).normalize();
       const zero = new THREE.Vector2(0, 0);
-      const left = pathVec.clone().rotateAround(zero, Math.PI / 2).add(this.closestFrontPathPos);
-      const right = pathVec.clone().rotateAround(zero, -Math.PI / 2).add(this.closestFrontPathPos);
+      const left = pathVec.clone().rotateAround(zero, Math.PI / 2).add(closestFrontPathPos);
+      const right = pathVec.clone().rotateAround(zero, -Math.PI / 2).add(closestFrontPathPos);
       const dir = frontAxlePos.distanceToSquared(left) < frontAxlePos.distanceToSquared(right) ? -1 : 1;
 
       const k = 4;
       const gain = 0.8;
-      const crossTrackError = frontAxlePos.distanceTo(this.closestFrontPathPos);
+      const crossTrackError = frontAxlePos.distanceTo(closestFrontPathPos);
       const headingError = Math.wrapAngle(pose.rot - desiredHeading);
 
       //phi = -headingError + gain * Math.atan(k * dir * crossTrackError / velocity);

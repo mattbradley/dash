@@ -36,15 +36,15 @@ const config = {
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 2, // meters
   hazardDilationS: 2, // meters
-  lethalDilationL: Car.HALF_CAR_WIDTH + 0.5, //meters
-  hazardDilationL: 1, // meters
+  lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
+  hazardDilationL: 0.5, // meters
 
-  obstacleHazardCost: 10,
+  obstacleHazardCost: 5,
 
   laneWidth: 3.7, // meters
-  laneShoulderCost: 10,
+  laneShoulderCost: 80,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 5, // cost / meter
+  laneCostSlope: 40, // cost / meter
 
   stationReachDiscount: 200,
   extraTimePenalty: 10,
@@ -398,11 +398,16 @@ export default class PathPlanner {
       }
 
       const path = pathBuilder.buildPath(Math.ceil(length / config.pathSamplingStep));
-      const dV = (velocity - prevVelocity) / (path.length - 1);
-      let currentVelocity = prevVelocity;
+
+      const prevVelocitySq = prevVelocity * prevVelocity;
+      const accel = (velocity * velocity - prevVelocitySq) / 2 / length;
+      const ds = length / (path.length - 1);
+      let s = 0;
+
       for (let i = 0; i < path.length; i++) {
-        path[i].velocity = currentVelocity;
-        currentVelocity += dV;
+        path[i].velocity = Math.sqrt(2 * accel * s + prevVelocitySq);
+        path[i].acceleration = accel;
+        s += ds;
       }
 
       if (i < nodes.length - 2) path.pop();

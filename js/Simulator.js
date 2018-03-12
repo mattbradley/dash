@@ -89,8 +89,26 @@ export default class Simulator {
     this.changeCamera('chase');
 
     this.aroundAnchorIndex = null;
+    this.obstacles = [];
 
     requestAnimationFrame(step.bind(this));
+  }
+
+  toss() {
+    const pose = this.car.pose;
+    const rotVec = THREE.Vector2.fromAngle(pose.rot);
+    const pos = rotVec.clone().multiplyScalar(50).add(new THREE.Vector2(rotVec.y, rotVec.x)).add(pose.pos);
+    const obstacle = new StaticObstacle(pos, 0, 0.5, 0.5);
+
+    const obsGeom = new THREE.PlaneGeometry(obstacle.width, obstacle.height);
+    const obsMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, depthTest: false, transparent: true, opacity: 0.5 });
+    const obsObj = new THREE.Mesh(obsGeom, obsMat);
+    obsObj.rotation.x = -Math.PI / 2;
+    obsObj.rotation.z = -obstacle.rot;
+    obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
+    this.scene.add(obsObj);
+
+    this.obstacles.push(obstacle);
   }
 
   _setUpCameras(domElement) {
@@ -199,6 +217,7 @@ export default class Simulator {
     this._resetTopDownCamera();
 
     this.plannerReady = true;
+    this.simulatedTime = 0;
   }
 
   enableManualMode() {
@@ -295,7 +314,7 @@ export default class Simulator {
       vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
-      obstacles: []
+      obstacles: this.obstacles
     });
   }
 
@@ -337,7 +356,10 @@ export default class Simulator {
 
     const followPath = new Path(path);
 
-    this.autonomousCarController = new AutonomousController(followPath);
+    if (this.autonomousCarController)
+      this.autonomousCarController.replacePath(followPath);
+    else
+      this.autonomousCarController = new AutonomousController(followPath);
 
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();
@@ -345,6 +367,7 @@ export default class Simulator {
     this.plannedPathGroup.add(new THREE.Line(frontGeometry, frontMaterial));
   }
 
+  /*
   go() {
     this.editor.enabled = false;
     this.changeCamera('chase');
@@ -417,6 +440,7 @@ export default class Simulator {
     frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
   }
+  */
 }
 
 function step(timestamp) {

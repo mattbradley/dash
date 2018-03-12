@@ -99,6 +99,16 @@ export default class Editor {
     this.group.remove(this.pointsGroup);
     this.pointsGroup = new THREE.Group();
     this.points = [];
+    this.pointIndex = 0;
+
+    this.lanePath = new LanePath();
+  }
+
+  loadPoints(points) {
+    this.clearPoints();
+
+    points.forEach(p => this.addPoint(new THREE.Vector2(p.x, p.y)));
+    this.redraw();
   }
 
   mouseDown(event) {
