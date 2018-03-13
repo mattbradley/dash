@@ -129,6 +129,9 @@ vec4 kernel() {
             float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.y, acceleration);
             if (averageDynamicCost < 0.0) continue;
 
+            if (accelerationIndex != prevAccel)
+              averageDynamicCost += accelerationChangePenalty;
+
             // The cost of a trajectory is the average sample cost scaled by the path length
             float totalCost = (averageStaticCost + averageDynamicCost) * pathLength + costTableEntry.x;
 
@@ -196,6 +199,7 @@ export default {
         ddCurvVehicle: { type: 'float' },
         extraTimePenalty: { type: 'float' },
         hysteresisDiscount: { type: 'float' },
+        accelerationChangePenalty: { type: 'float' },
         numStations: { type: 'int' },
         numLatitudes: { type: 'int' },
         numAccelerations: { type: 'int' },
@@ -244,6 +248,7 @@ export default {
         ddCurvVehicle: pose.ddCurv,
         extraTimePenalty: config.extraTimePenalty,
         hysteresisDiscount: config.hysteresisDiscount,
+        accelerationChangePenalty: config.accelerationChangePenalty,
         numStations: config.lattice.numStations,
         numLatitudes: config.lattice.numLatitudes,
         numAccelerations: NUM_ACCELERATION_PROFILES,

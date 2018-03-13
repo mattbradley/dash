@@ -16,56 +16,6 @@ const NUM_ACCELERATION_PROFILES = 8;
 const NUM_VELOCITY_RANGES = 4;
 const NUM_TIME_RANGES = 2;
 
-const config = {
-  spatialHorizon: 100, // meters
-  centerlineStationInterval: 0.5, // meters
-
-  lattice: {
-    numStations: 10,
-    numLatitudes: 19,
-    stationConnectivity: 3,
-    latitudeConnectivity: 9
-  },
-
-  xyGridCellSize: 0.3, // meters
-  slGridCellSize: 0.15, // meters
-  gridMargin: 10, // meters
-  pathSamplingStep: 0.5, // meters
-
-  cubicPathPenalty: 0.1,
-
-  lethalDilationS: Car.HALF_CAR_LENGTH + 2, // meters
-  hazardDilationS: 2, // meters
-  lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
-  hazardDilationL: 0.5, // meters
-
-  obstacleHazardCost: 5,
-
-  laneWidth: 3.7, // meters
-  laneShoulderCost: 80,
-  laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 40, // cost / meter
-
-  stationReachDiscount: 200,
-  extraTimePenalty: 10,
-
-  hysteresisDiscount: 100,
-
-  speedLimit: 20, // m/s
-  speedLimitPenalty: 50,
-
-  hardAccelerationPenalty: 10,
-  hardDecelerationPenalty: 10,
-
-  lateralAccelerationLimit: 3, // m/s^2
-  softLateralAccelerationPenalty: 10,
-  linearLateralAccelerationPenalty: 0.1,
-
-  dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
-
-  rearAxleToCenter: -Car.REAR_AXLE_POS
-};
-
 /* Obstacle cost map:
  *
  * 1. Rasterize triangles from polygonal obstacles into XY-space occupancy grid
@@ -106,7 +56,7 @@ export default class PathPlanner {
   }
 
   plan(vehiclePose, vehicleStation, lanePath, obstacles) {
-    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(config.spatialHorizon / config.centerlineStationInterval) + 1, config.centerlineStationInterval);
+    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(this.config.spatialHorizon / this.config.centerlineStationInterval) + 1, this.config.centerlineStationInterval);
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(vehiclePose);
@@ -129,12 +79,12 @@ export default class PathPlanner {
 
     const diff = maxPoint.clone().sub(minPoint);
     const xyCenterPoint = minPoint.clone().add(maxPoint).divideScalar(2);
-    const xyWidth = Math.ceil((diff.x + config.gridMargin * 2) / config.xyGridCellSize);
-    const xyHeight = Math.ceil((diff.y + config.gridMargin * 2) / config.xyGridCellSize);
+    const xyWidth = Math.ceil((diff.x + this.config.gridMargin * 2) / this.config.xyGridCellSize);
+    const xyHeight = Math.ceil((diff.y + this.config.gridMargin * 2) / this.config.xyGridCellSize);
 
-    const slCenterPoint = new THREE.Vector2(config.spatialHorizon / 2, 0);
-    const slWidth = Math.ceil(config.spatialHorizon / config.slGridCellSize);
-    const slHeight = Math.ceil((config.laneWidth + config.gridMargin * 2) / config.slGridCellSize);
+    const slCenterPoint = new THREE.Vector2(this.config.spatialHorizon / 2, 0);
+    const slWidth = Math.ceil(this.config.spatialHorizon / this.config.slGridCellSize);
+    const slHeight = Math.ceil((this.config.laneWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
 
     let startStation;
 
@@ -152,15 +102,15 @@ export default class PathPlanner {
     const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
     for (const [i, p] of [
-      xyObstacleGrid.update(config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
-      slObstacleGrid.update(config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
-      ...slObstacleGridDilation.update(config, slWidth, slHeight),
-      xyslMap.update(config, xyWidth, xyHeight, xyCenterPoint),
-      ...optimizeCubicPaths.update(config, vehiclePose),
-      optimizeQuinticPaths.update(config, vehiclePose),
-      ...pathFromVehicleCosts.update(config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
-      graphSearch.update(config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
-      xyObstacleCostGrid.update(config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
+      xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
+      slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
+      ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
+      xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
+      ...optimizeCubicPaths.update(this.config, vehiclePose),
+      optimizeQuinticPaths.update(this.config, vehiclePose),
+      ...pathFromVehicleCosts.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
+      graphSearch.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
+      xyObstacleCostGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -175,14 +125,14 @@ export default class PathPlanner {
       },
       costTable: {
         width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
-        height: config.lattice.numLatitudes,
-        depth: config.lattice.numStations,
+        height: this.config.lattice.numLatitudes,
+        depth: this.config.lattice.numStations,
         channels: 4,
         textureType: '2DArray'
       },
       lattice: {
-        width: config.lattice.numLatitudes,
-        height: config.lattice.numStations,
+        width: this.config.lattice.numLatitudes,
+        height: this.config.lattice.numStations,
         channels: 4,
         data: lattice
       }
@@ -251,16 +201,16 @@ export default class PathPlanner {
   }
 
   _buildLattice(lanePath, startStation, vehicleRot, vehicleXform) {
-    const centerline = lanePath.sampleStations(startStation, config.lattice.numStations, this._latticeStationInterval());
-    const offset = Math.floor(config.lattice.numLatitudes / 2);
-    const lattice = new Float32Array(config.lattice.numStations * config.lattice.numLatitudes * 4);
+    const centerline = lanePath.sampleStations(startStation, this.config.lattice.numStations, this._latticeStationInterval());
+    const offset = Math.floor(this.config.lattice.numLatitudes / 2);
+    const lattice = new Float32Array(this.config.lattice.numStations * this.config.lattice.numLatitudes * 4);
     let index = 0;
 
-    for (let s = 0; s < config.lattice.numStations; s++) {
+    for (let s = 0; s < this.config.lattice.numStations; s++) {
       const sample = centerline[s];
 
-      for (let l = 0; l < config.lattice.numLatitudes; l++) {
-        const latitude = (l - offset) / offset * config.laneWidth / 2;
+      for (let l = 0; l < this.config.lattice.numLatitudes; l++) {
+        const latitude = (l - offset) / offset * this.config.laneWidth / 2;
         const rot = sample.rot - vehicleRot;
         const pos = THREE.Vector2.fromAngle(rot + Math.PI / 2).multiplyScalar(latitude).add(sample.pos.clone().applyMatrix3(vehicleXform));
         const curv = sample.curv == 0 ? 0 : 1 / (1 / sample.curv - latitude);
@@ -276,17 +226,17 @@ export default class PathPlanner {
   }
 
   _latticeStationInterval() {
-    return config.spatialHorizon / config.lattice.numStations;
+    return this.config.spatialHorizon / this.config.lattice.numStations;
   }
 
   _terminalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
     // Only consider vertices that reach the end of the spatial or temporal horizon
-    if (stationIndex != config.lattice.numStations - 1 && finalVelocity > 0.05)
+    if (stationIndex != this.config.lattice.numStations - 1 && finalVelocity > 0.05)
       return Number.POSITIVE_INFINITY;
 
-    const station = (config.spatialHorizon / config.lattice.numStations) * (stationIndex + 1);
+    const station = (this.config.spatialHorizon / this.config.lattice.numStations) * (stationIndex + 1);
 
-    return station * -config.stationReachDiscount + finalTime * config.extraTimePenalty;
+    return station * -this.config.stationReachDiscount + finalTime * this.config.extraTimePenalty;
   }
 
   _unpackCostTableIndex(index) {
@@ -294,7 +244,7 @@ export default class PathPlanner {
 
     const numPerTime = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES;
     const numPerLatitude = numPerTime * NUM_TIME_RANGES;
-    const numPerStation = config.lattice.numLatitudes * numPerLatitude;
+    const numPerStation = this.config.lattice.numLatitudes * numPerLatitude;
 
     const stationIndex = Math.floor(index / numPerStation);
     index -= stationIndex * numPerStation;
@@ -344,7 +294,7 @@ export default class PathPlanner {
           curv: vehiclePose.curv
         };
 
-        const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
+        const endIndex = (station * this.config.lattice.numLatitudes + latitude) * 4;
         const end = {
           pos: new THREE.Vector2(lattice[endIndex], lattice[endIndex + 1]),
           rot: lattice[endIndex + 2],
@@ -369,8 +319,8 @@ export default class PathPlanner {
           });
         }
       } else {
-        const startIndex = (prevStation * config.lattice.numLatitudes + prevLatitude) * 4;
-        const endIndex = (station * config.lattice.numLatitudes + latitude) * 4;
+        const startIndex = (prevStation * this.config.lattice.numLatitudes + prevLatitude) * 4;
+        const endIndex = (station * this.config.lattice.numLatitudes + latitude) * 4;
 
         const start = {
           pos: new THREE.Vector2(lattice[startIndex], lattice[startIndex + 1]),
@@ -384,9 +334,9 @@ export default class PathPlanner {
           curv: lattice[endIndex + 3]
         };
 
-        const slIndex = station * config.lattice.numLatitudes + latitude;
-        const connectivityIndex = (prevStation - station + config.lattice.stationConnectivity) * config.lattice.latitudeConnectivity + prevLatitude - latitude + Math.floor(config.lattice.latitudeConnectivity / 2);
-        const cubicPathIndex = (connectivityIndex * config.lattice.numStations * config.lattice.numLatitudes + slIndex) * 4;
+        const slIndex = station * this.config.lattice.numLatitudes + latitude;
+        const connectivityIndex = (prevStation - station + this.config.lattice.stationConnectivity) * this.config.lattice.latitudeConnectivity + prevLatitude - latitude + Math.floor(this.config.lattice.latitudeConnectivity / 2);
+        const cubicPathIndex = (connectivityIndex * this.config.lattice.numStations * this.config.lattice.numLatitudes + slIndex) * 4;
 
         length = cubicPathParams[cubicPathIndex + 2];
 
@@ -397,7 +347,7 @@ export default class PathPlanner {
         });
       }
 
-      const path = pathBuilder.buildPath(Math.ceil(length / config.pathSamplingStep));
+      const path = pathBuilder.buildPath(Math.ceil(length / this.config.pathSamplingStep));
 
       const prevVelocitySq = prevVelocity * prevVelocity;
       const accel = (velocity * velocity - prevVelocitySq) / 2 / length;
@@ -418,16 +368,14 @@ export default class PathPlanner {
     let secondLatticePoint = -1;
 
     if (nodes.length >= 2)
-      firstLatticePoint = nodes[1][0] * config.lattice.numLatitudes + nodes[1][1];
+      firstLatticePoint = nodes[1][0] * this.config.lattice.numLatitudes + nodes[1][1];
 
     if (nodes.length >= 3)
-      secondLatticePoint = nodes[2][0] * config.lattice.numLatitudes + nodes[2][1];
+      secondLatticePoint = nodes[2][0] * this.config.lattice.numLatitudes + nodes[2][1];
 
     return [points, firstLatticePoint, secondLatticePoint];
   }
 }
-
-PathPlanner.config = config;
 
 function vehicleTransform({ pos, rot }) {
   const translate = new THREE.Matrix3();

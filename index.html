@@ -56,10 +56,26 @@
                     </div>
                 </div>
             </div>
-            <div id="fps-box" class="gui-box">
-                <div class="is-size-7 has-text-grey-light">
-                    <span id="fps">&mdash;</span> fps
+            <div id="show-config-box" class="gui-box sim-mode-box">
+                <div id="show-config-button" class="button is-small is-dark is-outlined is-inverted">
+                    <span class="icon is-medium">
+                        <i class="fas fa-lg fa-cog"></i>
+                    </span>
                 </div>
+            </div>
+            <div id="config-box" class="gui-box sim-mode-box is-hidden">
+                <div class="is-clearfix">
+                    <div id="hide-config-button" class="button is-small is-dark is-outlined is-inverted is-pulled-right">
+                        <span class="icon is-medium">
+                            <i class="fas fa-lg fa-cog"></i>
+                        </span>
+                    </div>
+                    <div id="save-config-button" class="button is-small is-info is-pulled-right" style="margin-right: 8px;">
+                        Save
+                    </div>
+                    <div class="title is-5 has-text-grey-lighter" style="overflow: hidden; padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
+                </div>
+                <div id="config-fields" style="margin-top: 16px; max-height: 400px; overflow-y: scroll;"></div>
             </div>
             <div id="modes" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
@@ -124,18 +140,14 @@
                         <i class="fas fa-lg fa-eye"></i>
                     </span>
                 </div>
+                <div class="button is-small is-static has-text-grey-light has-text-right is-paddingless is-pulled-right" style="margin-left: 8px; width: 50px; background: transparent; border: none;">
+                    <span id="fps">&mdash;</span> fps
+                </div>
                 <div class="buttons has-addons" style="padding-left: 8px;">
                     <span id="camera-chase" class="button is-small is-dark is-outlined is-inverted">Chase</span>
                     <span id="camera-topDown" class="button is-small is-dark is-outlined is-inverted">Top Down</span>
                     <span id="camera-free" class="button is-small is-dark is-outlined is-inverted">Free</span>
                 </div>
-            </div>
-            <div class="modal">
-                <div class="modal-background"></div>
-                    <div class="modal-content">
-                        <!-- Any other Bulma elements you want -->
-                    </div>
-                <button class="modal-close is-large" aria-label="close"></button>
             </div>
         </div>
         <script defer src="js/vendor/fontawesome-all.js"></script>

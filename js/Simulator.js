@@ -15,6 +15,7 @@ import RoadLattice from "./autonomy/path-planning/RoadLattice.js";
 import PathPlanner from "./autonomy/path-planning/PathPlanner.js";
 import StaticObstacle from "./autonomy/path-planning/StaticObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
+import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
 const FRAME_TIMESTEP = 1 / 60;
 
@@ -24,6 +25,7 @@ export default class Simulator {
 
     this.pathPlannerWorker = new Worker('workers/dist/PathPlannerWorker.js');
     this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
+    this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
 
     this.physics = new Physics();
     this.car = this.physics.createCar();
@@ -304,13 +306,12 @@ export default class Simulator {
 
     let predictedPose = pose;
 
-    /* Commenting out since it's kinda buggy at the moment.
     if (this.autonomousCarController && this.carControllerMode == 'autonomous') {
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, this.averagePlanTime.average * this.fps * FRAME_TIMESTEP);
     }
-    */
 
     this.pathPlannerWorker.postMessage({
+      config: this.pathPlannerConfigEditor.config,
       vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
@@ -345,6 +346,13 @@ export default class Simulator {
       });
     });
 
+    const followPath = new Path(path);
+
+    if (this.autonomousCarController)
+      this.autonomousCarController.replacePath(followPath);
+    else
+      this.autonomousCarController = new AutonomousController(followPath);
+
     const pathGeometry = new THREE.Geometry();
     pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
     const pathLine = new MeshLine();
@@ -354,93 +362,11 @@ export default class Simulator {
     pathObject.renderOrder = 1;
     this.plannedPathGroup.add(pathObject);
 
-    const followPath = new Path(path);
-
-    if (this.autonomousCarController)
-      this.autonomousCarController.replacePath(followPath);
-    else
-      this.autonomousCarController = new AutonomousController(followPath);
-
     const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
     const frontGeometry = new THREE.Geometry();
     frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
     this.plannedPathGroup.add(new THREE.Line(frontGeometry, frontMaterial));
   }
-
-  /*
-  go() {
-    this.editor.enabled = false;
-    this.changeCamera('chase');
-
-    const circleGeom = new THREE.CircleGeometry(0.15, 32);
-    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
-
-    const lattice = new RoadLattice(this.editor.lanePath);
-    lattice.lattice.forEach(cells => {
-      cells.forEach(c => {
-        const circle = new THREE.Mesh(circleGeom, circleMat);
-        circle.position.set(c.pos.x, 0, c.pos.y);
-        circle.rotation.x = -Math.PI / 2;
-        this.scene.add(circle);
-      });
-    });
-
-    const obstacle = new StaticObstacle({ x: 0, y: 0 }, Math.PI, 32, 1);
-    const obsGeom = new THREE.PlaneGeometry(obstacle.width, obstacle.height);
-    const obsMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, depthTest: false, transparent: true, opacity: 0.5 });
-    const obsObj = new THREE.Mesh(obsGeom, obsMat);
-    obsObj.rotation.x = -Math.PI / 2;
-    obsObj.rotation.z = -obstacle.rot;
-    obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
-    this.scene.add(obsObj);
-
-    //this.pathPlannerWorker.postMessage({ lanePath: this.editor.lanePath, obstacles: [obstacle] });
-    const planner = new PathPlanner();
-
-    let start = performance.now();
-    const sd = +new Date;
-    console.log(new Date);
-    const { xysl, xyObstacle, width, height, center, rot, path, vehiclePose } = planner.plan(this.editor.lanePath, [obstacle]);
-    console.log(`Planner run time (performance.now()): ${(performance.now() - start) / 1000}s`);
-    console.log(`Planner run time (Date): ${((+new Date) - sd) / 1000}s`);
-    console.log(new Date);
-    console.log(`Grid size: ${width}x${height}`);
-
-    const xyslTex = new THREE.DataTexture(xyObstacle, width, height, THREE.RGBAFormat, THREE.FloatType);
-    xyslTex.flipY = true;
-    //xyslTex.magFilter = THREE.LinearFilter;
-    xyslTex.needsUpdate = true;
-
-    const xyslGeom = new THREE.PlaneGeometry(width * PathPlanner.config.xyGridCellSize, height * PathPlanner.config.xyGridCellSize);
-    const xyslMat = new THREE.MeshBasicMaterial({ map: xyslTex, depthTest: false, transparent: true, opacity: 0.5 });
-    const xyslObj = new THREE.Mesh(xyslGeom, xyslMat);
-    xyslObj.rotation.x = -Math.PI / 2;
-    xyslObj.rotation.z = -rot;
-    xyslObj.position.set(center.x, 0, center.y);
-
-    this.scene.add(xyslObj);
-
-    const pathGeometry = new THREE.Geometry();
-    pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));
-    const pathLine = new MeshLine();
-    pathLine.setGeometry(pathGeometry);
-
-    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
-    pathObject.renderOrder = 1;
-    this.scene.add(pathObject);
-
-    const followPath = new Path(path);
-
-    this.autonomousCarController = new AutonomousController(followPath);
-    this.enableAutonomousMode();
-    this.car.setPose(vehiclePose.pos.x, vehiclePose.pos.y, vehiclePose.rot);
-
-    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
-    const frontGeometry = new THREE.Geometry();
-    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
-    this.scene.add(new THREE.Line(frontGeometry, frontMaterial));
-  }
-  */
 }
 
 function step(timestamp) {

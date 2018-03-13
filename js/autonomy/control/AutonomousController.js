@@ -19,7 +19,7 @@ export default class AutonomousController {
     let [nextIndex, progress] = this.findNextIndex(frontAxlePos);
     let currentVelocity = currentPose.velocity;
 
-    if (currentVelocity <= 0.01 || progress == 0) return currentPose;
+    if (currentVelocity <= 0.01) return currentPose;
 
     while (predictionTime > 0) {
       const prevPose = pathPoses[nextIndex - 1];
@@ -27,13 +27,12 @@ export default class AutonomousController {
 
       const segmentDist = nextPose.pos.distanceTo(prevPose.pos);
       const distLeft = segmentDist * (1 - progress);
-      //const sumV = currentVelocity + nextPose.velocity;
-      //const timeToNextIndex = 2 * distLeft / (sumV == 0 ? 0.01 : sumV);
-      const timeToNextIndex = distLeft / currentVelocity;
+      const sumV = currentVelocity + nextPose.velocity;
+      const timeToNextIndex = 2 * distLeft / (sumV == 0 ? 0.01 : sumV);
+      //const timeToNextIndex = distLeft / currentVelocity;
 
       if (timeToNextIndex >= predictionTime || nextIndex + 1 >= pathPoses.length) {
-        //const dist = (currentVelocity + nextPose.velocity) / 2 * predictionTime;
-        const dist = currentVelocity * predictionTime;
+        const dist = sumV / 2 * predictionTime;
         const newProgress = progress + dist / segmentDist;
 
         return {
@@ -42,7 +41,7 @@ export default class AutonomousController {
           curv: prevPose.curv + (nextPose.curv - prevPose.curv) * newProgress,
           dCurv: 0,
           ddCurv: 0,
-          velocity: (currentVelocity + nextPose.velocity) / 2
+          velocity: nextPose.velocity
         }
       }
 
@@ -68,7 +67,7 @@ export default class AutonomousController {
       brake = 1;
       phi = 0;
     } else {
-      const kp_a = 0.5;
+      const kp_a = 4;
       const kd_a = 0.5;
       const kff_a = 0.5;
 
@@ -112,10 +111,6 @@ export default class AutonomousController {
       phi = Math.atan(curv * Car.WHEEL_BASE) + gain * Math.atan(k * dir * crossTrackError / Math.max(velocity, 0.01));
 
       const checkSteer = Math.clamp((phi - wheelAngle) / dt / Car.MAX_STEER_SPEED, -1, 1);
-
-      if (Math.abs(checkSteer) > 0.5) {
-        //console.log(checkSteer);
-      }
     }
 
     const phiError = phi - wheelAngle;

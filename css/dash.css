@@ -56,6 +56,7 @@ canvas { width: 100%; height: 100% }
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    border-radius: 2px;
 }
 
 #controls {
@@ -74,7 +75,7 @@ canvas { width: 100%; height: 100% }
     cursor: pointer;
 }
 
-#fps-box {
+#show-config-box, #config-box {
     position: absolute;
     top: 0;
     right: 0;

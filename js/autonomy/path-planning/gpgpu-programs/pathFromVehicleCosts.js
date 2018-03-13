@@ -42,6 +42,8 @@ vec4 kernel() {
   float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, velocityVehicle, acceleration);
   if (averageDynamicCost < 0.0) return vec4(-1);
 
+  averageDynamicCost += accelerationChangePenalty;
+
   // The cost of a trajectory is the average sample cost scaled by the path length
   float totalCost = (averageStaticCost + averageDynamicCost + ${pathType == 'cubic' ? '(cubicPathPenalty * velocityVehicle * velocityVehicle)' : '0.0'}) * pathLength;
 
@@ -67,7 +69,8 @@ export default {
           curvVehicle: { type: 'float' },
           numAccelerations: { type: 'int' },
           cubicPathPenalty: { type: 'float' },
-          hysteresisDiscount: { type: 'float' }
+          hysteresisDiscount: { type: 'float' },
+          accelerationChangePenalty: { type: 'float' }
         }
       },
       {
@@ -84,7 +87,8 @@ export default {
           dCurvVehicle: { type: 'float' },
           ddCurvVehicle: { type: 'float' },
           numAccelerations: { type: 'int' },
-          hysteresisDiscount: { type: 'float' }
+          hysteresisDiscount: { type: 'float' },
+          accelerationChangePenalty: { type: 'float' }
         }
       }
     ];
@@ -103,7 +107,8 @@ export default {
           curvVehicle: pose.curv,
           numAccelerations: NUM_ACCELERATION_PROFILES,
           cubicPathPenalty: config.cubicPathPenalty,
-          hysteresisDiscount: config.hysteresisDiscount
+          hysteresisDiscount: config.hysteresisDiscount,
+          accelerationChangePenalty: config.accelerationChangePenalty
         }
       },
       {
@@ -118,7 +123,8 @@ export default {
           dCurvVehicle: pose.dCurv,
           ddCurvVehicle: pose.ddCurv,
           numAccelerations: NUM_ACCELERATION_PROFILES,
-          hysteresisDiscount: config.hysteresisDiscount
+          hysteresisDiscount: config.hysteresisDiscount,
+          accelerationChangePenalty: config.accelerationChangePenalty
         }
       }
     ];
