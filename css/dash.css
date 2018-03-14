@@ -75,7 +75,7 @@ canvas { width: 100%; height: 100% }
     cursor: pointer;
 }
 
-#show-config-box, #config-box {
+#config-box {
     position: absolute;
     top: 0;
     right: 0;

@@ -28,10 +28,10 @@ const defaultConfig = {
   laneWidth: 3.7, // meters
   laneShoulderCost: 2,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 0.5, // cost / meter
+  laneCostSlope: 3, // cost / meter
 
   stationReachDiscount: 10,
-  extraTimePenalty: 4,
+  extraTimePenalty: 16,
 
   hysteresisDiscount: 1,
 
@@ -45,7 +45,7 @@ const defaultConfig = {
   softLateralAccelerationPenalty: 1,
   linearLateralAccelerationPenalty: 0.1,
 
-  accelerationChangePenalty: 2,
+  accelerationChangePenalty: 0.5,
 
   dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
 
@@ -59,15 +59,15 @@ export default class PathPlannerConfigEditor {
     this.config = defaultConfig;
 
     this.showConfigBox = document.getElementById('show-config-box');
-    this.configBox = document.getElementById('config-box');
-    this.configFields = document.getElementById('config-fields');
+    this.configBox = document.getElementById('config-box-content');
+    this.configForm = document.getElementById('config-form');
 
     this._setUpButtons();
 
     const keys = Object.keys(this.config).filter(k => !ignoreKeys.includes(k)).sort();
     
     for (const key of keys)
-      this.configFields.appendChild(this._createConfigField(key, this.config[key]));
+      this.configForm.appendChild(this._createConfigField(key, this.config[key]));
   }
 
   _setUpButtons() {
@@ -80,17 +80,20 @@ export default class PathPlannerConfigEditor {
       this.showConfigBox.classList.remove('is-hidden');
       this.configBox.classList.add('is-hidden');
     });
+
+    document.getElementById('save-config-button').addEventListener('click', this._saveConfigFields.bind(this));
   }
 
   _createConfigField(key, value) {
-    const html = `<div class="field is-horizontal">
+    const html =
+      `<div class="field is-horizontal">
           <div class="field-label is-small" style="flex-grow: 100;">
-              <label class="label has-text-grey-light">${key}</label>
+              <label class="label has-text-grey-light" for="config-field-${key}">${key}</label>
           </div>
           <div class="field-body">
               <div class="field">
-                  <div class="control">
-                      <input class="input is-small" type="text" style="width: 60px" value="${value}" />
+                  <div class="control" style="margin-right: 16px;">
+                      <input id="config-field-${key}" name="${key}" class="input is-small" type="text" style="width: 60px" value="${value}" />
                   </div>
               </div>
           </div>
@@ -99,5 +102,12 @@ export default class PathPlannerConfigEditor {
     const template = document.createElement('template');
     template.innerHTML = html;
     return template.content.firstChild;
+  }
+
+  _saveConfigFields() {
+    const formData = new FormData(this.configForm);
+
+    for (const [k, v] of formData.entries())
+      this.config[k] = Number.parseFloat(v);
   }
 }

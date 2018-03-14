@@ -57,6 +57,8 @@ export default class Simulator {
     this.dashboard = new Dashboard(this.car);
 
     this.plannerReady = false;
+    this.plannerReset = false;
+    this.plannerEnabled = false;
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
@@ -81,6 +83,7 @@ export default class Simulator {
 
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-save').addEventListener('click', this.finalizeEditor.bind(this));
+    document.getElementById('scenario-restart').addEventListener('click', this.restartScenario.bind(this));
 
     this.simModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('sim-mode-box'), 0);
     this.editModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('edit-mode-box'), 0);
@@ -184,26 +187,17 @@ export default class Simulator {
     this.freeCameraControls.enabled = false;
 
     this.scene.fog = null;
+    if (this.plannedPathGroup) this.plannedPathGroup.visible = false;
 
     this.simModeBoxes.forEach(el => el.classList.add('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.remove('is-hidden'));
   }
 
-  finalizeEditor() {
+  finalizeEditor(replaceCamera = true) {
     this.editor.enabled = false;
     this.editorCameraControls.enabled = false;
 
     this.scene.fog = this.sceneFog;
-    this.camera = this.previousCamera;
-
-    if (this.previousCamera == this.chaseCamera)
-      this.chaseCameraControls.enabled = true;
-    else if (this.previousCamera == this.topDownCamera)
-      this.topDownControls.enabled = true;
-    else if (this.previousCamera == this.freeCamera)
-      this.freeCameraControls.enabled = true;
-    else
-      this.changeCamera('chase');
 
     this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
@@ -214,12 +208,36 @@ export default class Simulator {
     const rot = Math.atan2(dir.y, dir.x);
     this.car.setPose(pos.x, pos.y, rot);
 
+    if (this.autonomousCarController) this.autonomousCarController.reset();
+
+    if (!this.plannerRunning) {
+      this.plannerReady = true;
+      this.plannerRunning = true;
+    }
+    this.plannerReset = true;
+    this.simulatedTime = 0;
+
+    if (replaceCamera) {
+      this.camera = this.previousCamera;
+
+      if (this.previousCamera == this.chaseCamera)
+        this.chaseCameraControls.enabled = true;
+      else if (this.previousCamera == this.topDownCamera)
+        this.topDownControls.enabled = true;
+      else if (this.previousCamera == this.freeCamera)
+        this.freeCameraControls.enabled = true;
+      else
+        this.changeCamera('chase');
+    }
+
     this._resetFreeCamera();
     this._resetChaseCamera();
     this._resetTopDownCamera();
+  }
 
-    this.plannerReady = true;
-    this.simulatedTime = 0;
+  restartScenario() {
+    if (this.editor.enabled) return;
+    this.finalizeEditor(false);
   }
 
   enableManualMode() {
@@ -306,28 +324,40 @@ export default class Simulator {
 
     let predictedPose = pose;
 
-    if (this.autonomousCarController && this.carControllerMode == 'autonomous') {
+    if (!this.plannerReset && this.autonomousCarController && this.carControllerMode == 'autonomous') {
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, this.averagePlanTime.average * this.fps * FRAME_TIMESTEP);
     }
+
+    const reset = this.plannerReset;
+    this.plannerReset = false;
 
     this.pathPlannerWorker.postMessage({
       config: this.pathPlannerConfigEditor.config,
       vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
-      obstacles: this.obstacles
+      obstacles: this.obstacles,
+      reset: reset
     });
   }
 
   receivePlannedPath(event) {
+    if (this.editor.enabled) return;
+
     const { path, vehiclePose, vehicleStation, latticeStartStation } = event.data;
 
     this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
     this.plannerReady = true;
 
-    if (path === null) return;
+    if (path === null || this.plannerReset) return;
 
     path.forEach(p => Object.setPrototypeOf(p.pos, THREE.Vector2.prototype));
+    const followPath = new Path(path);
+
+    if (this.autonomousCarController)
+      this.autonomousCarController.replacePath(followPath);
+    else
+      this.autonomousCarController = new AutonomousController(followPath);
 
     this.scene.remove(this.plannedPathGroup);
     this.plannedPathGroup = new THREE.Group();
@@ -345,13 +375,6 @@ export default class Simulator {
         this.plannedPathGroup.add(circle);
       });
     });
-
-    const followPath = new Path(path);
-
-    if (this.autonomousCarController)
-      this.autonomousCarController.replacePath(followPath);
-    else
-      this.autonomousCarController = new AutonomousController(followPath);
 
     const pathGeometry = new THREE.Geometry();
     pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));

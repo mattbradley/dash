@@ -8,6 +8,10 @@ export default class AutonomousController {
     this.prevVelocity = 0;
   }
 
+  reset() {
+    this.prevVelocity = 0;
+  }
+
   replacePath(path) {
     this.path = path;
     this.nextIndex = 1;

@@ -33,7 +33,6 @@ const NUM_TIME_RANGES = 2;
 
 export default class PathPlanner {
   constructor() {
-    this.previousPlan = null;
     this.previousStartStation = null;
     this.previousFirstLatticePoint = -1;
     this.previousSecondLatticePoint = -1;
@@ -53,6 +52,12 @@ export default class PathPlanner {
 
     this.gpgpu = new GPGPU(programs);
     //console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
+  }
+
+  reset() {
+    this.previousStartStation = null;
+    this.previousFirstLatticePoint = -1;
+    this.previousSecondLatticePoint = -1;
   }
 
   plan(vehiclePose, vehicleStation, lanePath, obstacles) {

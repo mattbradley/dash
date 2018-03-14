@@ -56,26 +56,30 @@
                     </div>
                 </div>
             </div>
-            <div id="show-config-box" class="gui-box sim-mode-box">
-                <div id="show-config-button" class="button is-small is-dark is-outlined is-inverted">
-                    <span class="icon is-medium">
-                        <i class="fas fa-lg fa-cog"></i>
-                    </span>
-                </div>
-            </div>
-            <div id="config-box" class="gui-box sim-mode-box is-hidden">
-                <div class="is-clearfix">
-                    <div id="hide-config-button" class="button is-small is-dark is-outlined is-inverted is-pulled-right">
+            <div id="config-box" class="gui-box sim-mode-box">
+                <div id="show-config-box">
+                    <div id="show-config-button" class="button is-small is-dark is-outlined is-inverted">
                         <span class="icon is-medium">
                             <i class="fas fa-lg fa-cog"></i>
                         </span>
                     </div>
-                    <div id="save-config-button" class="button is-small is-info is-pulled-right" style="margin-right: 8px;">
-                        Save
-                    </div>
-                    <div class="title is-5 has-text-grey-lighter" style="overflow: hidden; padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
                 </div>
-                <div id="config-fields" style="margin-top: 16px; max-height: 400px; overflow-y: scroll;"></div>
+                <div id="config-box-content" class="is-hidden">
+                    <div class="is-clearfix">
+                        <div id="hide-config-button" class="button is-small is-dark is-outlined is-inverted is-pulled-right">
+                            <span class="icon is-medium">
+                                <i class="fas fa-lg fa-times"></i>
+                            </span>
+                        </div>
+                        <div id="save-config-button" class="button is-small is-info is-pulled-right" style="margin-right: 8px;">
+                            Save
+                        </div>
+                        <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
+                    </div>
+                    <div style="margin-top: 16px; max-height: 400px; overflow-y: scroll;">
+                        <form id="config-form"></form>
+                    </div>
+                </div>
             </div>
             <div id="modes" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
@@ -97,6 +101,9 @@
                 <div class="field is-grouped" style="padding-left: 8px;">
                     <p class="control">
                         <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
+                    </p>
+                    <p class="control">
+                        <span id="scenario-restart" class="button is-small is-dark is-outlined is-inverted">Restart Scenario</span>
                     </p>
                 </div>
             </div>
