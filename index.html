@@ -58,21 +58,36 @@
             </div>
             <div id="config-box" class="gui-box sim-mode-box">
                 <div id="show-config-box">
-                    <div id="show-config-button" class="button is-small is-dark is-outlined is-inverted">
+                    <button id="show-config-button" class="button is-small is-dark is-outlined is-inverted" title="Planner Config">
                         <span class="icon is-medium">
                             <i class="fas fa-lg fa-cog"></i>
                         </span>
-                    </div>
+                    </button>
                 </div>
                 <div id="config-box-content" class="is-hidden">
                     <div class="is-clearfix">
-                        <div id="hide-config-button" class="button is-small is-dark is-outlined is-inverted is-pulled-right">
-                            <span class="icon is-medium">
-                                <i class="fas fa-lg fa-times"></i>
-                            </span>
-                        </div>
-                        <div id="save-config-button" class="button is-small is-info is-pulled-right" style="margin-right: 8px;">
-                            Save
+                        <div class="field is-grouped is-pulled-right">
+                            <p class="control">
+                                <button id="restore-defaults-config-button" class="button is-small is-danger" title="Restore Defaults">
+                                    <span class="icon is-medium">
+                                        <i class="fas fa-lg fa-undo-alt"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <p class="control">
+                                <button id="save-config-button" class="button is-small is-success" title="Save Config">
+                                    <span class="icon is-medium">
+                                        <i class="far fa-lg fa-save"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <p class="control">
+                                <button id="hide-config-button" class="button is-small is-dark is-outlined is-inverted" title="Close">
+                                    <span class="icon is-medium">
+                                        <i class="fas fa-lg fa-times"></i>
+                                    </span>
+                                </button>
+                            </p>
                         </div>
                         <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
                     </div>
