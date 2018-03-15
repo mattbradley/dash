@@ -60,7 +60,7 @@ export default class FollowController {
       steer = Math.clamp(wheelAngleError / dt / Car.MAX_STEER_SPEED, -1, 1);
 
       this.car.rotation = prevPose.rot + (nextPose.rot - prevPose.rot) * progress;
-      this.car.position.set(projection.x - Car.REAR_AXLE_POS * Math.cos(this.car.rotation), projection.y - Car.REAR_AXLE_POS * Math.sin(this.car.rotation));
+      this.car.position = new THREE.Vector2(projection.x - Car.REAR_AXLE_POS * Math.cos(this.car.rotation), projection.y - Car.REAR_AXLE_POS * Math.sin(this.car.rotation));
     }
 
     return { gas, brake, steer };
