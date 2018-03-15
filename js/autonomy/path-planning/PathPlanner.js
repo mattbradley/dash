@@ -98,8 +98,8 @@ export default class PathPlanner {
       const latticeStationInterval = this._latticeStationInterval();
       startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
       this.previousStartStation = startStation;
-      this.previousFirstLatticePoint = this.previousSecondLatticePoint;
-      this.previousSecondLatticePoint = -1;
+      this.previousFirstLatticePoint -= this.config.lattice.numLatitudes;
+      this.previousSecondLatticePoint -= this.config.lattice.numLatitudes;
     } else {
       startStation = this.previousStartStation;
     }

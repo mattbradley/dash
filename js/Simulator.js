@@ -1,8 +1,8 @@
-import Physics from "./physics/Physics.js";
-import Car from "./physics/Car.js";
+import Physics from "./physics/simple/Physics.js";
 import Path from "./autonomy/Path.js";
 import CubicPath from "./autonomy/path-planning/CubicPath.js";
 import AutonomousController from "./autonomy/control/AutonomousController.js";
+import FollowController from "./autonomy/control/FollowController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
@@ -357,7 +357,7 @@ export default class Simulator {
     if (this.autonomousCarController)
       this.autonomousCarController.replacePath(followPath);
     else
-      this.autonomousCarController = new AutonomousController(followPath);
+      this.autonomousCarController = new FollowController(followPath, this.car);
 
     this.scene.remove(this.plannedPathGroup);
     this.plannedPathGroup = new THREE.Group();

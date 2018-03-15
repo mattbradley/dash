@@ -1,3 +1,8 @@
+import Car from "./simple/Car.js";
+
+export default Car;
+
+/*
 export default class Car {
   constructor(world, x = 0, y = 0, rotation = 0) {
     this.world = world;
@@ -298,3 +303,4 @@ Car.FRONT_AXLE_POS = 1.56; // meters
 Car.REAR_AXLE_POS = -1.37; // meters
 Car.WHEEL_BASE = Car.FRONT_AXLE_POS - Car.REAR_AXLE_POS; // meters
 Car.MAX_LATERAL_ACCEL = 9.81; // m / s^2
+*/

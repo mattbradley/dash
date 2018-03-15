@@ -26,7 +26,7 @@ const defaultConfig = {
   cubicPathPenalty: 0.1,
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 1, // meters
-  hazardDilationS: 2, // meters
+  hazardDilationS: 12, // meters
   lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
   hazardDilationL: 0.5, // meters
 
@@ -37,22 +37,22 @@ const defaultConfig = {
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 3, // cost / meter
 
-  stationReachDiscount: 10,
+  stationReachDiscount: 20,
   extraTimePenalty: 64,
 
-  hysteresisDiscount: 1,
+  hysteresisDiscount: 10,
 
   speedLimit: 20, // m/s
   speedLimitPenalty: 2,
 
   hardAccelerationPenalty: 4,
-  hardDecelerationPenalty: 2,
+  hardDecelerationPenalty: 4,
 
   lateralAccelerationLimit: 3, // m/s^2
-  softLateralAccelerationPenalty: 1,
-  linearLateralAccelerationPenalty: 0.1,
+  softLateralAccelerationPenalty: 2,
+  linearLateralAccelerationPenalty: 1,
 
-  accelerationChangePenalty: 0.5
+  accelerationChangePenalty: 2
 };
 
 export default class PathPlannerConfigEditor {
@@ -70,7 +70,7 @@ export default class PathPlannerConfigEditor {
       storedConfig = JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
     } catch (e) {}
 
-    for (const key of Object.keys(this._config)) {
+    for (const key of Object.keys(this._config).sort()) {
       if (storedConfig[key] !== undefined) this._config[key] = storedConfig[key];
       this.configForm.appendChild(this._createConfigField(key, this._config[key]));
     }
@@ -104,7 +104,7 @@ export default class PathPlannerConfigEditor {
           <div class="field-body">
               <div class="field">
                   <div class="control" style="margin-right: 16px;">
-                      <input id="config-field-${key}" name="${key}" class="input is-small ${value != defaultConfig[key] ? 'is-warning' : ''}" type="text" style="width: 60px; border-width: 2px;" value="${value}" />
+                      <input id="config-field-${key}" name="${key}" class="input is-small ${value != defaultConfig[key] ? 'is-danger' : ''}" type="text" style="width: 60px; border-width: 2px;" value="${value}" />
                   </div>
               </div>
           </div>
@@ -123,9 +123,9 @@ export default class PathPlannerConfigEditor {
 
       const fieldDom = document.getElementById(`config-field-${k}`);
       if (v == defaultConfig[k])
-        fieldDom.classList.remove('is-warning');
+        fieldDom.classList.remove('is-danger');
       else
-        fieldDom.classList.add('is-warning');
+        fieldDom.classList.add('is-danger');
     }
 
     try {
@@ -143,7 +143,7 @@ export default class PathPlannerConfigEditor {
     while (this.configForm.firstChild)
       this.configForm.removeChild(this.configForm.firstChild);
 
-    for (const key of Object.keys(this._config))
+    for (const key of Object.keys(this._config).sort())
       this.configForm.appendChild(this._createConfigField(key, this._config[key]));
   }
 }
