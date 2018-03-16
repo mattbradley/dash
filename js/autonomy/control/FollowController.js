@@ -6,10 +6,12 @@ export default class FollowController {
     this.car = car;
     this.nextIndex = 1;
     this.prevVelocity = 0;
+    this.prevAccel = 0;
   }
 
   reset() {
     this.prevVelocity = 0;
+    this.prevAccel = 0;
   }
 
   replacePath(path) {
@@ -18,10 +20,44 @@ export default class FollowController {
   }
 
   predictPoseAfterTime(currentPose, predictionTime) {
-    return currentPose;
+    const pathPoses = this.path.poses;
+    let [nextIndex, progress] = this.findNextIndex(currentPose.pos);
+    let currentVelocity = currentPose.velocity;
+
+    if (currentVelocity <= 0.01) return currentPose;
+
+    while (predictionTime > 0) {
+      const prevPose = pathPoses[nextIndex - 1];
+      const nextPose = pathPoses[nextIndex];
+
+      const segmentDist = nextPose.pos.distanceTo(prevPose.pos);
+      const distLeft = segmentDist * (1 - progress);
+      const sumV = currentVelocity + nextPose.velocity;
+      const timeToNextIndex = 2 * distLeft / (sumV == 0 ? 0.01 : sumV);
+      //const timeToNextIndex = distLeft / currentVelocity;
+
+      if (timeToNextIndex >= predictionTime || nextIndex + 1 >= pathPoses.length) {
+        const dist = sumV / 2 * predictionTime;
+        const newProgress = progress + dist / segmentDist;
+
+        return {
+          pos: nextPose.pos.clone().sub(prevPose.pos).multiplyScalar(newProgress).add(nextPose.pos),
+          rot: prevPose.rot + (nextPose.rot - prevPose.rot) * newProgress,
+          curv: prevPose.curv + (nextPose.curv - prevPose.curv) * newProgress,
+          dCurv: 0,
+          ddCurv: 0,
+          velocity: nextPose.velocity
+        }
+      }
+
+      currentVelocity = nextPose.velocity;
+      predictionTime -= timeToNextIndex;
+      progress = 0;
+      nextIndex++;
+    }
   }
 
-  control(pose, wheelAngle, velocity, dt) {
+  control(pose, wheelAngle, velocity, dt, lockPath = false) {
     const pathPoses = this.path.poses;
     const [nextIndex, progress, projection] = this.findNextIndex(pose.pos);
     this.nextIndex = nextIndex;
@@ -39,6 +75,7 @@ export default class FollowController {
       const kp_a = 4;
       const kd_a = 0.5;
       const kff_a = 0.5;
+      const accelDamping = 0.5;
 
       const currentAccel = (velocity - this.prevVelocity) / dt;
       const prevNextDist = nextPose.pos.distanceTo(prevPose.pos);
@@ -46,11 +83,12 @@ export default class FollowController {
       const diffVelocity = targetVelocity - velocity;
       const diffAccel = nextPose.acceleration - currentAccel;
       const targetAccel = kp_a * diffVelocity + kd_a * diffAccel + kff_a * nextPose.acceleration;
+      const dampedAccel = this.prevAccel * (1 - accelDamping) + targetAccel * accelDamping;
 
-      if (targetAccel > 0)
-        gas = Math.min(targetAccel / Car.MAX_GAS_ACCEL, 1);
+      if (dampedAccel > 0)
+        gas = Math.min(dampedAccel / Car.MAX_GAS_ACCEL, 1);
       else
-        brake = Math.min(-targetAccel / Car.MAX_BRAKE_DECEL, 1);
+        brake = Math.min(-dampedAccel / Car.MAX_BRAKE_DECEL, 1);
 
       this.prevVelocity = velocity;
 
@@ -59,8 +97,14 @@ export default class FollowController {
       const wheelAngleError = desiredWheelAngle - wheelAngle;
       steer = Math.clamp(wheelAngleError / dt / Car.MAX_STEER_SPEED, -1, 1);
 
-      this.car.rotation = prevPose.rot + (nextPose.rot - prevPose.rot) * progress;
-      this.car.position = new THREE.Vector2(projection.x - Car.REAR_AXLE_POS * Math.cos(this.car.rotation), projection.y - Car.REAR_AXLE_POS * Math.sin(this.car.rotation));
+      if (lockPath) {
+        const damping = 0.1;
+        const newRotation = Math.wrapAngle(prevPose.rot + Math.wrapAngle(nextPose.rot - prevPose.rot) * progress);
+        const newPosition = new THREE.Vector2(projection.x - Car.REAR_AXLE_POS * Math.cos(newRotation), projection.y - Car.REAR_AXLE_POS * Math.sin(newRotation));
+
+        this.car.rotation += damping * Math.wrapAngle(newRotation - this.car.rotation);
+        this.car.position = this.car.position.clone().multiplyScalar(1 - damping).add(newPosition.multiplyScalar(damping));
+      }
     }
 
     return { gas, brake, steer };

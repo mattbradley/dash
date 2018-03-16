@@ -203,12 +203,12 @@ export default class Simulator {
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
 
     const centerline = this.editor.lanePath.centerline;
-    const pos = centerline[0].clone().sub(centerline[1]).normalize().multiplyScalar(10).add(centerline[0])
+    const pos = centerline[0].clone();
     const dir = centerline[1].clone().sub(centerline[0]);
     const rot = Math.atan2(dir.y, dir.x);
     this.car.setPose(pos.x, pos.y, rot);
 
-    if (this.autonomousCarController) this.autonomousCarController.reset();
+    this.autonomousCarController = null;
 
     if (!this.plannerRunning) {
       this.plannerReady = true;
@@ -407,7 +407,7 @@ function step(timestamp) {
     const prevCarPosition = this.car.position;
     const prevCarRotation = this.car.rotation;
 
-    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt) : { steer: 0, brake: 1, gas: 0 };
+    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') : { steer: 0, brake: 1, gas: 0 };
     const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
 
     const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;

@@ -1,8 +1,6 @@
 import Simulator from "./Simulator.js";
 
-Box2D().then(Box2D => {
-  window.Box2D = Box2D;
-
+document.addEventListener('DOMContentLoaded', e => {
   //const geolocation = [36.037351, -86.786561];
   const geolocation = [33.523900, -111.908756];
 

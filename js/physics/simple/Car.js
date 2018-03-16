@@ -49,22 +49,30 @@ export default class Car {
     this.velocity = 0;
     this.acceleration = 0;
     this.wheelAngle = 0;
-    this.wheelMotorSpeed = 0;
+    this.wheelAngularVelocity = 0;
+    this.dCurv = 0; // derivative with respect to arc length
+    this.ddCurv = 0; // derivative with respect to arc length
   }
 
   step(dt) {
+    const curvPrev = this.curvature;
+    const dCurvPrev = this.dCurv;
+
     const drag = (0.5 * Car.DRAG_COEFF * Car.FRONTAL_AREA * Car.DENSITY_OF_AIR * Math.abs(this.velocity) + Car.ROLL_RESIST) * -this.velocity;
     this.velocity += (this.acceleration + drag / Car.MASS) * dt;
 
     const velocitySq = this.velocity * this.velocity;
-    //const maxWheelAngle = Math.clamp(Math.atan(Car.MAX_LATERAL_ACCEL * Car.WHEEL_BASE / velocitySq), 0.07, Car.MAX_WHEEL_ANGLE);
-    const maxWheelAngle = Car.MAX_WHEEL_ANGLE;
-    this.wheelAngle = Math.clamp(Math.wrapAngle(this.wheelAngle + this.wheelMotorSpeed * dt), -maxWheelAngle, maxWheelAngle);
+    const maxWheelAngle = Math.clamp(Math.atan(Car.MAX_LATERAL_ACCEL * Car.WHEEL_BASE / velocitySq), 0.07, Car.MAX_WHEEL_ANGLE);
+    this.wheelAngle = Math.clamp(Math.wrapAngle(this.wheelAngle + this.wheelAngularVelocity * dt), -maxWheelAngle, maxWheelAngle);
 
     const angularVelocity = this.velocity * this.curvature;
     this.rotation = Math.wrapAngle(this.rotation + angularVelocity * dt);
 
-    this.position = THREE.Vector2.fromAngle(this.rotation).multiplyScalar(this.velocity * dt).add(this.position);
+    const dist = this.velocity * dt;
+    this.position = THREE.Vector2.fromAngle(this.rotation).multiplyScalar(dist).add(this.position);
+
+    this.dCurv = (this.curvature - curvPrev) / dist;
+    this.ddCurv = (this.dCurv - dCurvPrev) / dist;
   }
 
   update(controls, dt) {
@@ -87,9 +95,9 @@ export default class Car {
     }
 
     if (steer != 0) {
-      this.wheelMotorSpeed = steer * Car.MAX_STEER_SPEED;
+      this.wheelAngularVelocity = steer * Car.MAX_STEER_SPEED;
     } else {
-      this.wheelMotorSpeed = Math.clamp(-this.wheelAngle / Car.MAX_WHEEL_ANGLE * this.velocity * this.velocity * dt, -Car.MAX_STEER_SPEED, Car.MAX_STEER_SPEED);
+      this.wheelAngularVelocity = Math.clamp(-this.wheelAngle / Car.MAX_WHEEL_ANGLE * this.velocity * this.velocity * dt, -Car.MAX_STEER_SPEED, Car.MAX_STEER_SPEED);
     }
   }
 }

@@ -23,34 +23,34 @@ const defaultConfig = {
   gridMargin: 10, // meters
   pathSamplingStep: 0.5, // meters
 
-  cubicPathPenalty: 0.1,
+  cubicPathPenalty: -10,
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 1, // meters
   hazardDilationS: 12, // meters
   lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
   hazardDilationL: 0.5, // meters
 
-  obstacleHazardCost: 1,
+  obstacleHazardCost: 3,
 
   laneWidth: 3.7, // meters
-  laneShoulderCost: 2,
+  laneShoulderCost: 1,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 3, // cost / meter
+  laneCostSlope: 5, // cost / meter
 
-  stationReachDiscount: 20,
+  stationReachDiscount: 50,
   extraTimePenalty: 64,
 
-  hysteresisDiscount: 10,
+  hysteresisDiscount: 25,
 
   speedLimit: 20, // m/s
   speedLimitPenalty: 2,
 
-  hardAccelerationPenalty: 4,
-  hardDecelerationPenalty: 4,
+  hardAccelerationPenalty: 6,
+  hardDecelerationPenalty: 6,
 
   lateralAccelerationLimit: 3, // m/s^2
-  softLateralAccelerationPenalty: 2,
-  linearLateralAccelerationPenalty: 1,
+  softLateralAccelerationPenalty: 4,
+  linearLateralAccelerationPenalty: 4,
 
   accelerationChangePenalty: 2
 };
