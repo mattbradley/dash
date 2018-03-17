@@ -1,0 +1,13 @@
+TODO
+----
+
+[ ] Add compass to dashboard?
+[ ] Move [Manual|Autonomous] switch to dashboard
+[ ] Move Scenario box to left side and add play/pause button and replace restart button with restart icon
+[ ] Switch to manual mode on gas/brake/steer keyboard input
+[ ] Fix not-enough-road-left-for-spatial-horizon bug; just plan until the end of the road then full brake
+[ ] Catch finalized scenarios with no points; just do nothing instead of starting the planner
+[ ] Ability to add obstacles to scenario in editor
+[ ] Hook up clear path/obstacle/all button in editor
+[ ] Dynamic obstacles with dynamic obstacle grid gpgpu program
+[ ] README
