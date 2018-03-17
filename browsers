@@ -1,0 +1,11 @@
+Make sure hardware acceleration is enabled.
+
+Chrome
+------
+chrome://flags#enable-experimental-canvas-features
+chrome://flags#enable-zero-copy (maybe increases performance)
+
+Firefox
+-------
+(hangs and refuses to run planning on OffscreenCanvas in WebWorker)
+about:config gfx.offscreencanvas.enabled

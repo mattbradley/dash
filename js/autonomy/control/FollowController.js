@@ -34,7 +34,6 @@ export default class FollowController {
       const distLeft = segmentDist * (1 - progress);
       const sumV = currentVelocity + nextPose.velocity;
       const timeToNextIndex = 2 * distLeft / (sumV == 0 ? 0.01 : sumV);
-      //const timeToNextIndex = distLeft / currentVelocity;
 
       if (timeToNextIndex >= predictionTime || nextIndex + 1 >= pathPoses.length) {
         const dist = sumV / 2 * predictionTime;

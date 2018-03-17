@@ -182,6 +182,10 @@ export default class Simulator {
     this.freeCamera.updateProjectionMatrix();
     this.chaseCamera.aspect = aspect;
     this.chaseCamera.updateProjectionMatrix();
+    this.topDownCamera.aspect = aspect;
+    this.topDownCamera.updateProjectionMatrix();
+    this.editorCamera.aspect = aspect;
+    this.editorCamera.updateProjectionMatrix();
   }
 
   enableEditor() {

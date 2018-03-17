@@ -57,6 +57,7 @@ export default class {
 
     for (const name in shared) {
       const { width, height, channels, data, ...options } = shared[name];
+      if (this.sharedTextures[name]) this.gl.deleteTexture(this.sharedTextures[name]);
       this.sharedTextures[name] = this._createTexture(data, width, height, channels, options);
     }
   }
@@ -147,6 +148,7 @@ export default class {
           throw new Error(`Expected texture type for uniform ${uniformName}.`);
 
         const { width, height, channels, data, ...options } = uniform;
+        if (program.uniformTextures[uniformName].texture) this.gl.deleteTexture(program.uniformTextures[uniformName].texture);
         program.uniformTextures[uniformName].texture = this._createTexture(data, width, height, channels, options);
       } else {
         throw new Error(`The uniform ${uniformName} does not exist in this program.`);
@@ -402,6 +404,9 @@ void main() {
   }
 
   _prepareProgramInputs(program, inputs) {
+    if (program.inputTextures)
+      program.inputTextures.forEach(t => this.gl.deleteTexture(t));
+
     program.inputTextures = [];
 
     for (const [index, data] of inputs.entries()) {
@@ -433,8 +438,10 @@ void main() {
     if (!frameBufferStatus)
       throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible.');
 
-    if (program.output && program.output.name)
+    if (program.output && program.output.name) {
+      if (this.outputTextures[program.output.name]) this.gl.deleteTexture(this.outputTextures[program.output.name]);
       this.outputTextures[program.output.name] = outputTexture;
+    }
   }
 
   _setUniform(type, location, value) {
