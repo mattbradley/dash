@@ -128,6 +128,8 @@ vec4 optimize(vec4 start, vec4 end) {
   float p5 = 0.0;
   float sG = goal.x;
 
+  if (sG < 0.1) return vec4(0.0);
+
   for (int i = 0; i < RELAXATION_ITERATIONS; i++) {
     p0 += d_K0;
     p1 += d_dK0;

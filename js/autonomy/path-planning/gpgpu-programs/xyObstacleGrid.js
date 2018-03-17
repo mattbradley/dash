@@ -27,15 +27,17 @@ export default {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-        gl.bufferData(gl.ARRAY_BUFFER, obstacleVertices, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(program.positionLocation);
-        gl.vertexAttribPointer(program.positionLocation, 2, gl.FLOAT, false, 0, 0);
+        if (obstacleVertices.length > 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+          gl.bufferData(gl.ARRAY_BUFFER, obstacleVertices, gl.STATIC_DRAW);
+          gl.enableVertexAttribArray(program.positionLocation);
+          gl.vertexAttribPointer(program.positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-        const xformLocation = gl.getUniformLocation(program.glProgram, 'xform');
-        gl.uniformMatrix3fv(xformLocation, false, obstacleXform.elements);
+          const xformLocation = gl.getUniformLocation(program.glProgram, 'xform');
+          gl.uniformMatrix3fv(xformLocation, false, obstacleXform.elements);
 
-        gl.drawArrays(gl.TRIANGLES, 0, obstacleVertices.length / 2);
+          gl.drawArrays(gl.TRIANGLES, 0, obstacleVertices.length / 2);
+        }
       }
     };
   },

@@ -102,6 +102,10 @@ export default class FollowController {
         const newRotation = Math.wrapAngle(prevPose.rot + Math.wrapAngle(nextPose.rot - prevPose.rot) * progress);
         const newPosition = new THREE.Vector2(projection.x - Car.REAR_AXLE_POS * Math.cos(newRotation), projection.y - Car.REAR_AXLE_POS * Math.sin(newRotation));
 
+        if (Math.abs(Math.wrapAngle(newRotation - this.car.rotation)) > 0.5) {
+          console.log('wut');
+        }
+
         this.car.rotation += damping * Math.wrapAngle(newRotation - this.car.rotation);
         this.car.position = this.car.position.clone().multiplyScalar(1 - damping).add(newPosition.multiplyScalar(damping));
       }

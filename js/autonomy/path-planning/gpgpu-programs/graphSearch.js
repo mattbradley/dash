@@ -95,6 +95,8 @@ vec4 kernel() {
       int numSamples = sampleCubicPath(pathStart, pathEnd, cubicPathParams);
       float pathLength = cubicPathParams.z;
 
+      if (numSamples < 2) continue;
+
       float averageStaticCost = calculateAverageStaticCost(numSamples);
       if (averageStaticCost < 0.0) continue;
 

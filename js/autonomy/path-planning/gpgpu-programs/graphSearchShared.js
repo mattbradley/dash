@@ -10,6 +10,7 @@ float calculateAcceleration(int index, float initialVelocitySq, float distance) 
     return accelerationProfiles[index];
   } else {
     float finalVelocity = finalVelocityProfiles[index - 5];
+    if (distance < 0.001) return 0.0;
     return clamp((finalVelocity * finalVelocity - initialVelocitySq) / (2.0 * distance), accelerationProfiles[1], accelerationProfiles[0]);
   }
 }
@@ -125,6 +126,8 @@ int sampleCubicPath(vec4 start, vec4 end, vec4 cubicPathParams) {
   float p3 = end.w;
   float sG = cubicPathParams.z;
 
+  if (sG <= 0.0) return 0;
+
   int numSamples = int(ceil(sG / pathSamplingStep)) + 1;
 
   float sG_2 = sG * sG;
@@ -171,6 +174,8 @@ int sampleQuinticPath(vec4 start, vec4 end, vec4 quinticPathParams) {
   float p4 = quinticPathParams.y;
   float p5 = end.w;
   float sG = quinticPathParams.z;
+
+  if (sG <= 0.0) return 0;
 
   int numSamples = int(ceil(sG / pathSamplingStep)) + 1;
 

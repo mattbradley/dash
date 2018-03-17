@@ -15,7 +15,13 @@ onmessage = function(event) {
   if (reset) pathPlanner.reset();
 
   pathPlanner.config = config;
-  const { path, width, height, latticeStartStation } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, obstacles);
 
-  self.postMessage({ path, vehiclePose, vehicleStation, latticeStartStation });
+  try {
+    const { path, fromVehicleSegment, fromVehicleParams, latticeStartStation } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, obstacles);
+
+    self.postMessage({ path, fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation });
+  } catch (error) {
+    console.log('PathPlannerWorker error');
+    console.log(error);
+  }
 };

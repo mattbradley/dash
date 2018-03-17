@@ -27,6 +27,8 @@ vec4 kernel() {
   int numSamples = ${pathType == 'cubic' ? 'sampleCubicPath' : 'sampleQuinticPath'}(pathStart, pathEnd, pathParams);
   float pathLength = pathParams.z;
 
+  if (numSamples < 2) return vec4(-1);
+
   float averageStaticCost = calculateAverageStaticCost(numSamples);
   if (averageStaticCost < 0.0) return vec4(-1);
 

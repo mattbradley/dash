@@ -36,6 +36,13 @@ export default class Simulator {
     this.renderer.shadowMap.enabled = true;
     domElement.appendChild(this.renderer.domElement);
 
+    this.lastPlanParams = null;
+    this.renderer.context.canvas.addEventListener('webglcontextlost', event => {
+      console.log('Simulator: webgl context lost');
+      console.log(event);
+      console.log(this.lastPlanParams);
+    });
+
     this._setUpCameras(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -331,25 +338,30 @@ export default class Simulator {
     const reset = this.plannerReset;
     this.plannerReset = false;
 
-    this.pathPlannerWorker.postMessage({
+    this.lastPlanParams =  {
       config: this.pathPlannerConfigEditor.config,
       vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
       obstacles: this.obstacles,
       reset: reset
-    });
+    };
+
+    this.pathPlannerWorker.postMessage(this.lastPlanParams);
   }
 
   receivePlannedPath(event) {
     if (this.editor.enabled) return;
 
-    const { path, vehiclePose, vehicleStation, latticeStartStation } = event.data;
+    const { fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation } = event.data;
+    let { path } = event.data;
 
     this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
     this.plannerReady = true;
 
     if (path === null || this.plannerReset) return;
+
+    path = fromVehicleSegment.concat(path);
 
     path.forEach(p => Object.setPrototypeOf(p.pos, THREE.Vector2.prototype));
     const followPath = new Path(path);

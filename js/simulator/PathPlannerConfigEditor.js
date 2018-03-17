@@ -23,7 +23,7 @@ const defaultConfig = {
   gridMargin: 10, // meters
   pathSamplingStep: 0.5, // meters
 
-  cubicPathPenalty: -10,
+  cubicPathPenalty: 10,
 
   lethalDilationS: Car.HALF_CAR_LENGTH + 1, // meters
   hazardDilationS: 12, // meters
@@ -37,10 +37,10 @@ const defaultConfig = {
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 5, // cost / meter
 
-  stationReachDiscount: 50,
+  stationReachDiscount: 70,
   extraTimePenalty: 64,
 
-  hysteresisDiscount: 25,
+  hysteresisDiscount: 40,
 
   speedLimit: 20, // m/s
   speedLimitPenalty: 2,

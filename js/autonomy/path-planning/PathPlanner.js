@@ -47,11 +47,9 @@ export default class PathPlanner {
       optimizeQuinticPaths.setUp(),
       ...pathFromVehicleCosts.setUp(),
       graphSearch.setUp(),
-      xyObstacleCostGrid.setUp()
     ].map(p => Object.assign({}, p, { width: 1, height: 1 }));
 
     this.gpgpu = new GPGPU(programs);
-    //console.log(`Planner setup time: ${(performance.now() - start) / 1000}s`);
   }
 
   reset() {
@@ -91,11 +89,11 @@ export default class PathPlanner {
     const slWidth = Math.ceil(this.config.spatialHorizon / this.config.slGridCellSize);
     const slHeight = Math.ceil((this.config.laneWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
 
+    const latticeStationInterval = this._latticeStationInterval();
     let startStation;
 
     // TODO: if the number of latitudes changes, then the first and second lattice points are invalidated
-    if (this.previousStartStation === null || vehicleStation > this.previousStartStation) {
-      const latticeStationInterval = this._latticeStationInterval();
+    if (this.previousStartStation === null || vehicleStation + latticeStationInterval / 2 > this.previousStartStation) {
       startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
       this.previousStartStation = startStation;
       this.previousFirstLatticePoint -= this.config.lattice.numLatitudes;
@@ -114,8 +112,7 @@ export default class PathPlanner {
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),
       ...pathFromVehicleCosts.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
-      graphSearch.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
-      xyObstacleCostGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, slCenterPoint)
+      graphSearch.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }
@@ -145,7 +142,6 @@ export default class PathPlanner {
 
     let start = performance.now();
     const outputs = this.gpgpu.run();
-    //console.log(`Planner GPU time: ${(performance.now() - start) / 1000}s`);
     const costTable = this.gpgpu._graphSearchCostTable;
     const cubicPathParams = outputs[5];
     const cubicPathFromVehicleParams = outputs[6];
@@ -176,11 +172,13 @@ export default class PathPlanner {
 
     const inverseVehicleXform = (new THREE.Matrix3()).getInverse(vehicleXform);
     let bestTrajectory = null;
+    let fromVehicleSegment = null;
+    let fromVehicleParams = null;
     let firstLatticePoint = -1;
     let secondLatticePoint = -1;
     
     if (isFinite(bestEntry[0])) {
-      [bestTrajectory, firstLatticePoint, secondLatticePoint] = this._reconstructTrajectory(
+      [bestTrajectory, fromVehicleSegment, fromVehicleParams, firstLatticePoint, secondLatticePoint] = this._reconstructTrajectory(
         bestEntryIndex,
         costTable,
         cubicPathParams,
@@ -190,19 +188,27 @@ export default class PathPlanner {
         lattice
       );
 
-      bestTrajectory.forEach(p => {
-        p.pos = p.pos.applyMatrix3(inverseVehicleXform);
-        p.rot += vehiclePose.rot;
-      });
-    }
+      if (firstLatticePoint == this.previousFirstLatticePoint && secondLatticePoint == this.previousSecondLatticePoint) {
+        bestTrajectory = null;
+        fromVehicleSegment = null;
+        fromVehicleParams = null;
+      } else {
+        fromVehicleSegment.forEach(p => {
+          p.pos = p.pos.applyMatrix3(inverseVehicleXform);
+          p.rot += vehiclePose.rot;
+        });
 
-    if (firstLatticePoint == this.previousFirstLatticePoint && secondLatticePoint == this.previousSecondLatticePoint)
-      bestTrajectory = null;
+        bestTrajectory.forEach(p => {
+          p.pos = p.pos.applyMatrix3(inverseVehicleXform);
+          p.rot += vehiclePose.rot;
+        });
+      }
+    }
 
     this.previousFirstLatticePoint = firstLatticePoint;
     this.previousSecondLatticePoint = secondLatticePoint;
 
-    return { xysl: outputs[4], xyObstacle: outputs[11], width: xyWidth, height: xyHeight, center: xyCenterPoint.applyMatrix3(inverseVehicleXform), rot: vehiclePose.rot, path: bestTrajectory, latticeStartStation: this.previousStartStation };
+    return { path: bestTrajectory, fromVehicleSegment: fromVehicleSegment, fromVehicleParams: fromVehicleParams, latticeStartStation: this.previousStartStation };
   }
 
   _buildLattice(lanePath, startStation, vehicleRot, vehicleXform) {
@@ -284,6 +290,8 @@ export default class PathPlanner {
     if (count >= 100) throw new Error('Infinite loop encountered while reconstructing trajectory.');
 
     const points = [];
+    let fromVehicleSegment = [];
+    let fromVehicleParams = null;
 
     for (let i = 0; i < nodes.length - 1; i++) {
       const [prevStation, prevLatitude, _pt, _pv, _pa, prevVelocity] = nodes[i];
@@ -309,19 +317,27 @@ export default class PathPlanner {
         if (prevLatitude == 0) { // Cubic path from vehicle to lattice node
           length = cubicPathFromVehicleParams[endIndex + 2];
 
-          pathBuilder = new CubicPath(start, end, {
+          const params = {
             p1: cubicPathFromVehicleParams[endIndex],
             p2: cubicPathFromVehicleParams[endIndex + 1],
             sG: length
-          });
+          };
+
+          pathBuilder = new CubicPath(start, end, params);
+
+          fromVehicleParams = { type: 'cubic', params: params };
         } else { // Quintic path from vehicle to lattice node
           length = quinticPathFromVehicleParams[endIndex + 2];
 
-          pathBuilder = new QuinticPath(start, end, {
+          const params = {
             p3: quinticPathFromVehicleParams[endIndex],
             p4: quinticPathFromVehicleParams[endIndex + 1],
             sG: length
-          });
+          };
+
+          pathBuilder = new QuinticPath(start, end, params);
+
+          fromVehicleParams = { type: 'quintic', params: params };
         }
       } else {
         const startIndex = (prevStation * this.config.lattice.numLatitudes + prevLatitude) * 4;
@@ -359,18 +375,22 @@ export default class PathPlanner {
       const ds = length / (path.length - 1);
       let s = 0;
 
-      for (let i = 0; i < path.length; i++) {
-        path[i].velocity = Math.sqrt(2 * accel * s + prevVelocitySq);
-        path[i].acceleration = accel;
+      for (let p = 0; p < path.length; p++) {
+        path[p].velocity = Math.sqrt(2 * accel * s + prevVelocitySq);
+        path[p].acceleration = accel;
         s += ds;
       }
 
-      if (i < nodes.length - 2) path.pop();
-      points.push(...path);
+      if (prevStation < 0) {
+        fromVehicleSegment = path;
+      } else {
+        if (i > 0) path.shift();
+        points.push(...path);
+      }
     }
 
-    let firstLatticePoint = -1;
-    let secondLatticePoint = -1;
+    let firstLatticePoint = null
+    let secondLatticePoint = null;
 
     if (nodes.length >= 2)
       firstLatticePoint = nodes[1][0] * this.config.lattice.numLatitudes + nodes[1][1];
@@ -378,7 +398,7 @@ export default class PathPlanner {
     if (nodes.length >= 3)
       secondLatticePoint = nodes[2][0] * this.config.lattice.numLatitudes + nodes[2][1];
 
-    return [points, firstLatticePoint, secondLatticePoint];
+    return [points, fromVehicleSegment, fromVehicleParams, firstLatticePoint, secondLatticePoint];
   }
 }
 
