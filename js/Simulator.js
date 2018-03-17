@@ -23,7 +23,7 @@ export default class Simulator {
   constructor(geolocation, domElement) {
     this.geolocation = geolocation;
 
-    this.pathPlannerWorker = new Worker('workers/dist/PathPlannerWorker.js');
+    this.pathPlannerWorker = new Worker('dist/PathPlannerWorker.js');
     this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
     this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
 

@@ -39,10 +39,11 @@ export default class FollowController {
       if (timeToNextIndex >= predictionTime || nextIndex + 1 >= pathPoses.length) {
         const dist = sumV / 2 * predictionTime;
         const newProgress = progress + dist / segmentDist;
+        const newRotation = Math.wrapAngle(prevPose.rot + Math.wrapAngle(nextPose.rot - prevPose.rot) * newProgress);
 
         return {
           pos: nextPose.pos.clone().sub(prevPose.pos).multiplyScalar(newProgress).add(nextPose.pos),
-          rot: prevPose.rot + (nextPose.rot - prevPose.rot) * newProgress,
+          rot: newRotation,
           curv: prevPose.curv + (nextPose.curv - prevPose.curv) * newProgress,
           dCurv: 0,
           ddCurv: 0,
