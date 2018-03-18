@@ -46,7 +46,7 @@ export default class Simulator {
     this._setUpCameras(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.sceneFog = new THREE.FogExp2(0x111111, 0.0025);
+    this.sceneFog = null;//new THREE.FogExp2(0x111111, 0.0025);
     this.scene.fog = this.sceneFog;
     this.scene.background = new THREE.Color(0x111111);
 
@@ -90,7 +90,13 @@ export default class Simulator {
 
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-save').addEventListener('click', this.finalizeEditor.bind(this));
-    document.getElementById('scenario-restart').addEventListener('click', this.restartScenario.bind(this));
+
+    this.scenarioPlayButton = document.getElementById('scenario-play');
+    this.scenarioPlayButton.addEventListener('click', this.playScenario.bind(this));
+    this.scenarioPauseButton = document.getElementById('scenario-pause');
+    this.scenarioPauseButton.addEventListener('click', this.pauseScenario.bind(this));
+    this.scenarioRestartButton = document.getElementById('scenario-restart');
+    this.scenarioRestartButton.addEventListener('click', this.restartScenario.bind(this));
 
     this.simModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('sim-mode-box'), 0);
     this.editModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('edit-mode-box'), 0);
@@ -246,6 +252,18 @@ export default class Simulator {
     this._resetTopDownCamera();
   }
 
+  playScenario() {
+    this.paused = false;
+    this.scenarioPlayButton.classList.add('is-hidden');
+    this.scenarioPauseButton.classList.remove('is-hidden');
+  }
+
+  pauseScenario() {
+    this.paused = true;
+    this.scenarioPlayButton.classList.remove('is-hidden');
+    this.scenarioPauseButton.classList.add('is-hidden');
+  }
+
   restartScenario() {
     if (this.editor.enabled) return;
     this.finalizeEditor(false);
@@ -254,15 +272,15 @@ export default class Simulator {
   enableManualMode() {
     this.manualModeButton.classList.remove('is-outlined');
     this.manualModeButton.classList.add('is-selected');
-    this.autonomousModeButton.classList.add('is-outlined');
-    this.autonomousModeButton.classList.remove('is-selected');
+    this.autonomousModeButton.classList.add('is-outlined', 'is-inverted');
+    this.autonomousModeButton.classList.remove('is-selected', 'is-link');
 
     this.carControllerMode = 'manual';
   }
 
   enableAutonomousMode() {
-    this.autonomousModeButton.classList.remove('is-outlined');
-    this.autonomousModeButton.classList.add('is-selected');
+    this.autonomousModeButton.classList.remove('is-outlined', 'is-inverted');
+    this.autonomousModeButton.classList.add('is-selected', 'is-link');
     this.manualModeButton.classList.add('is-outlined');
     this.manualModeButton.classList.remove('is-selected');
 
@@ -415,7 +433,7 @@ function step(timestamp) {
     return;
   }
 
-  if (!this.editor.enabled || this.paused) {
+  if (!this.editor.enabled && !this.paused) {
     //const dt = Math.min((timestamp - this.prevTimestamp) / 1000, 1 / 30);
     const dt = FRAME_TIMESTEP;
     this.simulatedTime += dt;
@@ -423,8 +441,11 @@ function step(timestamp) {
     const prevCarPosition = this.car.position;
     const prevCarRotation = this.car.rotation;
 
-    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') : { steer: 0, brake: 1, gas: 0 };
     const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
+    if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
+      this.enableManualMode();
+
+    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') : { steer: 0, brake: 1, gas: 0 };
 
     const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
 

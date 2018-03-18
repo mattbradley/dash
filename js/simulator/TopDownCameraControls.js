@@ -58,6 +58,6 @@ export default class TopDownCameraControls {
 
     event.preventDefault();
 
-    this.camera.position.y *= Math.pow(0.995, -event.deltaY);
+    this.camera.position.y = Math.max(5, this.camera.position.y * Math.pow(0.995, -event.deltaY));
   }
 }

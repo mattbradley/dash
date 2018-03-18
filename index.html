@@ -47,11 +47,22 @@
                     </div>
                     <div class="columns is-gapless">
                         <div class="column">
-                            <div class="button is-small is-static" style="background: transparent; border: none;">
+                            <div class="button is-small is-static" style="background: transparent; border: none; margin-left: 12px;">
                                 <span class="icon is-small has-text-grey-lighter">
                                     <i class="fas fa-clock"></i>
                                 </span>
                                 <span id="elapsed-time" class="is-size-6 has-text-grey-lighter has-text-weight-bold">&mdash;</span>
+                            </div>
+                            <div class="is-pulled-right">
+                                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
+                                    <span class="icon is-medium has-text-grey-lighter">
+                                        <i class="fas fa-lg fa-car"></i>
+                                    </span>
+                                </div>
+                                <div class="buttons has-addons" style="padding-left: 8px;">
+                                    <span id="mode-manual" class="button is-small is-dark is-outlined is-inverted">Manual</span>
+                                    <span id="mode-autonomous" class="button is-small is-dark is-outlined is-inverted">Autonomous</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -97,17 +108,6 @@
                     </div>
                 </div>
             </div>
-            <div id="modes" class="gui-box sim-mode-box">
-                <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
-                    <span class="icon is-medium has-text-grey-lighter">
-                        <i class="fas fa-lg fa-car"></i>
-                    </span>
-                </div>
-                <div class="buttons has-addons" style="padding-left: 8px;">
-                    <span id="mode-manual" class="button is-small is-dark is-outlined is-inverted">Manual</span>
-                    <span id="mode-autonomous" class="button is-small is-dark is-outlined is-inverted">Autonomous</span>
-                </div>
-            </div>
             <div id="editor-enabler" class="gui-box sim-mode-box">
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
@@ -116,10 +116,24 @@
                 </div>
                 <div class="field is-grouped" style="padding-left: 8px;">
                     <p class="control">
-                        <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
+                        <span id="scenario-play" class="button is-small is-dark is-outlined is-inverted is-hidden" title="Play Scenario">
+                            <span class="icon is-medium">
+                                <i class="fas fa-lg fa-play"></i>
+                            </span>
+                        </span>
+                        <span id="scenario-pause" class="button is-small is-dark is-outlined is-inverted" title="Pause Scenario">
+                            <span class="icon is-medium">
+                                <i class="fas fa-lg fa-pause"></i>
+                            </span>
+                        </span>
+                        <span id="scenario-restart" class="button is-small is-dark is-outlined is-inverted" title="Restart Scenario">
+                            <span class="icon is-medium">
+                                <i class="fas fa-lg fa-undo-alt"></i>
+                            </span>
+                        </span>
                     </p>
                     <p class="control">
-                        <span id="scenario-restart" class="button is-small is-dark is-outlined is-inverted">Restart Scenario</span>
+                        <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
                     </p>
                 </div>
             </div>
@@ -132,7 +146,7 @@
                 <div class="field-body" style="padding-left: 8px;">
                     <div class="field has-addons">
                         <p class="control">
-                            <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Path</span>
+                            <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Road</span>
                         </p>
                         <p class="control">
                             <span id="editor-obstacles" class="button is-small is-dark is-outlined is-inverted">Obstacles</span>
@@ -145,7 +159,7 @@
                                 <div class="buttons">
                                     <span id="editor-clear-all" class="button is-small is-danger">All</span>
                                     <span id="editor-clear-obstacles" class="button is-small is-warning">Obstacles</span>
-                                    <span id="editor-clear-path" class="button is-small is-warning">Path</span>
+                                    <span id="editor-clear-path" class="button is-small is-warning">Road</span>
                                 </div>
                             </div>
                         </p>

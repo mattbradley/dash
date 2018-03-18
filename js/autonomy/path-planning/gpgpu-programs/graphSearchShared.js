@@ -32,7 +32,7 @@ float sampleStaticCost(vec4 xytk) {
 }
 
 float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleration) {
-  return 1.0;
+  return 0.0;
 }
 
 float calculateAverageStaticCost(int numSamples) {
