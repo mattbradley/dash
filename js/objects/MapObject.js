@@ -35,9 +35,9 @@ export default class MapObject extends THREE.Object3D {
     const originTile = MapObject.worldToTile(MapObject.geoToWorld(this.geolocation));
     const tileSize = this.tileSizeInMeters();
 
-    for (let x = -MapObject.HALF_NUM_TILES; x < MapObject.HALF_NUM_TILES; x++) {
-      for (let y = -MapObject.HALF_NUM_TILES; y < MapObject.HALF_NUM_TILES; y++) {
-        const tileTexture = new THREE.TextureLoader().load(`https://khms0.google.com/kh/v=748?x=${originTile[0] + x}&y=${originTile[1] + y}&z=${MapObject.ZOOM}`);
+    for (let x = -MapObject.HALF_NUM_TILES, h = 0; x < MapObject.HALF_NUM_TILES; x++) {
+      for (let y = -MapObject.HALF_NUM_TILES; y < MapObject.HALF_NUM_TILES; y++, h++) {
+        const tileTexture = new THREE.TextureLoader().load(`https://khms${h % 4}.google.com/kh/v=748?x=${originTile[0] + x}&y=${originTile[1] + y}&z=${MapObject.ZOOM}`);
         tileTexture.anisotropy = 16;
         const tileGeometry = new THREE.PlaneBufferGeometry(tileSize, tileSize);
         const tileMaterial = new THREE.MeshBasicMaterial({ map: tileTexture, color: 0xffffff });

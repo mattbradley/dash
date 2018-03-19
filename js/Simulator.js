@@ -55,8 +55,8 @@ export default class Simulator {
     const map = new MapObject(this.geolocation);
     this.scene.add(map);
 
-    const carObject = new CarObject(this.car);
-    this.scene.add(carObject);
+    this.carObject = new CarObject(this.car);
+    this.scene.add(this.carObject);
 
     this.manualCarController = new ManualController();
     this.autonomousCarController = null;
@@ -196,6 +196,7 @@ export default class Simulator {
 
   enableEditor() {
     this.editor.enabled = true;
+
     this.previousCamera = this.camera;
     this.camera = this.editorCamera;
     this.editorCameraControls.enabled = true;
@@ -204,6 +205,7 @@ export default class Simulator {
     this.freeCameraControls.enabled = false;
 
     this.scene.fog = null;
+    this.carObject.visible = false;
     if (this.plannedPathGroup) this.plannedPathGroup.visible = false;
 
     this.simModeBoxes.forEach(el => el.classList.add('is-hidden'));
@@ -215,6 +217,7 @@ export default class Simulator {
     this.editorCameraControls.enabled = false;
 
     this.scene.fog = this.sceneFog;
+    this.carObject.visible = true;
 
     this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
@@ -432,6 +435,8 @@ function step(timestamp) {
     requestAnimationFrame(step.bind(this));
     return;
   }
+
+  this.editor.update();
 
   if (!this.editor.enabled && !this.paused) {
     //const dt = Math.min((timestamp - this.prevTimestamp) / 1000, 1 / 30);
