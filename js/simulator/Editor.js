@@ -18,6 +18,7 @@ export default class Editor {
     this.centerlineGeometry = new THREE.Geometry();
     this.leftBoundaryGeometry = new THREE.Geometry();
     this.rightBoundaryGeometry = new THREE.Geometry();
+    this.draggingObstaclePreview = null;
 
     this.pointObjects = [];
     this.obstacleObjects = [];
@@ -76,6 +77,25 @@ export default class Editor {
       if (intersection != null) {
         this.updatePoint(this.draggingPoint, intersection.add(this.dragOffset));
         this.redraw();
+      }
+    } else if (this.draggingObstacle) {
+      if (this.draggingObstacle === true) {
+        const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+        if (intersection != null) {
+          const center = this.dragOffset.clone().add(intersection).divideScalar(2);
+          const width = Math.max(0.5, Math.abs(this.dragOffset.x - intersection.x));
+          const height = Math.max(0.5, Math.abs(this.dragOffset.z - intersection.z));
+
+          if (this.draggingObstaclePreview) this.group.remove(this.draggingObstaclePreview);
+
+          this.draggingObstaclePreview = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, height),
+            new THREE.MeshBasicMaterial({ color: NORMAL_POINT_COLOR, depthTest: false, transparent: true, opacity: 0.4 })
+          );
+          this.draggingObstaclePreview.rotation.x = -Math.PI / 2;
+          this.draggingObstaclePreview.position.copy(center);
+          this.group.add(this.draggingObstaclePreview);
+        }
       }
     } else if (this.pointObjects.length > 0) {
       this.pointObjects.forEach(p => p.material.color.set(NORMAL_POINT_COLOR));
@@ -162,17 +182,34 @@ export default class Editor {
     this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const picked = this.raycaster.intersectObjects(this.pointObjects)[0];
 
-    if (picked) {
-      this.draggingPoint = picked.object;
-      this.dragOffset.copy(picked.object.position).sub(picked.point);
-      event.stopImmediatePropagation();
+    if (this.editMode == 'path') {
+      const picked = this.raycaster.intersectObjects(this.pointObjects)[0];
+
+      if (picked) {
+        this.draggingPoint = picked.object;
+        this.dragOffset.copy(picked.object.position).sub(picked.point);
+        event.stopImmediatePropagation();
+      } else {
+        const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+        if (intersection != null) {
+          this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
+          this.redraw();
+        }
+      }
     } else {
-      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
-      if (intersection != null) {
-        this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
-        this.redraw();
+      const picked = this.raycaster.intersectObjects(this.obstacleObjects)[0];
+
+      if (picked) {
+        this.draggingObstacle = picked.object;
+        this.dragOffset.copy(picked.object.position).sub(picked.point);
+        event.stopImmediatePropagation();
+      } else {
+        const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+        if (intersection != null) {
+          this.draggingObstacle = true;
+          this.dragOffset.copy(intersection);
+        }
       }
     }
   }
@@ -184,6 +221,23 @@ export default class Editor {
 
   mouseUp(event) {
     if (!this.enabled || event.button != 0) return;
+
+    if (this.draggingObstacle === true) {
+      this.draggingObstacle = null;
+      this.group.remove(this.draggingObstaclePreview);
+      this.draggingObstaclePreview = null;
+
+      this.mouse.x = (event.offsetX / this.canvas.clientWidth) * 2 - 1;
+      this.mouse.y = -(event.offsetY / this.canvas.clientHeight) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+
+      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+      if (intersection != null) {
+        console.log(this.dragOffset);
+        console.log(intersection);
+      }
+    }
 
     this.draggingPoint = null;
   }
