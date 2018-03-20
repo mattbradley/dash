@@ -6,12 +6,12 @@ export default class CarObject extends THREE.Object3D {
 
     this.car = car;
 
-    const carMesh = new THREE.Mesh(new THREE.PlaneGeometry(Car.HALF_CAR_LENGTH * 2, Car.HALF_CAR_WIDTH * 2), new THREE.MeshBasicMaterial({ color: 0x0080ff, depthTest: false, transparent: true, opacity: 0.5 }));
+    const carMesh = new THREE.Mesh(new THREE.PlaneGeometry(Car.HALF_CAR_LENGTH * 2, Car.HALF_CAR_WIDTH * 2), new THREE.MeshBasicMaterial({ color: 0x0088ff, depthTest: false, transparent: true, opacity: 0.5 }));
     carMesh.rotation.x = -Math.PI / 2;
     this.add(carMesh);
 
     const wheelGeometry = new THREE.PlaneGeometry(Car.HALF_WHEEL_LENGTH * 2, Car.HALF_WHEEL_WIDTH * 2);
-    const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0xff8000, depthTest: false, transparent: true, opacity: 0.7 })
+    const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0xff8800, depthTest: false, transparent: true, opacity: 0.7 })
 
     this.lfWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
     this.lfWheel.renderOrder = 1;

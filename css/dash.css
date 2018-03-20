@@ -2,6 +2,29 @@ html { overflow: hidden !important; }
 body { margin: 0; }
 canvas { width: 100%; height: 100% }
 
+.editor-grab {
+    cursor: pointer;
+    cursor: hand;
+    cursor: -webkit-grab;
+    cursor: grab;
+}
+
+.editor-grabbing {
+    cursor: pointer;
+    cursor: hand;
+    cursor: -webkit-grabbing;
+    cursor: grabbing;
+}
+
+.editor-pointing {
+    cursor: pointer;
+}
+
+.editor-removing {
+    cursor: pointer;
+    cursor: no-drop;
+}
+
 #container {
     position: relative;
     height: 100%;

@@ -1,8 +1,16 @@
 import LanePath from "../autonomy/LanePath.js";
+import StaticObstacle from "../autonomy/path-planning/StaticObstacle.js";
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
-const NORMAL_POINT_COLOR = 0x0080ff;
-const HOVER_POINT_COLOR = 0x30c0ff;
+
+const NORMAL_OPACITY = 0.7;
+const HOVER_OPACITY = 1;
+const NORMAL_POINT_COLOR = 0x0088ff;
+const HOVER_POINT_COLOR = 0x33ccff;
+const NORMAL_STATIC_OBSTACLE_COLOR = 0xdd0000;
+const HOVER_STATIC_OBSTACLE_COLOR = 0xdd3333;
+const NORMAL_DYNAMIC_OBSTACLE_COLOR = 0xff8800;
+const HOVER_DYNAMIC_OBSTACLE_COLOR = 0xffcc33;
 
 export default class Editor {
   constructor(canvas, camera, scene) {
@@ -15,19 +23,18 @@ export default class Editor {
     this.dragOffset = new THREE.Vector3();
     this.draggingPoint = null;
     this.pointIndex = 0;
+    this.obstacleIndex = 0;
+
     this.centerlineGeometry = new THREE.Geometry();
     this.leftBoundaryGeometry = new THREE.Geometry();
     this.rightBoundaryGeometry = new THREE.Geometry();
     this.draggingObstaclePreview = null;
 
-    this.pointObjects = [];
-    this.obstacleObjects = [];
-
     this.group = new THREE.Group();
-    this.pointObjectsGroup = new THREE.Group();
-    this.obstaclesGroup = new THREE.Group();
-    this.group.add(this.obstaclesGroup);
-    this.group.add(this.pointObjectsGroup);
+    this.pointGroup = new THREE.Group();
+    this.obstacleGroup = new THREE.Group();
+    this.group.add(this.obstacleGroup);
+    this.group.add(this.pointGroup);
     scene.add(this.group);
 
     this.lanePath = new LanePath();
@@ -38,6 +45,7 @@ export default class Editor {
     this.editorObstaclesButton.addEventListener('click', e => this.changeEditMode('obstacles'));
 
     this.changeEditMode('path');
+    this.removeMode = false;
 
     canvas.addEventListener('mousedown', this.mouseDown.bind(this));
     canvas.addEventListener('mousemove', this.mouseMove.bind(this));
@@ -51,20 +59,31 @@ export default class Editor {
     });
     document.addEventListener('click', () => editorClearOptions.classList.add('is-hidden'));
 
-    this.centerlineObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0x004080), lineWidth: 0.2, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    document.getElementById('editor-clear-obstacles').addEventListener('click', this.clearStaticObstacles.bind(this));
+    document.getElementById('editor-clear-path').addEventListener('click', this.clearPoints.bind(this));
+    document.getElementById('editor-clear-all').addEventListener('click', this.clearAll.bind(this));
+
+    document.addEventListener('keydown', this.keyDown.bind(this));
+    document.addEventListener('keyup', this.keyUp.bind(this));
+
+    this.centerlineObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0x004488), lineWidth: 0.2, depthTest: false, transparent: true, opacity: NORMAL_OPACITY, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.centerlineObject.rotation.x = Math.PI / 2;
     this.centerlineObject.renderOrder = 1;
     this.group.add(this.centerlineObject);
 
-    this.leftBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.leftBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8800), lineWidth: 0.15, depthTest: false, transparent: true, opacity: NORMAL_OPACITY, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.leftBoundaryObject.rotation.x = Math.PI / 2;
     this.leftBoundaryObject.renderOrder = 1;
     this.group.add(this.leftBoundaryObject);
 
-    this.rightBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8000), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.7, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
+    this.rightBoundaryObject = new THREE.Mesh(new THREE.Geometry(), new MeshLineMaterial({ color: new THREE.Color(0xff8800), lineWidth: 0.15, depthTest: false, transparent: true, opacity: NORMAL_OPACITY, resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight) }));
     this.rightBoundaryObject.rotation.x = Math.PI / 2;
     this.rightBoundaryObject.renderOrder = 1;
     this.group.add(this.rightBoundaryObject);
+  }
+
+  get staticObstacles() {
+    return this.obstacleGroup.children.map(o => new StaticObstacle(new THREE.Vector2(o.position.x, o.position.z), 0, o.userData.width, o.userData.height));
   }
 
   update() {
@@ -76,33 +95,71 @@ export default class Editor {
       const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection != null) {
         this.updatePoint(this.draggingPoint, intersection.add(this.dragOffset));
-        this.redraw();
+        this.rebuildPathGeometry();
       }
     } else if (this.draggingObstacle) {
-      if (this.draggingObstacle === true) {
-        const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
-        if (intersection != null) {
-          const center = this.dragOffset.clone().add(intersection).divideScalar(2);
-          const width = Math.max(0.5, Math.abs(this.dragOffset.x - intersection.x));
-          const height = Math.max(0.5, Math.abs(this.dragOffset.z - intersection.z));
-
+      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+      if (intersection !== null) {
+        if (this.draggingObstacle === true) {
           if (this.draggingObstaclePreview) this.group.remove(this.draggingObstaclePreview);
+
+          const [center, width, height] = this._dimensionsFromRect(this.dragOffset, intersection);
 
           this.draggingObstaclePreview = new THREE.Mesh(
             new THREE.PlaneGeometry(width, height),
-            new THREE.MeshBasicMaterial({ color: NORMAL_POINT_COLOR, depthTest: false, transparent: true, opacity: 0.4 })
+            new THREE.MeshBasicMaterial({ color: NORMAL_STATIC_OBSTACLE_COLOR, depthTest: false, transparent: true, opacity: 0.4 })
           );
           this.draggingObstaclePreview.rotation.x = -Math.PI / 2;
           this.draggingObstaclePreview.position.copy(center);
           this.group.add(this.draggingObstaclePreview);
+        } else {
+          this.draggingObstacle.position.copy(intersection.add(this.dragOffset));
         }
       }
-    } else if (this.pointObjects.length > 0) {
-      this.pointObjects.forEach(p => p.material.color.set(NORMAL_POINT_COLOR));
-      const picked = this.raycaster.intersectObjects(this.pointObjects)[0];
+    } else {
+      this.pointGroup.children.forEach(p => {
+        p.material.color.set(NORMAL_POINT_COLOR)
+        p.material.opacity = NORMAL_OPACITY;
+      });
 
-      if (picked)
-        picked.object.material.color.set(HOVER_POINT_COLOR);
+      this.obstacleGroup.children.forEach(o => {
+        o.material.color.set(NORMAL_STATIC_OBSTACLE_COLOR)
+        o.material.opacity = NORMAL_OPACITY;
+      });
+
+      this.canvas.classList.remove('editor-grab', 'editor-grabbing', 'editor-removing');
+
+      if (this.editMode == 'path' && this.pointGroup.children.length > 0) {
+        let picked = null;
+        this.raycaster.intersectObjects(this.pointGroup.children).forEach(p => {
+          if (picked === null || p.object.userData.index > picked.object.userData.index) picked = p;
+        });
+
+        if (picked) {
+          picked.object.material.color.set(HOVER_POINT_COLOR);
+          picked.object.material.opacity = HOVER_OPACITY;
+
+          if (this.removeMode)
+            this.canvas.classList.add('editor-removing');
+          else
+            this.canvas.classList.add('editor-grab');
+        }
+      } else if (this.editMode == 'obstacle' && this.obstacleGroup.children.length > 0) {
+        let picked = null;
+        this.raycaster.intersectObjects(this.obstacleGroup.children).forEach(o => {
+          if (picked === null || o.object.userData.index > picked.object.userData.index) picked = o;
+        });
+
+        if (picked) {
+          picked.object.material.color.set(HOVER_STATIC_OBSTACLE_COLOR);
+          picked.object.material.opacity = HOVER_OPACITY;
+
+          if (this.removeMode)
+            this.canvas.classList.add('editor-removing');
+          else
+            this.canvas.classList.add('editor-grab');
+        }
+      }
     }
   }
 
@@ -114,7 +171,7 @@ export default class Editor {
       this.editorObstaclesButton.classList.add('is-outlined');
       this.editorObstaclesButton.classList.remove('is-selected');
     } else {
-      this.editMode = 'obstacles';
+      this.editMode = 'obstacle';
       this.editorPathButton.classList.add('is-outlined');
       this.editorPathButton.classList.remove('is-selected');
       this.editorObstaclesButton.classList.remove('is-outlined');
@@ -122,7 +179,35 @@ export default class Editor {
     }
   }
 
-  redraw() {
+  addStaticObstacle(center, width, height) {
+    const obstacle = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      new THREE.MeshBasicMaterial({ color: NORMAL_STATIC_OBSTACLE_COLOR, depthTest: false, transparent: true, opacity: NORMAL_OPACITY })
+    );
+    obstacle.rotation.x = -Math.PI / 2;
+    obstacle.position.copy(center);
+    obstacle.userData = { index: this.obstacleIndex++, width: width, height: height };
+
+    this.obstacleGroup.add(obstacle);
+  }
+
+  removeStaticObstacle(obstacle) {
+    this.obstacleGroup.remove(obstacle);
+  }
+
+  clearStaticObstacles() {
+    this.group.remove(this.obstacleGroup);
+    this.obstacleGroup = new THREE.Group();
+    this.group.add(this.obstacleGroup);
+    this.obstacleIndex = 0;
+  }
+
+  clearAll() {
+    this.clearPoints();
+    this.clearStaticObstacles();
+  }
+
+  rebuildPathGeometry() {
     this.centerlineGeometry.setFromPoints(this.lanePath.centerline);
     const centerline = new MeshLine();
     centerline.setGeometry(this.centerlineGeometry);
@@ -140,14 +225,14 @@ export default class Editor {
   }
 
   addPoint(pos) {
-    const point = new THREE.Mesh(new THREE.CircleGeometry(0.6, 32), new THREE.MeshBasicMaterial({ color: NORMAL_POINT_COLOR, depthTest: false, transparent: true, opacity: 0.7 }));
+    const point = new THREE.Mesh(new THREE.CircleGeometry(0.6, 32), new THREE.MeshBasicMaterial({ color: NORMAL_POINT_COLOR, depthTest: false, transparent: true, opacity: NORMAL_OPACITY }));
     point.rotation.x = -Math.PI / 2;
     point.position.set(pos.x, 0, pos.y);
     point.userData = { index: this.pointIndex++ };
+    point.renderOrder = 1;
 
-    this.pointObjectsGroup.add(point);
-    this.pointObjects.push(point);
     this.lanePath.addAnchor(pos);
+    this.pointGroup.add(point);
 
     return point;
   }
@@ -157,22 +242,52 @@ export default class Editor {
     this.lanePath.updateAnchor(object.userData.index, new THREE.Vector2(pos.x, pos.z));
   }
 
+  removePoint(object) {
+    const index = object.userData.index;
+
+    this.pointGroup.remove(object);
+    this.pointGroup.children.forEach(p => {
+      if (p.userData.index > index) p.userData.index--;
+    });
+    this.pointIndex--;
+
+    this.lanePath.removeAnchor(index);
+  }
+
   clearPoints() {
     this.centerlineObject.geometry = new THREE.Geometry();
 
-    this.group.remove(this.pointObjectsGroup);
-    this.pointObjectsGroup = new THREE.Group();
-    this.pointObjects = [];
+    this.group.remove(this.pointGroup);
+    this.pointGroup = new THREE.Group();
+    this.group.add(this.pointGroup);
     this.pointIndex = 0;
 
     this.lanePath = new LanePath();
+    this.rebuildPathGeometry();
   }
 
   loadPoints(points) {
     this.clearPoints();
 
     points.forEach(p => this.addPoint(new THREE.Vector2(p.x, p.y)));
-    this.redraw();
+    this.rebuildPathGeometry();
+  }
+
+  keyDown(event) {
+    if (event.repeat) return;
+
+    if (event.key == 'Shift') {
+      this.removeMode = true;
+      this.canvas.classList.add('editor-pointing');
+      event.preventDefault();
+    }
+  }
+
+  keyUp(event) {
+    if (event.key == 'Shift') {
+      this.removeMode = false;
+      this.canvas.classList.remove('editor-pointing', 'editor-removing');
+    }
   }
 
   mouseDown(event) {
@@ -184,27 +299,46 @@ export default class Editor {
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
     if (this.editMode == 'path') {
-      const picked = this.raycaster.intersectObjects(this.pointObjects)[0];
+      let picked = null;
+      this.raycaster.intersectObjects(this.pointGroup.children).forEach(p => {
+        if (picked === null || p.object.userData.index > picked.object.userData.index) picked = p;
+      });
 
       if (picked) {
-        this.draggingPoint = picked.object;
-        this.dragOffset.copy(picked.object.position).sub(picked.point);
-        event.stopImmediatePropagation();
-      } else {
+        if (this.removeMode) {
+          this.removePoint(picked.object);
+          this.rebuildPathGeometry();
+        } else {
+          this.canvas.classList.remove('editor-grab');
+          this.canvas.classList.add('editor-grabbing');
+
+          this.draggingPoint = picked.object;
+          this.dragOffset.copy(picked.object.position).sub(picked.point);
+        }
+      } else if (!this.removeMode) {
         const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
         if (intersection != null) {
           this.addPoint(new THREE.Vector2(intersection.x, intersection.z));
-          this.redraw();
+          this.rebuildPathGeometry();
         }
       }
     } else {
-      const picked = this.raycaster.intersectObjects(this.obstacleObjects)[0];
+      let picked = null;
+      this.raycaster.intersectObjects(this.obstacleGroup.children).forEach(o => {
+        if (picked === null || o.object.userData.index > picked.object.userData.index) picked = o;
+      });
 
       if (picked) {
-        this.draggingObstacle = picked.object;
-        this.dragOffset.copy(picked.object.position).sub(picked.point);
-        event.stopImmediatePropagation();
-      } else {
+        if (this.removeMode) {
+          this.removeStaticObstacle(picked.object);
+        } else {
+          this.canvas.classList.remove('editor-grab');
+          this.canvas.classList.add('editor-grabbing');
+
+          this.draggingObstacle = picked.object;
+          this.dragOffset.copy(picked.object.position).sub(picked.point);
+        }
+      } else if (!this.removeMode) {
         const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
         if (intersection != null) {
           this.draggingObstacle = true;
@@ -223,7 +357,6 @@ export default class Editor {
     if (!this.enabled || event.button != 0) return;
 
     if (this.draggingObstacle === true) {
-      this.draggingObstacle = null;
       this.group.remove(this.draggingObstaclePreview);
       this.draggingObstaclePreview = null;
 
@@ -234,11 +367,20 @@ export default class Editor {
 
       const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection != null) {
-        console.log(this.dragOffset);
-        console.log(intersection);
+        const [center, width, height] = this._dimensionsFromRect(this.dragOffset, intersection);
+        this.addStaticObstacle(center, width, height);
       }
     }
 
     this.draggingPoint = null;
+    this.draggingObstacle = null;
+    this.canvas.classList.remove('editor-grab', 'editor-grabbing');
+  }
+
+  _dimensionsFromRect(from, to) {
+    const center = from.clone().add(to).divideScalar(2);
+    const width = Math.max(0.5, Math.abs(from.x - to.x));
+    const height = Math.max(0.5, Math.abs(from.z - to.z));
+    return [center, width, height];
   }
 }

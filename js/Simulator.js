@@ -30,7 +30,7 @@ export default class Simulator {
     this.physics = new Physics();
     this.car = this.physics.createCar();
 
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
@@ -228,6 +228,8 @@ export default class Simulator {
     const rot = Math.atan2(dir.y, dir.x);
     this.car.setPose(pos.x, pos.y, rot);
 
+    this.obstacles = this.editor.staticObstacles;
+
     this.autonomousCarController = null;
 
     if (!this.plannerRunning) {
@@ -421,11 +423,6 @@ export default class Simulator {
     const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
     pathObject.renderOrder = 1;
     this.plannedPathGroup.add(pathObject);
-
-    const frontMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, depthTest: false });
-    const frontGeometry = new THREE.Geometry();
-    frontGeometry.vertices.push(...followPath.poses.map(p => new THREE.Vector3(p.frontPos.x, 0, p.frontPos.y)));
-    this.plannedPathGroup.add(new THREE.Line(frontGeometry, frontMaterial));
   }
 }
 

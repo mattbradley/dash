@@ -187,6 +187,23 @@ export default class {
       this.resample(i);
   }
 
+  removeAnchor(index) {
+    if (index < 0 || index >= this.anchors.length) return;
+
+    this.anchors.splice(index, 1);
+
+    const segmentIndex = index < this.anchors.length ? index : index - 1;
+    this.centerlines.splice(segmentIndex, 1);
+    this.sampleLengths.splice(segmentIndex, 1);
+    this.rotations.splice(segmentIndex, 1);
+    this.leftBoundaries.splice(segmentIndex, 1);
+    this.rightBoundaries.splice(segmentIndex, 1);
+    this.arcLengths.splice(segmentIndex, 1);
+
+    for (let i = segmentIndex - 2; i <= segmentIndex; i++)
+      this.resample(i);
+  }
+
   resample(index) {
     if (index < 0 || index > this.anchors.length - 2) return;
 
@@ -198,7 +215,7 @@ export default class {
     const rightBoundary = [];
     let prevPoint = null;
 
-    const pointsPerSegment = Math.ceil(p1.distanceTo(p2) / 1);
+    const pointsPerSegment = Math.max(10, Math.ceil(p1.distanceTo(p2) / 1));
     const numPoints = index == this.anchors.length - 2 ? pointsPerSegment + 1 : pointsPerSegment;
 
     for (let i = 0; i < numPoints; i++) {

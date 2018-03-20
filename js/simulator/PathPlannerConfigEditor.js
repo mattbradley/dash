@@ -28,7 +28,7 @@ const defaultConfig = {
   lethalDilationS: Car.HALF_CAR_LENGTH + 1, // meters
   hazardDilationS: 12, // meters
   lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
-  hazardDilationL: 0.5, // meters
+  hazardDilationL: 2, // meters
 
   obstacleHazardCost: 3,
 
