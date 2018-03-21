@@ -4,12 +4,12 @@ const SL_OBSTACLE_DILATION_KERNEL = `
 vec4 kernel() {
   float val = 0.0;
 
-  for (int d = 0; d <= lethalDilation; d++) {
+  for (int d = 0; d <= collisionDilation; d++) {
     val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(d)).r);
     val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(-d)).r);
   }
 
-  for (int d = lethalDilation + 1; d <= lethalDilation + hazardDilation; d++) {
+  for (int d = collisionDilation + 1; d <= collisionDilation + hazardDilation; d++) {
     val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(d)).r * 0.5);
     val = max(val, texture(slObstacleGrid, kernelPosition + delta * vec2(-d)).r * 0.5);
   }
@@ -30,7 +30,7 @@ export default {
         uniforms: {
           slObstacleGrid: { type: 'outputTexture' },
           delta: { type: 'vec2' },
-          lethalDilation: { type: 'int' },
+          collisionDilation: { type: 'int' },
           hazardDilation: { type: 'int' }
         }
       },
@@ -40,7 +40,7 @@ export default {
         uniforms: {
           slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridStationDilated' },
           delta: { type: 'vec2' },
-          lethalDilation: { type: 'int' },
+          collisionDilation: { type: 'int' },
           hazardDilation: { type: 'int' }
         }
       }
@@ -54,7 +54,7 @@ export default {
         height: slHeight,
         uniforms: {
           delta: [1 / slWidth, 0],
-          lethalDilation: Math.ceil(config.lethalDilationS / config.slGridCellSize),
+          collisionDilation: Math.ceil(config.collisionDilationS / config.slGridCellSize),
           hazardDilation: Math.ceil(config.hazardDilationS / config.slGridCellSize)
         }
       },
@@ -63,7 +63,7 @@ export default {
         height: slHeight,
         uniforms: {
           delta: [0, 1 / slHeight],
-          lethalDilation: Math.ceil(config.lethalDilationL / config.slGridCellSize),
+          collisionDilation: Math.ceil(config.collisionDilationL / config.slGridCellSize),
           hazardDilation: Math.ceil(config.hazardDilationL / config.slGridCellSize)
         }
       }

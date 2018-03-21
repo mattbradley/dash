@@ -10,6 +10,9 @@ const internalConfig = {
     latitudeConnectivity: 5
   },
 
+  numDynamicFrames: 20,
+  numDynamicSubframes: 4,
+
   dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
   rearAxleToCenter: -Car.REAR_AXLE_POS
 };
@@ -25,9 +28,9 @@ const defaultConfig = {
 
   cubicPathPenalty: 10,
 
-  lethalDilationS: Car.HALF_CAR_LENGTH + 1, // meters
+  collisionDilationS: Car.HALF_CAR_LENGTH + 1, // meters
   hazardDilationS: 12, // meters
-  lethalDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
+  collisionDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
   hazardDilationL: 2, // meters
 
   obstacleHazardCost: 3,

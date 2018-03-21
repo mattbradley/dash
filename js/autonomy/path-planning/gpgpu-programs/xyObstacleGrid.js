@@ -28,7 +28,9 @@ export default {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         if (obstacleVertices.length > 0) {
-          gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+          const buf = gl.createBuffer();
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, buf);
           gl.bufferData(gl.ARRAY_BUFFER, obstacleVertices, gl.STATIC_DRAW);
           gl.enableVertexAttribArray(program.positionLocation);
           gl.vertexAttribPointer(program.positionLocation, 2, gl.FLOAT, false, 0, 0);
@@ -37,6 +39,8 @@ export default {
           gl.uniformMatrix3fv(xformLocation, false, obstacleXform.elements);
 
           gl.drawArrays(gl.TRIANGLES, 0, obstacleVertices.length / 2);
+
+          gl.deleteBuffer(buf);
         }
       }
     };

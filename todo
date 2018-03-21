@@ -1,7 +1,6 @@
 TODO
 ----
 
-[ ] Add compass to dashboard?
 [x] Move [Manual|Autonomous] switch to dashboard
 [x] Move Scenario box to left side and add play/pause button and replace restart button with restart icon
 [x] Switch to manual mode on gas/brake/steer keyboard input
@@ -14,3 +13,4 @@ TODO
 [ ] README
 [ ] Two-lane roads?
 [ ] Save/load scenarios
+[ ] Add compass to dashboard?

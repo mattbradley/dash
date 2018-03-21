@@ -1,4 +1,4 @@
-export default class {
+export default class StaticObstacle {
   constructor(pos, rot, width, height) {
     this.pos = pos;
     this.rot = rot;

@@ -5,6 +5,7 @@ import QuinticPath from "./QuinticPath.js";
 import xyObstacleGrid from "./gpgpu-programs/xyObstacleGrid.js";
 import slObstacleGrid from "./gpgpu-programs/slObstacleGrid.js";
 import slObstacleGridDilation from "./gpgpu-programs/slObstacleGridDilation.js";
+import slDynamicObstacleGrid from "./gpgpu-programs/slDynamicObstacleGrid.js";
 import xyslMap from "./gpgpu-programs/xyslMap.js";
 import optimizeCubicPaths from "./gpgpu-programs/optimizeCubicPaths.js";
 import optimizeQuinticPaths from "./gpgpu-programs/optimizeQuinticPaths.js";
@@ -26,7 +27,7 @@ const NUM_TIME_RANGES = 2;
  *    * Get XY position from centerline texture
  *    * Lookup XY in XY occupancy grid (nearest)
  * 3. Dilate SL-space grid using two passes (along station, then along latitude)
- *    * lethal area: half car size + 0.3m
+ *    * collision area: half car size + 0.3m
  *    * high cost area: 1 meter
  * 4. Convert back to XY-space using XYSL map
  */
@@ -42,6 +43,7 @@ export default class PathPlanner {
       xyObstacleGrid.setUp(),
       slObstacleGrid.setUp(),
       ...slObstacleGridDilation.setUp(),
+      slDynamicObstacleGrid.setUp(),
       xyslMap.setUp(),
       ...optimizeCubicPaths.setUp(),
       optimizeQuinticPaths.setUp(),
@@ -58,7 +60,7 @@ export default class PathPlanner {
     this.previousSecondLatticePoint = -1;
   }
 
-  plan(vehiclePose, vehicleStation, lanePath, obstacles) {
+  plan(vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles) {
     const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(this.config.spatialHorizon / this.config.centerlineStationInterval) + 1, this.config.centerlineStationInterval);
 
     // Transform all centerline points into vehicle frame
@@ -104,10 +106,14 @@ export default class PathPlanner {
 
     const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
+    const temporalHorizon = this.config.spatialHorizon / this.config.speedLimit;
+    const frameTime = temporalHorizon / this.config.numDynamicFrames;
+
     for (const [i, p] of [
-      xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, obstacles),
+      xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, staticObstacles),
       slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
+      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, startTime, frameTime, dynamicObstacles),
       xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),
@@ -143,9 +149,9 @@ export default class PathPlanner {
     let start = performance.now();
     const outputs = this.gpgpu.run();
     const costTable = this.gpgpu._graphSearchCostTable;
-    const cubicPathParams = outputs[5];
-    const cubicPathFromVehicleParams = outputs[6];
-    const quinticPathFromVehicleParams = outputs[7];
+    const cubicPathParams = outputs[6];
+    const cubicPathFromVehicleParams = outputs[7];
+    const quinticPathFromVehicleParams = outputs[8];
 
     let bestEntry = [Number.POSITIVE_INFINITY];
     let bestEntryIndex;
@@ -176,7 +182,7 @@ export default class PathPlanner {
     let fromVehicleParams = null;
     let firstLatticePoint = -1;
     let secondLatticePoint = -1;
-    
+
     if (isFinite(bestEntry[0])) {
       [bestTrajectory, fromVehicleSegment, fromVehicleParams, firstLatticePoint, secondLatticePoint] = this._reconstructTrajectory(
         bestEntryIndex,

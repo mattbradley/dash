@@ -1,5 +1,5 @@
 import LanePath from "../autonomy/LanePath.js";
-import StaticObstacle from "../autonomy/path-planning/StaticObstacle.js";
+import StaticObstacle from "../autonomy/StaticObstacle.js";
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 

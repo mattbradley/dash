@@ -13,7 +13,7 @@ import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";
 import RoadLattice from "./autonomy/path-planning/RoadLattice.js";
 import PathPlanner from "./autonomy/path-planning/PathPlanner.js";
-import StaticObstacle from "./autonomy/path-planning/StaticObstacle.js";
+import StaticObstacle from "./autonomy/StaticObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
@@ -107,7 +107,7 @@ export default class Simulator {
     this.changeCamera('chase');
 
     this.aroundAnchorIndex = null;
-    this.obstacles = [];
+    this.staticObstacles = [];
 
     requestAnimationFrame(step.bind(this));
   }
@@ -126,7 +126,7 @@ export default class Simulator {
     obsObj.position.set(obstacle.pos.x, 0, obstacle.pos.y);
     this.scene.add(obsObj);
 
-    this.obstacles.push(obstacle);
+    this.staticObstacles.push(obstacle);
   }
 
   _setUpCameras(domElement) {
@@ -175,7 +175,7 @@ export default class Simulator {
   _resetChaseCamera() {
     const pos = this.car.position;
     const dirVector = THREE.Vector2.fromAngle(this.car.rotation).multiplyScalar(-20);
-    this.chaseCamera.position.set(pos.x + dirVector.x, 10, pos.y + dirVector.y);
+    this.chaseCamera.position.set(pos.x + dirVector.x, 9, pos.y + dirVector.y);
     this.chaseCamera.lookAt(pos.x, 0, pos.y);
   }
 
@@ -228,7 +228,7 @@ export default class Simulator {
     const rot = Math.atan2(dir.y, dir.x);
     this.car.setPose(pos.x, pos.y, rot);
 
-    this.obstacles = this.editor.staticObstacles;
+    this.staticObstacles = this.editor.staticObstacles;
 
     this.autonomousCarController = null;
 
@@ -357,9 +357,12 @@ export default class Simulator {
     // planning actually finishes.
 
     let predictedPose = pose;
+    let startTime = this.simulatedTime;
 
     if (!this.plannerReset && this.autonomousCarController && this.carControllerMode == 'autonomous') {
-      predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, this.averagePlanTime.average * this.fps * FRAME_TIMESTEP);
+      const latency = this.averagePlanTime.average * this.fps * FRAME_TIMESTEP;
+      predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, latency);
+      startTime += latency;
     }
 
     const reset = this.plannerReset;
@@ -370,7 +373,9 @@ export default class Simulator {
       vehiclePose: predictedPose,
       vehicleStation: station,
       lanePath: this.editor.lanePath,
-      obstacles: this.obstacles,
+      startTime: startTime,
+      staticObstacles: this.staticObstacles,
+      dynamicObstacles: [],
       reset: reset
     };
 

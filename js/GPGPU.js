@@ -328,8 +328,8 @@ export default class {
 
     if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS)) {
       throw new Error(
-        "Could not build internal vertex shader (fatal).\n" + "\n" +
-        "--- CODE DUMP ---\n" + vertexShaderCode + "\n\n" +
+        "Could not build vertex shader (fatal).\n" + "\n" +
+        "--- CODE DUMP ---\n" + (config.vertexShader || vertexShaderCode) + "\n\n" +
         "--- ERROR LOG ---\n" + this.gl.getShaderInfoLog(vertexShader)
       );
     }
@@ -433,15 +433,20 @@ void main() {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, program.frameBuffer);
 
     const outputTexture = this._createTexture(null, program.inputWidth, program.inputHeight, 4, program.output);
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, outputTexture, 0);
-    const frameBufferStatus = (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) == this.gl.FRAMEBUFFER_COMPLETE);
-    if (!frameBufferStatus)
-      throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible.');
 
-    if (program.output && program.output.name) {
-      if (this.outputTextures[program.output.name]) this.gl.deleteTexture(this.outputTextures[program.output.name]);
-      this.outputTextures[program.output.name] = outputTexture;
+    if (program.output && program.output.textureType !== '3D' && program.output.textureType !== '2DArray') {
+      this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, outputTexture, 0);
+      const frameBufferStatus = (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) == this.gl.FRAMEBUFFER_COMPLETE);
+      if (!frameBufferStatus)
+        throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible.');
     }
+
+    if (program.outputTexture !== undefined)
+      this.gl.deleteTexture(program.outputTexture);
+    program.outputTexture = outputTexture;
+
+    if (program.output && program.output.name)
+      this.outputTextures[program.output.name] = outputTexture;
   }
 
   _setUniform(type, location, value) {
