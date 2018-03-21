@@ -1,4 +1,8 @@
 export default class StaticObstacle {
+  static hydrate(obj) {
+    Object.setPrototypeOf(obj, StaticObstacle.prototype);
+  }
+
   constructor(pos, rot, width, height) {
     this.pos = pos;
     this.rot = rot;

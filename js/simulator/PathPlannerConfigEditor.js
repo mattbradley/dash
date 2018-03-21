@@ -21,8 +21,8 @@ const defaultConfig = {
   spatialHorizon: 100, // meters
   centerlineStationInterval: 0.5, // meters
 
-  xyGridCellSize: 0.1, // meters
-  slGridCellSize: 0.05, // meters
+  xyGridCellSize: 0.3, // meters
+  slGridCellSize: 0.15, // meters
   gridMargin: 10, // meters
   pathSamplingStep: 0.5, // meters
 

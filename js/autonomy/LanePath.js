@@ -5,7 +5,11 @@ const centerlineGeometry = new THREE.Geometry();
 const leftBoundaryGeometry = new THREE.Geometry();
 const rightBoundaryGeometry = new THREE.Geometry();
 
-export default class {
+export default class LanePath {
+  static hydrate(obj) {
+    Object.setPrototypeOf(obj, LanePath.prototype);
+  }
+
   constructor() {
     //if (pointsPerSegment < 3) throw new Error('There must be at least 2 points per LanePath segment.');
 
@@ -141,8 +145,8 @@ export default class {
     let endAnchorIndex = this.centerlines.length - 1;
 
     if (aroundAnchorIndex !== null) {
-      startAnchorIndex = Math.max(0, aroundAnchorIndex - 1);
-      endAnchorIndex = Math.min(this.centerlines.length - 1, aroundAnchorIndex + 1);
+      startAnchorIndex = Math.max(0, aroundAnchorIndex - 2);
+      endAnchorIndex = Math.min(this.centerlines.length - 1, aroundAnchorIndex + 2);
     }
 
     if (startAnchorIndex > 0) {

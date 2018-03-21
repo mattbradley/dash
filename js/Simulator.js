@@ -14,6 +14,7 @@ import GPGPU from "./GPGPU.js";
 import RoadLattice from "./autonomy/path-planning/RoadLattice.js";
 import PathPlanner from "./autonomy/path-planning/PathPlanner.js";
 import StaticObstacle from "./autonomy/StaticObstacle.js";
+import DynamicObstacle from "./autonomy/DynamicObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
@@ -108,6 +109,9 @@ export default class Simulator {
 
     this.aroundAnchorIndex = null;
     this.staticObstacles = [];
+    this.dynamicObstacles = [];
+    for (let i = 0; i < 1; i++)
+      this.dynamicObstacles.push(new DynamicObstacle(new THREE.Vector2(20, 0), new THREE.Vector2(10, 0), true));
 
     requestAnimationFrame(step.bind(this));
   }
@@ -357,11 +361,13 @@ export default class Simulator {
     // planning actually finishes.
 
     let predictedPose = pose;
+    let predictedStation = station;
     let startTime = this.simulatedTime;
 
     if (!this.plannerReset && this.autonomousCarController && this.carControllerMode == 'autonomous') {
       const latency = this.averagePlanTime.average * this.fps * FRAME_TIMESTEP;
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, latency);
+      let [predictedStation] = this.editor.lanePath.stationLatitudeFromPosition(predictedPose.pos, this.aroundAnchorIndex);
       startTime += latency;
     }
 
@@ -371,11 +377,11 @@ export default class Simulator {
     this.lastPlanParams =  {
       config: this.pathPlannerConfigEditor.config,
       vehiclePose: predictedPose,
-      vehicleStation: station,
+      vehicleStation: predictedStation,
       lanePath: this.editor.lanePath,
       startTime: startTime,
       staticObstacles: this.staticObstacles,
-      dynamicObstacles: [],
+      dynamicObstacles: this.dynamicObstacles,
       reset: reset
     };
 

@@ -10,9 +10,9 @@ const pathPlanner = new PathPlanner();
 onmessage = function(event) {
   const { config, vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles, reset } = event.data;
 
-  Object.setPrototypeOf(lanePath, LanePath.prototype);
-  staticObstacles.forEach(o => Object.setPrototypeOf(o, StaticObstacle.prototype));
-  dynamicObstacles.forEach(o => Object.setPrototypeOf(o, DynamicObstacle.prototype));
+  LanePath.hydrate(lanePath);
+  staticObstacles.forEach(o => StaticObstacle.hydrate(o));
+  dynamicObstacles.forEach(o => DynamicObstacle.hydrate(o));
 
   if (reset) pathPlanner.reset();
 

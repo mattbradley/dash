@@ -113,7 +113,7 @@ export default class PathPlanner {
       xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, staticObstacles),
       slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
-      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, startTime, frameTime, dynamicObstacles),
+      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, frameTime, dynamicObstacles),
       xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),

@@ -1,7 +1,13 @@
 export default class DynamicObstacle {
+  static hydrate(obj) {
+    Object.setPrototypeOf(obj, DynamicObstacle.prototype);
+    Object.setPrototypeOf(obj.startPos, THREE.Vector2.prototype);
+    Object.setPrototypeOf(obj.velocity, THREE.Vector2.prototype);
+  }
+
   constructor(startPos, velocity, parallel) {
     // width 5, heigth 2
-    this.startPos = stationLatitude;
+    this.startPos = startPos;
     this.velocity = velocity;
 
     // TODO: replace this with constants
@@ -13,10 +19,10 @@ export default class DynamicObstacle {
     return this.velocity.clone().multiplyScalar(time).add(this.startPos);
   }
 
-  positionsInTimeRange(timeStart, timeEnd, numFrames) {
-    const dt = (timeEnd - timeStart) / numFrames;
+  positionsInTimeRange(startTime, endTime, numFrames) {
+    const dt = (endTime - startTime) / numFrames;
     const positions = [];
-    let time = timeStart;
+    let time = startTime;
 
     for (let i = 0; i < numFrames; i++) {
       positions.push(this.positionAtTime(time));
@@ -26,8 +32,8 @@ export default class DynamicObstacle {
     return positions;
   }
 
-  verticesInTimeRange(timeStart, timeEnd, config) {
-    const positions = this.positionsInTimeRange(timeStart, timeEnd, config.numDynamicSubframes);
+  verticesInTimeRange(startTime, endTime, config) {
+    const positions = this.positionsInTimeRange(startTime, endTime, config.numDynamicSubframes);
     const vertices = [];
 
     // Hazard dilation (drawn behind, z = 0.5)

@@ -62,7 +62,7 @@ export default {
     };
   },
 
-  update(config, slWidth, slHeight, slCenterPoint, startTime, frameTime, dynamicObstacles) {
+  update(config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, frameTime, dynamicObstacles) {
     obstacleVertices = [];
 
     let time = startTime;
@@ -74,7 +74,7 @@ export default {
 
     const translate = new THREE.Matrix3();
     translate.set(
-      1, 0, -slCenterPoint.x,
+      1, 0, -slCenterPoint.x - vehicleStation,
       0, 1, -slCenterPoint.y,
       0, 0, 1
     );
