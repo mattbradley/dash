@@ -9,7 +9,8 @@ TODO
 [x] Ability to add obstacles to scenario in editor
 [ ] Scenario info like road length, number of obstacles, etc.
 [x] Hook up clear path/obstacle/all button in editor
-[ ] Dynamic obstacles with dynamic obstacle grid gpgpu program
+[x] Dynamic obstacles with dynamic obstacle grid gpgpu program
+[ ] Separate collision/hazard dilations for dynamic obstacles
 [ ] README
 [ ] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
 [ ] Save/load scenarios

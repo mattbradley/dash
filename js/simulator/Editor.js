@@ -1,5 +1,6 @@
 import LanePath from "../autonomy/LanePath.js";
 import StaticObstacle from "../autonomy/StaticObstacle.js";
+import DynamicObstacleEditor from "./DynamicObstacleEditor.js";
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 
@@ -38,11 +39,14 @@ export default class Editor {
     scene.add(this.group);
 
     this.lanePath = new LanePath();
+    this.dynamicObstacleEditor = new DynamicObstacleEditor();
 
     this.editorPathButton = document.getElementById('editor-path');
     this.editorPathButton.addEventListener('click', e => this.changeEditMode('path'));
     this.editorObstaclesButton = document.getElementById('editor-obstacles');
     this.editorObstaclesButton.addEventListener('click', e => this.changeEditMode('obstacles'));
+    this.editorDynamicObstaclesButton = document.getElementById('editor-dynamic-obstacles');
+    this.editorDynamicObstaclesButton.addEventListener('click', e => this.changeEditMode('dynamicObstacles'));
 
     this.changeEditMode('path');
     this.removeMode = false;
@@ -60,6 +64,7 @@ export default class Editor {
     document.addEventListener('click', () => editorClearOptions.classList.add('is-hidden'));
 
     document.getElementById('editor-clear-obstacles').addEventListener('click', this.clearStaticObstacles.bind(this));
+    document.getElementById('editor-clear-dynamic-obstacles').addEventListener('click', this.dynamicObstacleEditor.clearDynamicObstacles.bind(this.dynamicObstacleEditor));
     document.getElementById('editor-clear-path').addEventListener('click', this.clearPoints.bind(this));
     document.getElementById('editor-clear-all').addEventListener('click', this.clearAll.bind(this));
 
@@ -144,7 +149,7 @@ export default class Editor {
           else
             this.canvas.classList.add('editor-grab');
         }
-      } else if (this.editMode == 'obstacle' && this.obstacleGroup.children.length > 0) {
+      } else if (this.editMode == 'obstacles' && this.obstacleGroup.children.length > 0) {
         let picked = null;
         this.raycaster.intersectObjects(this.obstacleGroup.children).forEach(o => {
           if (picked === null || o.object.userData.index > picked.object.userData.index) picked = o;
@@ -170,12 +175,27 @@ export default class Editor {
       this.editorPathButton.classList.add('is-selected');
       this.editorObstaclesButton.classList.add('is-outlined');
       this.editorObstaclesButton.classList.remove('is-selected');
-    } else {
-      this.editMode = 'obstacle';
-      this.editorPathButton.classList.add('is-outlined');
-      this.editorPathButton.classList.remove('is-selected');
+      this.editorDynamicObstaclesButton.classList.add('is-outlined');
+      this.editorDynamicObstaclesButton.classList.remove('is-selected');
+      this.dynamicObstacleEditor.disable();
+    } else if (mode == 'obstacles') {
+      this.editMode = 'obstacles';
       this.editorObstaclesButton.classList.remove('is-outlined');
       this.editorObstaclesButton.classList.add('is-selected');
+      this.editorPathButton.classList.add('is-outlined');
+      this.editorPathButton.classList.remove('is-selected');
+      this.editorDynamicObstaclesButton.classList.add('is-outlined');
+      this.editorDynamicObstaclesButton.classList.remove('is-selected');
+      this.dynamicObstacleEditor.disable();
+    } else {
+      this.editMode = 'dynamicObstacles';
+      this.editorDynamicObstaclesButton.classList.remove('is-outlined');
+      this.editorDynamicObstaclesButton.classList.add('is-selected');
+      this.editorPathButton.classList.add('is-outlined');
+      this.editorPathButton.classList.remove('is-selected');
+      this.editorObstaclesButton.classList.add('is-outlined');
+      this.editorObstaclesButton.classList.remove('is-selected');
+      this.dynamicObstacleEditor.enable();
     }
   }
 
@@ -205,6 +225,7 @@ export default class Editor {
   clearAll() {
     this.clearPoints();
     this.clearStaticObstacles();
+    this.dynamicObstacleEditor.clearDynamicObstacles();
   }
 
   rebuildPathGeometry() {
@@ -322,7 +343,7 @@ export default class Editor {
           this.rebuildPathGeometry();
         }
       }
-    } else {
+    } else if (this.editMode == 'obstacles') {
       let picked = null;
       this.raycaster.intersectObjects(this.obstacleGroup.children).forEach(o => {
         if (picked === null || o.object.userData.index > picked.object.userData.index) picked = o;

@@ -84,10 +84,14 @@ export default class PathPlanner {
 
     const diff = maxPoint.clone().sub(minPoint);
     const xyCenterPoint = minPoint.clone().add(maxPoint).divideScalar(2);
+
+    // Sizes of the xy grids (in pixels, not meters)
     const xyWidth = Math.ceil((diff.x + this.config.gridMargin * 2) / this.config.xyGridCellSize);
     const xyHeight = Math.ceil((diff.y + this.config.gridMargin * 2) / this.config.xyGridCellSize);
 
     const slCenterPoint = new THREE.Vector2(this.config.spatialHorizon / 2, 0);
+
+    // Sizes of the sl grids (in pixels, not meters)
     const slWidth = Math.ceil(this.config.spatialHorizon / this.config.slGridCellSize);
     const slHeight = Math.ceil((this.config.laneWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
 
@@ -104,21 +108,22 @@ export default class PathPlanner {
       startStation = this.previousStartStation;
     }
 
+    console.log(this.previousStartStation);
     const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
     const temporalHorizon = this.config.spatialHorizon / this.config.speedLimit;
-    const frameTime = temporalHorizon / this.config.numDynamicFrames;
+    const dynamicFrameTime = temporalHorizon / this.config.numDynamicFrames;
 
     for (const [i, p] of [
       xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, staticObstacles),
       slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
-      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, frameTime, dynamicObstacles),
+      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles),
       xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),
-      ...pathFromVehicleCosts.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint),
-      graphSearch.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint)
+      ...pathFromVehicleCosts.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint, dynamicFrameTime),
+      graphSearch.update(this.config, vehiclePose, xyCenterPoint, slCenterPoint, this.previousFirstLatticePoint, this.previousSecondLatticePoint, dynamicFrameTime)
     ].entries()) {
       this.gpgpu.updateProgram(i, p);
     }

@@ -23,6 +23,7 @@ float sampleStaticCost(vec4 xytk) {
   float obstacleCost = texture(slObstacleGrid, slTexCoords).r;
 
   if (obstacleCost >= 0.75) return -1.0; // Infinite cost
+
   obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
 
   float absLatitude = abs(sl.y);
@@ -32,7 +33,17 @@ float sampleStaticCost(vec4 xytk) {
 }
 
 float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleration) {
-  return 0.0;
+  vec2 xyTexCoords = (xytk.xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
+  vec2 sl = texture(xyslMap, xyTexCoords).xy;
+
+  vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slDynamicObstacleGrid, 0).xy) / vec2(slGridCellSize) + 0.5;
+  float dynamicFrame = floor(time / dynamicFrameTime);
+
+  float obstacleCost = texture(slDynamicObstacleGrid, vec3(slTexCoords, dynamicFrame)).r;
+
+  if (obstacleCost >= 0.75) return -1.0; // Infinite cost
+
+  return step(0.25, obstacleCost) * obstacleHazardCost;
 }
 
 float calculateAverageStaticCost(int numSamples) {
@@ -51,7 +62,7 @@ float calculateAverageStaticCost(int numSamples) {
   return averageStaticCost;
 }
 
-float calculateAverageDynamicCost(int numSamples, float pathLength, float initialVelocity, float acceleration) {
+float calculateAverageDynamicCost(int numSamples, float pathLength, float initialTime, float initialVelocity, float acceleration) {
   float s = 0.0;
   float ds = pathLength / float(numSamples - 1);
   float averageDynamicCost = 0.0;
@@ -66,7 +77,7 @@ float calculateAverageDynamicCost(int numSamples, float pathLength, float initia
     maxVelocity = max(maxVelocity, velocity);
     maxLateralAcceleration = max(maxLateralAcceleration, abs(pathSample.w * velocity * velocity));
 
-    float time = 2.0 * s / (initialVelocity + velocity);
+    float time = 2.0 * s / (initialVelocity + velocity) + initialTime;
 
     float dCurv = pathSampleCurvRates[i] * velocity;
     if (dCurv > dCurvatureMax) return -1.0;
@@ -222,6 +233,7 @@ const NUM_TIME_RANGES = 2;
 const SHARED_UNIFORMS = {
   xyslMap: { type: 'outputTexture' },
   slObstacleGrid: { type: 'outputTexture', name: 'slObstacleGridDilated' },
+  slDynamicObstacleGrid: { type: 'outputTexture', name: 'slDynamicObstacleGrid', textureType: '2DArray' },
   accelerationProfiles: { type: 'float', length: 5 },
   finalVelocityProfiles: { type: 'float', length: 3 },
   xyCenterPoint: { type: 'vec2' },
@@ -241,10 +253,11 @@ const SHARED_UNIFORMS = {
   linearLateralAccelerationPenalty: { type: 'float' },
   dCurvatureMax: { type: 'float' },
   pathSamplingStep: { type: 'float' },
-  rearAxleToCenter: { type: 'float' }
+  rearAxleToCenter: { type: 'float' },
+  dynamicFrameTime: { type: 'float' }
 };
 
-function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
+function buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime) {
   return {
     accelerationProfiles: [3.5, -6.5, 2.0, -3.0, 0],
     finalVelocityProfiles: [0.999 * config.speedLimit, 1.0, 0.01],
@@ -265,7 +278,8 @@ function buildUniformValues(config, xyCenterPoint, slCenterPoint) {
     linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
     dCurvatureMax: config.dCurvatureMax,
     pathSamplingStep: config.pathSamplingStep,
-    rearAxleToCenter: config.rearAxleToCenter
+    rearAxleToCenter: config.rearAxleToCenter,
+    dynamicFrameTime: dynamicFrameTime
   };
 }
 

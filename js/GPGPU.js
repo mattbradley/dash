@@ -501,6 +501,7 @@ void main() {
     this.gl.bindTexture(target, texture);
     this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_R, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(target, this.gl.TEXTURE_MIN_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
     this.gl.texParameteri(target, this.gl.TEXTURE_MAG_FILTER, options.filter == 'linear' ? this.gl.LINEAR : this.gl.NEAREST);
 

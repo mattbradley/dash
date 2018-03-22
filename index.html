@@ -138,6 +138,37 @@
                 </div>
             </div>
             <div id="editor-controls" class="gui-box edit-mode-box is-hidden">
+                <div id="editor-dynamic-obstacles-box" class="gui-box is-hidden" style="position: absolute; width: 450px;">
+                    <div class="is-clearfix">
+                        <div class="field is-pulled-right">
+                            <p class="control">
+                                <div id="editor-add-dynamic-obstacle" class="button is-small is-dark is-outlined is-inverted" title="Add Dynamic Obstacle">
+                                    <span class="icon is-medium">
+                                        <i class="fas fa-lg fa-plus"></i>
+                                    </span>
+                                </div>
+                            </p>
+                        </div>
+                        <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Dynamic Obstacles</div>
+                    </div>
+                    <div class="columns is-gapless">
+                        <div class="column is-1"></div>
+                        <div class="column is-3">
+                            <abbr class="is-size-7 has-text-grey-lighter" title="Determines the size and shape of the dynamic obstacle">Type</abbr>
+                        </div>
+                        <div class="column is-1 has-text-centered">
+                            <abbr class="is-size-7 has-text-grey-lighter" style="position: relative; left: -5px;" title="Check to align parallel to the road; uncheck to align perpendicular">Parallel</abbr>
+                        </div>
+                        <div class="column is-3 has-text-centered">
+                            <abbr class="is-size-7 has-text-grey-lighter" title="Initial station-latitude position">SL Position</abbr>
+                        </div>
+                        <div class="column is-3 has-text-centered">
+                            <abbr class="is-size-7 has-text-grey-lighter" title="Station-latitude velocity">SL Velocity</abbr>
+                        </div>
+                        <div class="column is-1"></div>
+                    </div>
+                    <div id="editor-dynamic-obstacle-forms" style="margin-top: 16px; max-height: 400px; overflow-y: scroll;"></div>
+                </div>
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-road"></i>
@@ -149,7 +180,10 @@
                             <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Road</span>
                         </p>
                         <p class="control">
-                            <span id="editor-obstacles" class="button is-small is-dark is-outlined is-inverted">Obstacles</span>
+                            <span id="editor-obstacles" class="button is-small is-dark is-outlined is-inverted">Static Obstacles</span>
+                        </p>
+                        <p class="control">
+                            <span id="editor-dynamic-obstacles" class="button is-small is-dark is-outlined is-inverted">Dynamic Obstacles</span>
                         </p>
                     </div>
                     <div class="field" style="position: relative;">
@@ -158,7 +192,8 @@
                             <div id="editor-clear-options" class="gui-box is-hidden">
                                 <div class="buttons">
                                     <span id="editor-clear-all" class="button is-small is-danger">All</span>
-                                    <span id="editor-clear-obstacles" class="button is-small is-warning">Obstacles</span>
+                                    <span id="editor-clear-dynamic-obstacles" class="button is-small is-warning">Dynamic Obstacles</span>
+                                    <span id="editor-clear-obstacles" class="button is-small is-warning">Static Obstacles</span>
                                     <span id="editor-clear-path" class="button is-small is-warning">Road</span>
                                 </div>
                             </div>

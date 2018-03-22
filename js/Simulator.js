@@ -6,6 +6,7 @@ import FollowController from "./autonomy/control/FollowController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
+import DynamicObstacleObject from "./objects/DynamicObstacleObject.js";
 import Editor from "./simulator/Editor.js";
 import OrbitControls from "./simulator/OrbitControls.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
@@ -70,6 +71,9 @@ export default class Simulator {
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
+    this.dynamicObstaclesGroup = new THREE.Group();
+    this.scene.add(this.dynamicObstaclesGroup);
+
     this.paused = false;
     this.prevTimestamp = null;
     this.frameCounter = 0;
@@ -111,7 +115,7 @@ export default class Simulator {
     this.staticObstacles = [];
     this.dynamicObstacles = [];
     for (let i = 0; i < 1; i++)
-      this.dynamicObstacles.push(new DynamicObstacle(new THREE.Vector2(20, 0), new THREE.Vector2(10, 0), true));
+      this.dynamicObstacles.push(new DynamicObstacle(new THREE.Vector2(20, 0), new THREE.Vector2(10, 0.04), true));
 
     requestAnimationFrame(step.bind(this));
   }
@@ -233,6 +237,7 @@ export default class Simulator {
     this.car.setPose(pos.x, pos.y, rot);
 
     this.staticObstacles = this.editor.staticObstacles;
+    this.recreateDynamicObstacleObjects();
 
     this.autonomousCarController = null;
 
@@ -259,6 +264,21 @@ export default class Simulator {
     this._resetFreeCamera();
     this._resetChaseCamera();
     this._resetTopDownCamera();
+  }
+
+  recreateDynamicObstacleObjects() {
+    this.scene.remove(this.dynamicObstaclesGroup);
+    this.dynamicObstaclesGroup = new THREE.Group();
+    this.scene.add(this.dynamicObstaclesGroup);
+
+    this.dynamicObstacles.forEach(o => {
+      const obstacleObject = new DynamicObstacleObject(o, this.editor.lanePath);
+      this.dynamicObstaclesGroup.add(obstacleObject);
+    });
+  }
+
+  updateDynamicObjects(time) {
+    this.dynamicObstaclesGroup.children.forEach(o => o.update(time));
   }
 
   playScenario() {
@@ -465,6 +485,8 @@ function step(timestamp) {
     this.car.update(controls, dt);
     this.physics.step(dt);
 
+    this.updateDynamicObjects(this.simulatedTime);
+
     const carPosition = this.car.position;
     const carRotation = this.car.rotation;
     const carRearAxle = this.car.rearAxlePosition;
@@ -503,7 +525,7 @@ function step(timestamp) {
     this.fps = this.frameCounter / (this.fpsTime / 1000);
     this.frameCounter = 0;
     this.fpsTime = 0;
-    this.fpsBox.innerHTML = this.fps.toFixed(1);
+    this.fpsBox.textContent = this.fps.toFixed(1);
   }
 
   this.renderer.render(this.scene, this.camera);

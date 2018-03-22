@@ -41,7 +41,7 @@ vec4 kernel() {
   float finalVelocity = avt.y;
   float finalTime = avt.z;
 
-  float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, velocityVehicle, acceleration);
+  float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, 0.0, velocityVehicle, acceleration);
   if (averageDynamicCost < 0.0) return vec4(-1);
 
   averageDynamicCost += accelerationChangePenalty;
@@ -96,13 +96,13 @@ export default {
     ];
   },
 
-  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint) {
+  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint, dynamicFrameTime) {
     return [
       {
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
-          ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+          ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
           firstLatticePoint: firstLatticePoint,
           secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,
@@ -117,7 +117,7 @@ export default {
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
         uniforms: {
-          ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+          ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
           firstLatticePoint: firstLatticePoint,
           secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,

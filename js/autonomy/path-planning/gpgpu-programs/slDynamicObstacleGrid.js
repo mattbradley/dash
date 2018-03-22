@@ -23,7 +23,7 @@ const DYNAMIC_OBSTACLE_KERNEL = `
 
 let obstacleVertices;
 let obstacleXform;
-const numDynamicFrames = 20;
+const numDynamicFrames = 10;
 
 // Draw dynamic obstacle triangles to SL-space obstacle grid
 export default {
@@ -62,14 +62,14 @@ export default {
     };
   },
 
-  update(config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, frameTime, dynamicObstacles) {
+  update(config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles) {
     obstacleVertices = [];
 
     let time = startTime;
     for (let frame = 0; frame < numDynamicFrames; frame++) {
-      const vertices = Array.prototype.concat.apply([], dynamicObstacles.map(o => o.verticesInTimeRange(time, time + frameTime, config)));
+      const vertices = Array.prototype.concat.apply([], dynamicObstacles.map(o => o.verticesInTimeRange(time, time + dynamicFrameTime, config)));
       obstacleVertices.push(new Float32Array(vertices));
-      time += frameTime;
+      time += dynamicFrameTime;
     }
 
     const translate = new THREE.Matrix3();

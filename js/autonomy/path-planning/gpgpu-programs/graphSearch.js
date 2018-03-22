@@ -128,7 +128,7 @@ vec4 kernel() {
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
-            float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.y, acceleration);
+            float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.z, costTableEntry.y, acceleration);
             if (averageDynamicCost < 0.0) continue;
 
             if (accelerationIndex != prevAccel)
@@ -233,7 +233,7 @@ export default {
     };
   },
 
-  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint) {
+  update(config, pose, xyCenterPoint, slCenterPoint, firstLatticePoint, secondLatticePoint, dynamicFrameTime) {
     return {
       width: NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES,
       height: config.lattice.numLatitudes,
@@ -241,7 +241,7 @@ export default {
         lattice: config.lattice
       },
       uniforms: {
-        ...buildUniformValues(config, xyCenterPoint, slCenterPoint),
+        ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
         firstLatticePoint: firstLatticePoint,
         secondLatticePoint: secondLatticePoint,
         velocityVehicle: pose.velocity,

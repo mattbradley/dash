@@ -10,7 +10,7 @@ const internalConfig = {
     latitudeConnectivity: 5
   },
 
-  numDynamicFrames: 20,
+  numDynamicFrames: 10,
   numDynamicSubframes: 4,
 
   dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
@@ -21,27 +21,27 @@ const defaultConfig = {
   spatialHorizon: 100, // meters
   centerlineStationInterval: 0.5, // meters
 
-  xyGridCellSize: 0.3, // meters
-  slGridCellSize: 0.15, // meters
-  gridMargin: 10, // meters
-  pathSamplingStep: 0.5, // meters
+  xyGridCellSize: 1, // meters
+  slGridCellSize: 0.5, // meters
+  gridMargin: 5, // meters
+  pathSamplingStep: 1, // meters
 
   cubicPathPenalty: 10,
 
   collisionDilationS: Car.HALF_CAR_LENGTH + 1, // meters
   hazardDilationS: 12, // meters
-  collisionDilationL: Car.HALF_CAR_WIDTH + 0.25, //meters
+  collisionDilationL: Car.HALF_CAR_WIDTH + 0.35, //meters
   hazardDilationL: 2, // meters
 
-  obstacleHazardCost: 3,
+  obstacleHazardCost: 5,
 
   laneWidth: 3.7, // meters
-  laneShoulderCost: 1,
+  laneShoulderCost: 10,
   laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 5, // cost / meter
 
   stationReachDiscount: 70,
-  extraTimePenalty: 64,
+  extraTimePenalty: 80,
 
   hysteresisDiscount: 40,
 

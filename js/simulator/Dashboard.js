@@ -57,9 +57,9 @@ export default class Dashboard {
       distanceUnits = 'meters';
     }
 
-    this.speedUnitsDom.innerHTML = speedUnits;
-    this.stationUnitsDom.innerHTML = distanceUnits;
-    this.latitudeUnitsDom.innerHTML = distanceUnits;
+    this.speedUnitsDom.textContent = speedUnits;
+    this.stationUnitsDom.textContent = distanceUnits;
+    this.latitudeUnitsDom.textContent = distanceUnits;
   }
 
   update(controls, speed, station, latitude, elapsedTime, planTime) {
@@ -101,23 +101,23 @@ export default class Dashboard {
     this.brakeDom.style.clipPath = `inset(50% 50% 0 ${50 - controls.brake * 25}%)`;
     this.gasDom.style.clipPath = `inset(50% ${50 - Math.abs(controls.gas) * 25}% 0 50%)`;
 
-    this.speedDom.innerHTML = speed.toFixed(1);
-    this.stationDom.innerHTML = station !== null ? station.toFixed(1) : '&mdash;';
-    this.latitudeDom.innerHTML = latitude !== null ? latitude.toFixed(2) : '&mdash;';
-    this.planTimeDom.innerHTML = planTime !== null ? (planTime * 1000).toFixed(0) : '&mdash;';
+    this.speedDom.textContent = speed.toFixed(1);
+    this.stationDom.textContent = station !== null ? station.toFixed(1) : '—';
+    this.latitudeDom.textContent = latitude !== null ? latitude.toFixed(2) : '—';
+    this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toFixed(0) : '—';
 
     let mins = Math.floor(elapsedTime / 60);
     let seconds = elapsedTime % 60;
 
     if (mins == 0) {
-      this.elapsedTimeDom.innerHTML = seconds.toFixed(1);
+      this.elapsedTimeDom.textContent = seconds.toFixed(1);
     } else {
       if (seconds < 10)
         seconds = '0' + seconds.toFixed(1);
       else
         seconds = seconds.toFixed(1);
 
-      this.elapsedTimeDom.innerHTML = `${mins}:${seconds}`;
+      this.elapsedTimeDom.textContent = `${mins}:${seconds}`;
     }
   }
 }
