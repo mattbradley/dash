@@ -108,7 +108,6 @@ export default class PathPlanner {
       startStation = this.previousStartStation;
     }
 
-    console.log(this.previousStartStation);
     const lattice = this._buildLattice(lanePath, startStation, vehiclePose.rot, vehicleXform);
 
     const temporalHorizon = this.config.spatialHorizon / this.config.speedLimit;
@@ -118,7 +117,7 @@ export default class PathPlanner {
       xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, staticObstacles),
       slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
-      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles),
+      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, startStation, startTime, dynamicFrameTime, dynamicObstacles),
       xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),
@@ -219,7 +218,12 @@ export default class PathPlanner {
     this.previousFirstLatticePoint = firstLatticePoint;
     this.previousSecondLatticePoint = secondLatticePoint;
 
-    return { path: bestTrajectory, fromVehicleSegment: fromVehicleSegment, fromVehicleParams: fromVehicleParams, latticeStartStation: this.previousStartStation };
+    return {
+      path: bestTrajectory,
+      fromVehicleSegment: fromVehicleSegment,
+      fromVehicleParams: fromVehicleParams,
+      latticeStartStation: this.previousStartStation
+    };
   }
 
   _buildLattice(lanePath, startStation, vehicleRot, vehicleXform) {

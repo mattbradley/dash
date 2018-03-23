@@ -69,7 +69,7 @@ export default class FollowController {
     let brake = 0;
     let steer = 0;
 
-    if (nextIndex >= pathPoses.length - 1 && progress >= 1) {
+    if (nextIndex >= pathPoses.length - 2 && progress >= 1) {
       brake = 1;
     } else {
       const kp_a = 4;

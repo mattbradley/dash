@@ -91,6 +91,10 @@ export default class Editor {
     return this.obstacleGroup.children.map(o => new StaticObstacle(new THREE.Vector2(o.position.x, o.position.z), 0, o.userData.width, o.userData.height));
   }
 
+  get dynamicObstacles() {
+    return this.dynamicObstacleEditor.collectDynamicObstacles();
+  }
+
   update() {
     if (!this.enabled) return;
 

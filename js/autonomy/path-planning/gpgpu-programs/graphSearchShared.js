@@ -27,6 +27,9 @@ float sampleStaticCost(vec4 xytk) {
   obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
 
   float absLatitude = abs(sl.y);
+
+  if (absLatitude >= laneShoulderLatitude) return -1.0;
+
   float laneCost = max(absLatitude * laneCostSlope, step(laneShoulderLatitude, absLatitude) * laneShoulderCost);
 
   return obstacleCost + laneCost;

@@ -5,14 +5,16 @@ TODO
 [x] Move Scenario box to left side and add play/pause button and replace restart button with restart icon
 [x] Switch to manual mode on gas/brake/steer keyboard input
 [ ] Fix not-enough-road-left-for-spatial-horizon bug; just plan until the end of the road then full brake
-[ ] Catch finalized scenarios with no points; just do nothing instead of starting the planner
+[x] Catch finalized scenarios with no points; just do nothing instead of starting the planner
 [x] Ability to add obstacles to scenario in editor
 [ ] Scenario info like road length, number of obstacles, etc.
 [x] Hook up clear path/obstacle/all button in editor
 [x] Dynamic obstacles with dynamic obstacle grid gpgpu program
-[ ] Separate collision/hazard dilations for dynamic obstacles
+[?] Separate collision/hazard dilations for dynamic obstacles
+[?] Weird bug where lattice isn't shifted (maybe more than one station point is passed)
 [ ] README
 [ ] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
 [ ] Save/load scenarios
-[ ] Add compass to dashboard?
+[?] Add compass to dashboard
 [ ] On pause, show more detailed planner results
+[?] Configurable geolocation

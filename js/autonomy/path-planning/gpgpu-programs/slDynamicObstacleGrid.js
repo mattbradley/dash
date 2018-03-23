@@ -6,10 +6,10 @@ out float color;
 void main(void) {
   gl_Position = vec4((xform * vec3(position.xy, 1)).xy, position.z, 1);
 
-  // The z coordinate is -0.5 for collision zone and 0.5 for hazard zone,
+  // The z coordinate is 0.25 for collision zone and 0.75 for hazard zone,
   // so that the collision zone is drawn on top.
   // Convert this to 1.0 for collision zone, 0.5 for hazard zone
-  color = (1.0 - step(0.0, position.z)) * 0.5 + 0.5;
+  color = (1.0 - step(0.5, position.z)) * 0.5 + 0.5;
 }
 `;
 
@@ -33,6 +33,13 @@ export default {
       vertexShader: DYNAMIC_OBSTACLE_VERTEX_SHADER,
       output: { name: 'slDynamicObstacleGrid', textureType: '2DArray', depth: numDynamicFrames },
       draw: (gl, program) => {
+        gl.enable(gl.DEPTH_TEST);
+
+        const renderbuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, program.inputWidth, program.inputHeight);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+
         for (let frame = 0; frame < numDynamicFrames; frame++) {
           gl.framebufferTextureLayer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, program.outputTexture, 0, frame);
           const frameBufferStatus = (gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE);
@@ -40,7 +47,7 @@ export default {
             throw new Error('Error attaching float texture to framebuffer. Your device is probably incompatible.');
 
           gl.clearColor(0, 0, 0, 0);
-          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
           if (obstacleVertices[frame].length > 0) {
             const buf = gl.createBuffer();
@@ -58,11 +65,15 @@ export default {
             gl.deleteBuffer(buf);
           }
         }
+
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+        gl.deleteRenderbuffer(renderbuffer);
+        gl.disable(gl.DEPTH_TEST);
       }
     };
   },
 
-  update(config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles) {
+  update(config, slWidth, slHeight, slCenterPoint, startStation, startTime, dynamicFrameTime, dynamicObstacles) {
     obstacleVertices = [];
 
     let time = startTime;
@@ -74,7 +85,7 @@ export default {
 
     const translate = new THREE.Matrix3();
     translate.set(
-      1, 0, -slCenterPoint.x - vehicleStation,
+      1, 0, -slCenterPoint.x - startStation,
       0, 1, -slCenterPoint.y,
       0, 0, 1
     );

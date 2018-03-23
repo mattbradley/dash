@@ -54,7 +54,7 @@ export default class Simulator {
 
     this.editor = new Editor(this.renderer.domElement, this.editorCamera, this.scene);
 
-    const map = new MapObject(this.geolocation);
+    const map = new MapObject(this.geolocation, false);
     this.scene.add(map);
 
     this.carObject = new CarObject(this.car);
@@ -114,8 +114,6 @@ export default class Simulator {
     this.aroundAnchorIndex = null;
     this.staticObstacles = [];
     this.dynamicObstacles = [];
-    for (let i = 0; i < 1; i++)
-      this.dynamicObstacles.push(new DynamicObstacle(new THREE.Vector2(20, 0), new THREE.Vector2(10, 0.04), true));
 
     requestAnimationFrame(step.bind(this));
   }
@@ -124,7 +122,7 @@ export default class Simulator {
     const pose = this.car.pose;
     const rotVec = THREE.Vector2.fromAngle(pose.rot);
     const pos = rotVec.clone().multiplyScalar(50).add(new THREE.Vector2(rotVec.y, rotVec.x)).add(pose.pos);
-    const obstacle = new StaticObstacle(pos, 0, 0.5, 0.5);
+    const obstacle = new StaticObstacle(pos, 0, 1.0, 1.0);
 
     const obsGeom = new THREE.PlaneGeometry(obstacle.width, obstacle.height);
     const obsMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, depthTest: false, transparent: true, opacity: 0.5 });
@@ -230,23 +228,26 @@ export default class Simulator {
     this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
 
-    const centerline = this.editor.lanePath.centerline;
-    const pos = centerline[0].clone();
-    const dir = centerline[1].clone().sub(centerline[0]);
-    const rot = Math.atan2(dir.y, dir.x);
-    this.car.setPose(pos.x, pos.y, rot);
+    if (this.editor.lanePath.anchors.length > 0) {
+      const centerline = this.editor.lanePath.centerline;
+      const pos = centerline[0].clone();
+      const dir = centerline[1].clone().sub(centerline[0]);
+      const rot = Math.atan2(dir.y, dir.x);
+      this.car.setPose(pos.x, pos.y, rot);
 
-    this.staticObstacles = this.editor.staticObstacles;
-    this.recreateDynamicObstacleObjects();
+      this.staticObstacles = this.editor.staticObstacles;
+      this.dynamicObstacles = this.editor.dynamicObstacles;
+      this.recreateDynamicObstacleObjects();
 
-    this.autonomousCarController = null;
+      this.autonomousCarController = null;
 
-    if (!this.plannerRunning) {
-      this.plannerReady = true;
-      this.plannerRunning = true;
+      if (!this.plannerRunning) {
+        this.plannerReady = true;
+        this.plannerRunning = true;
+      }
+      this.plannerReset = true;
+      this.simulatedTime = 0;
     }
-    this.plannerReset = true;
-    this.simulatedTime = 0;
 
     if (replaceCamera) {
       this.camera = this.previousCamera;
@@ -295,6 +296,10 @@ export default class Simulator {
 
   restartScenario() {
     if (this.editor.enabled) return;
+
+    if (this.plannedPathGroup)
+      this.scene.remove(this.plannedPathGroup);
+
     this.finalizeEditor(false);
   }
 
@@ -429,7 +434,8 @@ export default class Simulator {
     else
       this.autonomousCarController = new FollowController(followPath, this.car);
 
-    this.scene.remove(this.plannedPathGroup);
+    if (this.plannedPathGroup)
+      this.scene.remove(this.plannedPathGroup);
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 

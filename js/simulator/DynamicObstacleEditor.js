@@ -1,3 +1,5 @@
+import DynamicObstacle from "../autonomy/DynamicObstacle.js";
+
 export default class DynamicObstacleEditor {
   constructor() {
     this.editorDom = document.getElementById('editor-dynamic-obstacles-box');
@@ -12,6 +14,27 @@ export default class DynamicObstacleEditor {
 
   disable() {
     this.editorDom.classList.add('is-hidden');
+  }
+
+  collectDynamicObstacles() {
+    const forms = this.formsContainer.getElementsByTagName('form');
+    const obstacles = [];
+
+    for (let i = 0; i < forms.length; i++) {
+      const formData = new FormData(forms[i]);
+      const params = { parallel: false };
+
+      for (const [k, v] of formData.entries())
+        params[k] = v;
+
+      const pos = new THREE.Vector2(Number(params.sPos) || 0, Number(params.lPos) || 0);
+      const vel = new THREE.Vector2(Number(params.sVel) || 0, Number(params.lVel) || 0);
+      const parallel = !!params.parallel;
+
+      obstacles.push(new DynamicObstacle(params.type, pos, vel, parallel));
+    }
+
+    return obstacles;
   }
 
   addDynamicObstacle() {
@@ -82,7 +105,7 @@ export default class DynamicObstacleEditor {
               <div class="column is-3">
                   <div class="field has-addons editor-field-center">
                       <div class="control">
-                          <input class="input is-small" type="text" name="sVel" style="width: 50px;" value="1" />
+                          <input class="input is-small" type="text" name="sVel" style="width: 50px;" value="0" />
                       </div>
                       <div class="control">
                           <input class="input is-small" type="text" name="lVel" style="width: 50px;" value="0" />

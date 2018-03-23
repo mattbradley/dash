@@ -1,5 +1,5 @@
 export default class MapObject extends THREE.Object3D {
-  constructor(geolocation) {
+  constructor(geolocation, drawTiles = true) {
     super();
 
     this.geolocation = geolocation;
@@ -12,7 +12,8 @@ export default class MapObject extends THREE.Object3D {
     grid.position.add(new THREE.Vector3(-tileSize / 2, 0, -tileSize / 2));
     this.add(grid);
 
-    this.drawTiles();
+    if (drawTiles)
+      this.drawTiles();
   }
 
   // Converts lat-long geolocation to Google Maps world coodinates

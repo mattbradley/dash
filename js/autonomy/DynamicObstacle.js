@@ -1,3 +1,8 @@
+// Half width and half height
+const VEHICLE_SIZE = { w: 2.5, h: 1 };
+const CYCLIST_SIZE = { w: 1, h: 0.25 };
+const PEDESTRIAN_SIZE = { w: 0.4, h: 0.4 };
+
 export default class DynamicObstacle {
   static hydrate(obj) {
     Object.setPrototypeOf(obj, DynamicObstacle.prototype);
@@ -5,14 +10,26 @@ export default class DynamicObstacle {
     Object.setPrototypeOf(obj.velocity, THREE.Vector2.prototype);
   }
 
-  constructor(startPos, velocity, parallel) {
-    // width 5, heigth 2
+  constructor(type, startPos, velocity, parallel) {
+    this.type = type;
     this.startPos = startPos;
     this.velocity = velocity;
 
-    // TODO: replace this with constants
-    this.halfWidth = parallel ? 2.5 : 1;
-    this.halfHeight = parallel ? 1 : 2.5;
+    switch (type) {
+        case 'cyclist':
+          this.size = Object.assign({}, CYCLIST_SIZE);
+          break;
+
+        case 'pedestrian':
+          this.size = Object.assign({}, PEDESTRIAN_SIZE);
+          break;
+
+        default:
+          this.size = Object.assign({}, VEHICLE_SIZE);
+    }
+
+    if (!parallel)
+      [this.size.w, this.size.h] = [this.size.h, this.size.w];
   }
 
   positionAtTime(time) {
@@ -36,9 +53,9 @@ export default class DynamicObstacle {
     const positions = this.positionsInTimeRange(startTime, endTime, config.numDynamicSubframes);
     const vertices = [];
 
-    // Hazard dilation (drawn behind, z = 0.5)
-    const hazardHalfWidth = this.halfWidth + config.hazardDilationS + config.collisionDilationS;
-    const hazardHalfHeight = this.halfHeight + config.hazardDilationL + config.collisionDilationL;
+    // Hazard dilation (drawn behind, z = 0.75)
+    const hazardHalfWidth = this.size.w + config.hazardDilationS + config.collisionDilationS;
+    const hazardHalfHeight = this.size.h + config.hazardDilationL + config.collisionDilationL;
 
     positions.forEach(p => {
       const v1 = [-hazardHalfWidth + p.x, hazardHalfHeight + p.y];
@@ -47,18 +64,18 @@ export default class DynamicObstacle {
       const v4 = [-hazardHalfWidth + p.x, -hazardHalfHeight + p.y];
 
       vertices.push(
-        v1[0], v1[1], 0.5,
-        v2[0], v2[1], 0.5,
-        v3[0], v3[1], 0.5,
-        v3[0], v3[1], 0.5,
-        v4[0], v4[1], 0.5,
-        v1[0], v1[1], 0.5
+        v1[0], v1[1], 0.75,
+        v2[0], v2[1], 0.75,
+        v3[0], v3[1], 0.75,
+        v3[0], v3[1], 0.75,
+        v4[0], v4[1], 0.75,
+        v1[0], v1[1], 0.75
       );
     });
     
-    // Collision dilation (drawn in front, z = -0.5)
-    const collisionHalfWidth = this.halfWidth + config.collisionDilationS;
-    const collisionHalfHeight = this.halfHeight + config.collisionDilationL;
+    // Collision dilation (drawn in front, z = 0.25)
+    const collisionHalfWidth = this.size.w + config.collisionDilationS;
+    const collisionHalfHeight = this.size.h + config.collisionDilationL;
 
     positions.forEach(p => {
       const v1 = [-collisionHalfWidth + p.x, collisionHalfHeight + p.y];
@@ -67,12 +84,12 @@ export default class DynamicObstacle {
       const v4 = [-collisionHalfWidth + p.x, -collisionHalfHeight + p.y];
 
       vertices.push(
-        v1[0], v1[1], -0.5,
-        v2[0], v2[1], -0.5,
-        v3[0], v3[1], -0.5,
-        v3[0], v3[1], -0.5,
-        v4[0], v4[1], -0.5,
-        v1[0], v1[1], -0.5
+        v1[0], v1[1], 0.25,
+        v2[0], v2[1], 0.25,
+        v3[0], v3[1], 0.25,
+        v3[0], v3[1], 0.25,
+        v4[0], v4[1], 0.25,
+        v1[0], v1[1], 0.25
       );
     });
 

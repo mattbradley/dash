@@ -20,7 +20,7 @@ export default class Car {
   }
 
   get pose() {
-    return { pos: this.rearAxlePosition, rot: this.rotation, velocity: this.velocity, curv: this.curvature, dCurv: 0, ddCurv: 0 };
+    return { pos: this.rearAxlePosition, rot: this.rotation, velocity: this.velocity, curv: this.curvature, dCurv: this.dCurv, ddCurv: this.ddCurv };
   }
 
   get curvature() {
