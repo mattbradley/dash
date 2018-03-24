@@ -66,8 +66,8 @@ export default class Simulator {
     this.dashboard = new Dashboard(this.car);
 
     this.plannerReady = false;
+    this.plannerRunning = false;
     this.plannerReset = false;
-    this.plannerEnabled = false;
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
@@ -181,7 +181,7 @@ export default class Simulator {
   _resetChaseCamera() {
     const pos = this.car.position;
     const dirVector = THREE.Vector2.fromAngle(this.car.rotation).multiplyScalar(-20);
-    this.chaseCamera.position.set(pos.x + dirVector.x, 9, pos.y + dirVector.y);
+    this.chaseCamera.position.set(pos.x + dirVector.x, 8, pos.y + dirVector.y);
     this.chaseCamera.lookAt(pos.x, 0, pos.y);
   }
 
@@ -202,6 +202,7 @@ export default class Simulator {
 
   enableEditor() {
     this.editor.enabled = true;
+    this.plannerRunning = false;
 
     this.previousCamera = this.camera;
     this.camera = this.editorCamera;
@@ -213,6 +214,7 @@ export default class Simulator {
     this.scene.fog = null;
     this.carObject.visible = false;
     if (this.plannedPathGroup) this.plannedPathGroup.visible = false;
+    this.dynamicObstaclesGroup.visible = false;
 
     this.simModeBoxes.forEach(el => el.classList.add('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.remove('is-hidden'));
@@ -416,13 +418,35 @@ export default class Simulator {
   receivePlannedPath(event) {
     if (this.editor.enabled) return;
 
-    const { fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation } = event.data;
-    let { path } = event.data;
+    const { fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config } = event.data;
+    let { path, fromVehicleSegment } = event.data;
 
     this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
     this.plannerReady = true;
 
     if (path === null || this.plannerReset) return;
+
+    if (fromVehicleParams.type == 'cubic') {
+      const start = this.car.pose;
+      const end = fromVehicleSegment[fromVehicleSegment.length - 1];
+
+      const pathBuilder = new CubicPath(start, end, fromVehicleParams.params);
+
+      if (pathBuilder.optimize()) {
+        fromVehicleSegment = pathBuilder.buildPath(Math.ceil(pathBuilder.params.sG / 0.25));
+
+        const prevVelocitySq = this.car.velocity * this.car.velocity;
+        const accel = (end.velocity * end.velocity - prevVelocitySq) / 2 / pathBuilder.params.sG;
+        const ds = pathBuilder.params.sG / (fromVehicleSegment.length - 1);
+        let s = 0;
+
+        for (let p = 0; p < fromVehicleSegment.length; p++) {
+          fromVehicleSegment[p].velocity = Math.sqrt(2 * accel * s + prevVelocitySq);
+          fromVehicleSegment[p].acceleration = accel;
+          s += ds;
+        }
+      }
+    }
 
     path = fromVehicleSegment.concat(path);
 
@@ -439,10 +463,10 @@ export default class Simulator {
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
-    const circleGeom = new THREE.CircleGeometry(0.15, 32);
+    const circleGeom = new THREE.CircleGeometry(0.1, 32);
     const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
 
-    const lattice = new RoadLattice(this.editor.lanePath, latticeStartStation);
+    const lattice = new RoadLattice(this.editor.lanePath, latticeStartStation, config);
     lattice.lattice.forEach(cells => {
       cells.forEach(c => {
         const circle = new THREE.Mesh(circleGeom, circleMat);
@@ -457,7 +481,8 @@ export default class Simulator {
     const pathLine = new MeshLine();
     pathLine.setGeometry(pathGeometry);
 
-    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: new THREE.Color(0xff40ff), lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
+    const color = fromVehicleParams.type == 'cubic' ? new THREE.Color(0xff40ff) : new THREE.Color(0xffff40);
+    const pathObject = new THREE.Mesh(pathLine.geometry, new MeshLineMaterial({ color: color, lineWidth: 0.15, depthTest: false, transparent: true, opacity: 0.5, resolution: new THREE.Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight) }));
     pathObject.renderOrder = 1;
     this.plannedPathGroup.add(pathObject);
   }

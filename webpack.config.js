@@ -6,7 +6,7 @@ module.exports = {
     PathPlannerWorker: './workers/PathPlannerWorker.js',
     Dash: './js/Dash.js'
   },
-  devtool: 'source-map',
+  devtool: 'eval-source-map',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js'

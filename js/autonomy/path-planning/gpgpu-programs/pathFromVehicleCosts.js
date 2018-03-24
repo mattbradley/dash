@@ -48,6 +48,7 @@ vec4 kernel() {
 
   // The cost of a trajectory is the average sample cost scaled by the path length
   float totalCost = (averageStaticCost + averageDynamicCost + ${pathType == 'cubic' ? '(cubicPathPenalty * velocityVehicle * velocityVehicle)' : '0.0'}) * pathLength;
+  ${pathType != 'cubic' ? 'totalCost = -1.0;' : ''}
 
   return vec4(totalCost, finalVelocity, finalTime, ${pathType == 'cubic' ? '-2' : '-1'});
 }

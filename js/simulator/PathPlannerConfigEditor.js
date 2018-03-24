@@ -5,10 +5,12 @@ const LOCAL_STORAGE_KEY = 'dashPathPlannerConfig';
 const internalConfig = {
   lattice: {
     numStations: 10,
-    numLatitudes: 19,
+    numLatitudes: 21,
     stationConnectivity: 3,
     latitudeConnectivity: 9
   },
+
+  laneWidth: 3.7 * 2, // meters
 
   numDynamicFrames: 10,
   numDynamicSubframes: 4,
@@ -21,12 +23,12 @@ const defaultConfig = {
   spatialHorizon: 100, // meters
   centerlineStationInterval: 0.5, // meters
 
-  xyGridCellSize: 1, // meters
-  slGridCellSize: 0.5, // meters
+  xyGridCellSize: 0.3, // meters
+  slGridCellSize: 0.15, // meters
   gridMargin: 20, // meters
   pathSamplingStep: 1, // meters
 
-  cubicPathPenalty: 10,
+  cubicPathPenalty: 0,
 
   collisionDilationS: Car.HALF_CAR_LENGTH + 6, // meters
   hazardDilationS: 12, // meters
@@ -35,9 +37,8 @@ const defaultConfig = {
 
   obstacleHazardCost: 10,
 
-  laneWidth: 3.7, // meters
   laneShoulderCost: 50,
-  laneShoulderLatitude: 3.7 / 2 - Car.HALF_CAR_WIDTH,
+  laneShoulderLatitude: internalConfig.laneWidth / 2 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 5, // cost / meter
 
   stationReachDiscount: 400,
@@ -48,8 +49,8 @@ const defaultConfig = {
   speedLimit: 20, // m/s
   speedLimitPenalty: 50,
 
-  hardAccelerationPenalty: 15,
-  hardDecelerationPenalty: 6,
+  hardAccelerationPenalty: 70,
+  hardDecelerationPenalty: 10,
 
   lateralAccelerationLimit: 3, // m/s^2
   softLateralAccelerationPenalty: 4,

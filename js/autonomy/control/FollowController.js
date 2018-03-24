@@ -32,7 +32,7 @@ export default class FollowController {
 
       const segmentDist = nextPose.pos.distanceTo(prevPose.pos);
       const distLeft = segmentDist * (1 - progress);
-      const sumV = currentVelocity + nextPose.velocity;
+      const sumV = currentVelocity;
       const timeToNextIndex = 2 * distLeft / (sumV == 0 ? 0.01 : sumV);
 
       if (timeToNextIndex >= predictionTime || nextIndex + 1 >= pathPoses.length) {
@@ -40,12 +40,21 @@ export default class FollowController {
         const newProgress = progress + dist / segmentDist;
         const newRotation = Math.wrapAngle(prevPose.rot + Math.wrapAngle(nextPose.rot - prevPose.rot) * newProgress);
 
+        const pprevPose = nextIndex - 2 >= 0 ? pathPoses[nextIndex - 2] : prevPose;
+        const nnextPose = nextIndex + 1 < pathPoses.length ? pathPoses[nextIndex + 1] : nextPose;
+
+        const dCurv = (nextPose.curv - prevPose.curv) / segmentDist;
+        const dCurvPrev = ((prevPose.curv - pprevPose.curv) / pprevPose.pos.distanceTo(prevPose.pos) + dCurv) / 2;
+        const dCurvNext = (dCurv + (nnextPose.curv - nextPose.curv) / nextPose.pos.distanceTo(nnextPose.pos)) / 2;
+
+        const ddCurv = (dCurvNext - dCurvPrev) / segmentDist;
+
         return {
           pos: nextPose.pos.clone().sub(prevPose.pos).multiplyScalar(newProgress).add(nextPose.pos),
           rot: newRotation,
           curv: prevPose.curv + (nextPose.curv - prevPose.curv) * newProgress,
-          dCurv: 0,
-          ddCurv: 0,
+          dCurv: dCurv,
+          ddCurv: ddCurv,
           velocity: nextPose.velocity
         }
       }
@@ -72,10 +81,10 @@ export default class FollowController {
     if (nextIndex >= pathPoses.length - 2 && progress >= 1) {
       brake = 1;
     } else {
+      /*
       const kp_a = 4;
       const kd_a = 0.5;
       const kff_a = 0.5;
-      const accelDamping = 0.5;
 
       const currentAccel = (velocity - this.prevVelocity) / dt;
       const prevNextDist = nextPose.pos.distanceTo(prevPose.pos);
@@ -83,6 +92,9 @@ export default class FollowController {
       const diffVelocity = targetVelocity - velocity;
       const diffAccel = nextPose.acceleration - currentAccel;
       const targetAccel = kp_a * diffVelocity + kd_a * diffAccel + kff_a * nextPose.acceleration;
+      */
+      const accelDamping = 0.1;
+      const targetAccel = nextPose.acceleration;
       const dampedAccel = this.prevAccel * (1 - accelDamping) + targetAccel * accelDamping;
 
       if (dampedAccel > 0)
@@ -91,6 +103,7 @@ export default class FollowController {
         brake = Math.min(-dampedAccel / Car.MAX_BRAKE_DECEL, 1);
 
       this.prevVelocity = velocity;
+      this.prevAccel = dampedAccel;
 
       const curvature = prevPose.curv + (nextPose.curv - prevPose.curv) * progress;
       const desiredWheelAngle = Math.atan(curvature * Car.WHEEL_BASE);

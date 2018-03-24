@@ -21,7 +21,7 @@ onmessage = function(event) {
   try {
     const { path, fromVehicleSegment, fromVehicleParams, latticeStartStation } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles);
 
-    self.postMessage({ path, fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation });
+    self.postMessage({ path, fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config });
   } catch (error) {
     console.log('PathPlannerWorker error');
     console.log(error);

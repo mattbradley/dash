@@ -37,6 +37,8 @@ export default class PathPlanner {
     this.previousStartStation = null;
     this.previousFirstLatticePoint = -1;
     this.previousSecondLatticePoint = -1;
+    this.previousFirstAcceleration = -1;
+    this.previousSecondLatticePoint = -1;
 
     let start = performance.now();
     const programs = [
@@ -57,6 +59,8 @@ export default class PathPlanner {
   reset() {
     this.previousStartStation = null;
     this.previousFirstLatticePoint = -1;
+    this.previousSecondLatticePoint = -1;
+    this.previousFirstAcceleration = -1;
     this.previousSecondLatticePoint = -1;
   }
 
@@ -185,10 +189,12 @@ export default class PathPlanner {
     let fromVehicleSegment = null;
     let fromVehicleParams = null;
     let firstLatticePoint = -1;
+    let firstAcceleration = -1;
     let secondLatticePoint = -1;
+    let secondAcceleration = -1;
 
     if (isFinite(bestEntry[0])) {
-      [bestTrajectory, fromVehicleSegment, fromVehicleParams, firstLatticePoint, secondLatticePoint] = this._reconstructTrajectory(
+      [bestTrajectory, fromVehicleSegment, fromVehicleParams, firstLatticePoint, firstAcceleration, secondLatticePoint, secondAcceleration] = this._reconstructTrajectory(
         bestEntryIndex,
         costTable,
         cubicPathParams,
@@ -198,7 +204,7 @@ export default class PathPlanner {
         lattice
       );
 
-      if (firstLatticePoint == this.previousFirstLatticePoint && secondLatticePoint == this.previousSecondLatticePoint) {
+      if (firstLatticePoint == this.previousFirstLatticePoint && firstAcceleration == this.previousFirstAcceleration && secondLatticePoint == this.previousSecondLatticePoint && secondAcceleration == this.previousSecondAcceleration) {
         bestTrajectory = null;
         fromVehicleSegment = null;
         fromVehicleParams = null;
@@ -216,7 +222,9 @@ export default class PathPlanner {
     }
 
     this.previousFirstLatticePoint = firstLatticePoint;
+    this.previousFirstAcceleration = firstAcceleration;
     this.previousSecondLatticePoint = secondLatticePoint;
+    this.previousSecondAcceleration = secondAcceleration;
 
     return {
       path: bestTrajectory,
@@ -383,7 +391,7 @@ export default class PathPlanner {
         });
       }
 
-      const path = pathBuilder.buildPath(Math.ceil(length / this.config.pathSamplingStep));
+      const path = pathBuilder.buildPath(Math.ceil(length / 0.25));
 
       const prevVelocitySq = prevVelocity * prevVelocity;
       const accel = (velocity * velocity - prevVelocitySq) / 2 / length;
@@ -405,15 +413,21 @@ export default class PathPlanner {
     }
 
     let firstLatticePoint = null
+    let firstAcceleration = null;
     let secondLatticePoint = null;
+    let secondAcceleration = null;
 
-    if (nodes.length >= 2)
+    if (nodes.length >= 2) {
       firstLatticePoint = nodes[1][0] * this.config.lattice.numLatitudes + nodes[1][1];
+      firstAcceleration = nodes[1][4];
+    }
 
-    if (nodes.length >= 3)
+    if (nodes.length >= 3) {
       secondLatticePoint = nodes[2][0] * this.config.lattice.numLatitudes + nodes[2][1];
+      secondAcceleration = nodes[2][4];
+    }
 
-    return [points, fromVehicleSegment, fromVehicleParams, firstLatticePoint, secondLatticePoint];
+    return [points, fromVehicleSegment, fromVehicleParams, firstLatticePoint, firstAcceleration, secondLatticePoint, secondAcceleration];
   }
 }
 

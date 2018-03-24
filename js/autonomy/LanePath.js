@@ -1,5 +1,4 @@
-//const pointsPerSegment = 20;
-const halfLaneWidth = 3.7 / 2;
+const halfLaneWidth = 3.7;
 
 const centerlineGeometry = new THREE.Geometry();
 const leftBoundaryGeometry = new THREE.Geometry();

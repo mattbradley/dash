@@ -20,7 +20,7 @@ export default class Car {
   }
 
   get pose() {
-    return { pos: this.rearAxlePosition, rot: this.rotation, velocity: this.velocity, curv: this.curvature, dCurv: this.dCurv, ddCurv: this.ddCurv };
+    return { pos: this.rearAxlePosition.clone(), rot: this.rotation, velocity: this.velocity, curv: this.curvature, dCurv: this.dCurv, ddCurv: this.ddCurv };
   }
 
   get curvature() {
@@ -71,8 +71,8 @@ export default class Car {
     const dist = this.velocity * dt;
     this.position = THREE.Vector2.fromAngle(this.rotation).multiplyScalar(dist).add(this.position);
 
-    this.dCurv = (this.curvature - curvPrev) / dist;
-    this.ddCurv = (this.dCurv - dCurvPrev) / dist;
+    this.dCurv = dist > 0.1 ? (this.curvature - curvPrev) / dist : 0;
+    this.ddCurv = dist > 0.1 ? (this.dCurv - dCurvPrev) / dist : 0;
   }
 
   update(controls, dt) {
