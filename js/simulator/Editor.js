@@ -108,7 +108,7 @@ export default class Editor {
     this.group.add(this.leftBoundaryObject);
 
     this.rightBoundaryObject = new THREE.Mesh(
-    new THREE.Geometry(),
+      new THREE.Geometry(),
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
@@ -133,7 +133,7 @@ export default class Editor {
   }
 
   get staticObstacles() {
-    return this.obstacleGroup.children.map(o => new StaticObstacle(new THREE.Vector2(o.position.x, o.position.z), 0, o.userData.width, o.userData.height));
+    return this.obstacleGroup.children.map(o => new StaticObstacle(new THREE.Vector2(o.position.x, o.position.z), -o.rotation.z, o.userData.width, o.userData.height));
   }
 
   get dynamicObstacles() {
@@ -170,6 +170,9 @@ export default class Editor {
           this.draggingObstacle.position.copy(intersection.add(this.dragOffset));
         }
       }
+    } else if (this.rotatingObstacle) {
+      const rotation = (this.dragOffset.x - this.mouse.x) * 2 *  Math.PI;
+      this.rotatingObstacle.rotation.z = Math.wrapAngle(rotation + this.initialObstacleRotation);
     } else {
       this.pointGroup.children.forEach(p => {
         p.material.color.set(NORMAL_POINT_COLOR)
@@ -359,6 +362,10 @@ export default class Editor {
       this.removeMode = true;
       this.canvas.classList.add('editor-pointing');
       event.preventDefault();
+    } else if (event.key == 'Control' && this.editMode == 'staticObstacles') {
+      this.rotateMode = true;
+      this.canvas.classList.add('editor-pointing');
+      event.preventDefault();
     }
   }
 
@@ -366,6 +373,9 @@ export default class Editor {
     if (event.key == 'Shift') {
       this.removeMode = false;
       this.canvas.classList.remove('editor-pointing', 'editor-removing');
+    } else if (event.key == 'Control') {
+      this.rotateMode = false;
+      this.canvas.classList.remove('editor-pointing', 'editor-grabbing');
     }
   }
 
@@ -414,10 +424,16 @@ export default class Editor {
           this.canvas.classList.remove('editor-grab');
           this.canvas.classList.add('editor-grabbing');
 
-          this.draggingObstacle = picked.object;
-          this.dragOffset.copy(picked.object.position).sub(picked.point);
+          if (this.rotateMode) {
+            this.rotatingObstacle = picked.object;
+            this.initialObstacleRotation = picked.object.rotation.z;
+            this.dragOffset.set(this.mouse.x, this.mouse.y, 0);
+          } else {
+            this.draggingObstacle = picked.object;
+            this.dragOffset.copy(picked.object.position).sub(picked.point);
+          }
         }
-      } else if (!this.removeMode) {
+      } else if (!this.removeMode && !this.rotateMode) {
         const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
         if (intersection != null) {
           this.draggingObstacle = true;
@@ -453,6 +469,7 @@ export default class Editor {
 
     this.draggingPoint = null;
     this.draggingObstacle = null;
+    this.rotatingObstacle = null;
     this.canvas.classList.remove('editor-grab', 'editor-grabbing');
   }
 
