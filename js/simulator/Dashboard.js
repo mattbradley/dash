@@ -65,12 +65,6 @@ export default class Dashboard {
   update(controls, speed, station, latitude, elapsedTime, planTime) {
     if (!this.wheelDom) return;
 
-    if (this.units == 'imperial') {
-      speed *= MPS_TO_MPH;
-      station = station !== null ? station * METERS_TO_FEET : null;
-      latitude = latitude !== null ? latitude * METERS_TO_FEET : null;
-    }
-
     const wheelTurn = Math.clamp(this.car.wheelAngle / Car.MAX_WHEEL_ANGLE * 0.95, -1, +1);
 
     this.wheelDom.style.transform = `rotate(${wheelTurn}turn)`;
@@ -101,9 +95,18 @@ export default class Dashboard {
     this.brakeDom.style.clipPath = `inset(50% 50% 0 ${50 - controls.brake * 25}%)`;
     this.gasDom.style.clipPath = `inset(50% ${50 - Math.abs(controls.gas) * 25}% 0 50%)`;
 
+    if (this.units == 'imperial') {
+      speed *= MPS_TO_MPH;
+      station = station !== null ? station * METERS_TO_FEET : null;
+      latitude = latitude !== null ? latitude * METERS_TO_FEET : null;
+    }
+
+    let latitudeText = latitude !== null ? latitude.toFixed(2) : '—';
+    if (latitudeText == '-0.00') latitudeText = '0.00';
+
     this.speedDom.textContent = speed.toFixed(1);
     this.stationDom.textContent = station !== null ? station.toFixed(1) : '—';
-    this.latitudeDom.textContent = latitude !== null ? latitude.toFixed(2) : '—';
+    this.latitudeDom.textContent = latitudeText;
     this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toFixed(0) : '—';
 
     let mins = Math.floor(elapsedTime / 60);

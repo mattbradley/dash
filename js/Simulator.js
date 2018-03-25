@@ -408,7 +408,7 @@ export default class Simulator {
       lanePath: this.editor.lanePath,
       startTime: startTime,
       staticObstacles: this.staticObstacles,
-      dynamicObstacles: this.dynamicObstacles,
+      dynamicObstacles: this.dynamicObstacles.filter(o => o.positionAtTime(startTime).x >= 0),
       reset: reset
     };
 

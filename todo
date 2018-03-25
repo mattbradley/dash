@@ -5,7 +5,7 @@ TODO
 [x] Move Scenario box to left side and add play/pause button and replace restart button with restart icon
 [x] Switch to manual mode on gas/brake/steer keyboard input
 [ ] Fix not-enough-road-left-for-spatial-horizon bug; just plan until the end of the road then full brake (with dynamic obstacles too)
-[ ] Hide dynamic obstacles that aren't before station 0
+[x] Hide dynamic obstacles that aren't before station 0
 [x] Catch finalized scenarios with no points; just do nothing instead of starting the planner
 [x] Ability to add obstacles to scenario in editor
 [ ] Scenario info like road length, number of obstacles, etc.

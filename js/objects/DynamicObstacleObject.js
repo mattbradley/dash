@@ -26,5 +26,7 @@ export default class DynamicObstacleObject extends THREE.Object3D {
     this.rotation.y = -rot;
 
     super.updateMatrix();
+
+    this.visible = slPos.x >= 0;
   }
 }
