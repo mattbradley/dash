@@ -4,10 +4,10 @@ const LOCAL_STORAGE_KEY = 'dashPathPlannerConfig';
 
 const internalConfig = {
   lattice: {
-    numStations: 10,
-    numLatitudes: 21,
+    numStations: 8,
+    numLatitudes: 17,
     stationConnectivity: 3,
-    latitudeConnectivity: 9
+    latitudeConnectivity: 7
   },
 
   laneWidth: 3.7 * 2, // meters
@@ -20,7 +20,7 @@ const internalConfig = {
 };
 
 const defaultConfig = {
-  spatialHorizon: 100, // meters
+  spatialHorizon: 125, // meters
   centerlineStationInterval: 0.5, // meters
 
   xyGridCellSize: 0.3, // meters
@@ -30,33 +30,38 @@ const defaultConfig = {
 
   cubicPathPenalty: 0,
 
-  collisionDilationS: Car.HALF_CAR_LENGTH + 6, // meters
+  collisionDilationS: Car.HALF_CAR_LENGTH + 4, // meters
   hazardDilationS: 12, // meters
   collisionDilationL: Car.HALF_CAR_WIDTH + 0.5, //meters
   hazardDilationL: 1, // meters
 
-  obstacleHazardCost: 10,
+  dynamicHazardDilationS: 24,
+  dynamicHazardDilationL: 1,
 
-  laneShoulderCost: 50,
+  obstacleHazardCost: 30,
+
+  laneCenterLatitude: internalConfig.laneWidth / 4,
   laneShoulderLatitude: internalConfig.laneWidth / 2 - Car.HALF_CAR_WIDTH,
-  laneCostSlope: 5, // cost / meter
+  lanePreference: +1,
+  laneCostSlope: 15, // cost / meter
+  lanePreferenceDiscount: 40,
 
   stationReachDiscount: 400,
-  extraTimePenalty: 500,
+  extraTimePenalty: 1000,
 
-  hysteresisDiscount: 200,
+  hysteresisDiscount: 20,
 
   speedLimit: 20, // m/s
   speedLimitPenalty: 50,
 
   hardAccelerationPenalty: 70,
-  hardDecelerationPenalty: 10,
+  hardDecelerationPenalty: 50,
 
-  lateralAccelerationLimit: 3, // m/s^2
-  softLateralAccelerationPenalty: 4,
-  linearLateralAccelerationPenalty: 4,
+  softLateralAccelerationLimit: 4, // m/s^2
+  softLateralAccelerationPenalty: 100,
+  linearLateralAccelerationPenalty: 10,
 
-  accelerationChangePenalty: 0.1
+  accelerationChangePenalty: 10
 };
 
 export default class PathPlannerConfigEditor {
@@ -108,7 +113,7 @@ export default class PathPlannerConfigEditor {
           <div class="field-body">
               <div class="field">
                   <div class="control" style="margin-right: 16px;">
-                      <input id="config-field-${key}" name="${key}" class="input is-small ${value != defaultConfig[key] ? 'is-danger' : ''}" type="text" style="width: 60px; border-width: 2px;" value="${value}" />
+                      <input id="config-field-${key}" name="${key}" class="input is-small ${value !== defaultConfig[key] ? 'is-danger' : ''}" type="text" style="width: 60px; border-width: 2px;" value="${value}" />
                   </div>
               </div>
           </div>
@@ -123,10 +128,11 @@ export default class PathPlannerConfigEditor {
     const formData = new FormData(this.configForm);
 
     for (const [k, v] of formData.entries()) {
-      this._config[k] = Number.parseFloat(v);
+      const parsedValue = Number.parseFloat(v);
+      this._config[k] = parsedValue
 
       const fieldDom = document.getElementById(`config-field-${k}`);
-      if (v == defaultConfig[k])
+      if (parsedValue === defaultConfig[k])
         fieldDom.classList.remove('is-danger');
       else
         fieldDom.classList.add('is-danger');
@@ -138,7 +144,7 @@ export default class PathPlannerConfigEditor {
   }
 
   _restoreDefaults() {
-    this._config = defaultConfig;
+    this._config = Object.assign({}, defaultConfig);
 
     try {
       window.localStorage.removeItem(LOCAL_STORAGE_KEY);

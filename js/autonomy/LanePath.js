@@ -10,24 +10,16 @@ export default class LanePath {
   }
 
   constructor() {
-    //if (pointsPerSegment < 3) throw new Error('There must be at least 2 points per LanePath segment.');
-
     this.anchors = [];
     this.centerlines = [];
     this.sampleLengths = [];
     this.arcLengths = [];
-    this.rotations = [];
     this.leftBoundaries = [];
     this.rightBoundaries = [];
   }
 
   get centerline() {
     return [].concat(...this.centerlines);
-  }
-
-  // TODO: this probably isn't needed (along with this.rotations)
-  get centerlineRotations() {
-    return [].concat(...this.rotations);
   }
 
   get centerlineLengths() {
@@ -198,7 +190,6 @@ export default class LanePath {
     const segmentIndex = index < this.anchors.length ? index : index - 1;
     this.centerlines.splice(segmentIndex, 1);
     this.sampleLengths.splice(segmentIndex, 1);
-    this.rotations.splice(segmentIndex, 1);
     this.leftBoundaries.splice(segmentIndex, 1);
     this.rightBoundaries.splice(segmentIndex, 1);
     this.arcLengths.splice(segmentIndex, 1);
@@ -213,7 +204,6 @@ export default class LanePath {
     const [p0, p1, p2, p3] = this.anchorsForSplineIndex(index);
     const points = [];
     const lengths = [];
-    const pointRotations = [];
     const leftBoundary = [];
     const rightBoundary = [];
     let prevPoint = null;
@@ -231,8 +221,6 @@ export default class LanePath {
       prevPoint = point;
 
       const tangent = tangentAt(t, p0, p1, p2, p3);
-      pointRotations.push(Math.atan2(tangent.y, tangent.x));
-
       const normal = new THREE.Vector2(-tangent.y, tangent.x);
 
       leftBoundary.push(normal.clone().multiplyScalar(-halfLaneWidth).add(point));
@@ -243,7 +231,6 @@ export default class LanePath {
 
     this.centerlines[index] = points;
     this.sampleLengths[index] = lengths;
-    this.rotations[index] = pointRotations;
     this.leftBoundaries[index] = leftBoundary;
     this.rightBoundaries[index] = rightBoundary;
     this.arcLengths[index] = lengths.reduce((sum, l) => sum + l);

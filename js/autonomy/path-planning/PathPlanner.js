@@ -102,7 +102,6 @@ export default class PathPlanner {
     const latticeStationInterval = this._latticeStationInterval();
     let startStation;
 
-    // TODO: if the number of latitudes changes, then the first and second lattice points are invalidated
     if (this.previousStartStation === null || vehicleStation + latticeStationInterval / 2 > this.previousStartStation) {
       startStation = (this.previousStartStation === null ? vehicleStation : this.previousStartStation) + latticeStationInterval;
       this.previousStartStation = startStation;
@@ -204,21 +203,15 @@ export default class PathPlanner {
         lattice
       );
 
-      if (firstLatticePoint == this.previousFirstLatticePoint && firstAcceleration == this.previousFirstAcceleration && secondLatticePoint == this.previousSecondLatticePoint && secondAcceleration == this.previousSecondAcceleration) {
-        bestTrajectory = null;
-        fromVehicleSegment = null;
-        fromVehicleParams = null;
-      } else {
-        fromVehicleSegment.forEach(p => {
-          p.pos = p.pos.applyMatrix3(inverseVehicleXform);
-          p.rot += vehiclePose.rot;
-        });
+      fromVehicleSegment.forEach(p => {
+        p.pos = p.pos.applyMatrix3(inverseVehicleXform);
+        p.rot += vehiclePose.rot;
+      });
 
-        bestTrajectory.forEach(p => {
-          p.pos = p.pos.applyMatrix3(inverseVehicleXform);
-          p.rot += vehiclePose.rot;
-        });
-      }
+      bestTrajectory.forEach(p => {
+        p.pos = p.pos.applyMatrix3(inverseVehicleXform);
+        p.rot += vehiclePose.rot;
+      });
     }
 
     this.previousFirstLatticePoint = firstLatticePoint;

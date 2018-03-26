@@ -16,7 +16,11 @@ TODO
 [x] Static obstacle rotation
 [ ] README
 [ ] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
-[ ] Save/load scenarios
+[ ] Save/load scenarios (maybe use querystring so that scenarios can be easily shared)
 [?] Add compass to dashboard
-[ ] On pause, show more detailed planner results
+[ ] On pause, show more detailed planner results (maybe top 10/100? best trajectories)
 [?] Configurable geolocation
+[ ] Collision detection (full stop or pause?)
+[ ] Obstacle tossing during simulation
+[ ] Toggles to show/hide simulation components (planned path, lattice, current curvature?, obstacle cost maps, velocity profile?)
+[ ] Try optimizing graph search by continuing early if cost already exceeds best trajectory cost

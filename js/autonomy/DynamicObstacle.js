@@ -54,8 +54,8 @@ export default class DynamicObstacle {
     const vertices = [];
 
     // Hazard dilation (drawn behind, z = 0.75)
-    const hazardHalfWidth = this.size.w + config.hazardDilationS + config.collisionDilationS;
-    const hazardHalfHeight = this.size.h + config.hazardDilationL + config.collisionDilationL;
+    const hazardHalfWidth = this.size.w + config.dynamicHazardDilationS + config.collisionDilationS;
+    const hazardHalfHeight = this.size.h + config.dynamicHazardDilationL + config.collisionDilationL;
 
     positions.forEach(p => {
       const v1 = [-hazardHalfWidth + p.x, hazardHalfHeight + p.y];

@@ -27,10 +27,9 @@ float sampleStaticCost(vec4 xytk) {
   obstacleCost = step(0.25, obstacleCost) * obstacleHazardCost;
 
   float absLatitude = abs(sl.y);
-
   if (absLatitude >= laneShoulderLatitude) return -1.0;
 
-  float laneCost = max(absLatitude * laneCostSlope, step(laneShoulderLatitude, absLatitude) * laneShoulderCost);
+  float laneCost = abs(absLatitude - laneCenterLatitude) * laneCostSlope + step(0.0, -sl.y * sign(lanePreference)) * lanePreferenceDiscount;
 
   return obstacleCost + laneCost;
 }
@@ -102,7 +101,7 @@ float calculateAverageDynamicCost(int numSamples, float pathLength, float initia
   averageDynamicCost += (1.0 - step(accelerationProfiles[3], acceleration)) * hardDecelerationPenalty;
 
   // Penalize lateral acceleration
-  averageDynamicCost += step(lateralAccelerationLimit, maxLateralAcceleration) * softLateralAccelerationPenalty;
+  averageDynamicCost += step(softLateralAccelerationLimit, maxLateralAcceleration) * softLateralAccelerationPenalty;
   averageDynamicCost += linearLateralAccelerationPenalty * maxLateralAcceleration;
 
   return averageDynamicCost;
@@ -243,15 +242,17 @@ const SHARED_UNIFORMS = {
   xyGridCellSize: { type: 'float' },
   slCenterPoint: { type: 'vec2' },
   slGridCellSize: { type: 'float'},
-  laneCostSlope: { type: 'float'},
-  laneShoulderCost: { type: 'float'},
+  laneCenterLatitude: { type: 'float'},
   laneShoulderLatitude: { type: 'float'},
+  laneCostSlope: { type: 'float'},
+  lanePreference: { type: 'float' },
+  lanePreferenceDiscount: { type: 'float' },
   obstacleHazardCost: { type: 'float' },
   speedLimit: { type: 'float' },
   speedLimitPenalty: { type: 'float' },
   hardAccelerationPenalty: { type: 'float' },
   hardDecelerationPenalty: { type: 'float' },
-  lateralAccelerationLimit: { type: 'float' },
+  softLateralAccelerationLimit: { type: 'float' },
   softLateralAccelerationPenalty: { type: 'float' },
   linearLateralAccelerationPenalty: { type: 'float' },
   dCurvatureMax: { type: 'float' },
@@ -268,15 +269,17 @@ function buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTi
     xyGridCellSize: config.xyGridCellSize,
     slCenterPoint: [slCenterPoint.x, slCenterPoint.y],
     slGridCellSize: config.slGridCellSize,
-    laneCostSlope: config.laneCostSlope,
-    laneShoulderCost: config.laneShoulderCost,
+    laneCenterLatitude: config.laneCenterLatitude,
     laneShoulderLatitude: config.laneShoulderLatitude,
+    laneCostSlope: config.laneCostSlope,
+    lanePreference: config.lanePreference,
+    lanePreferenceDiscount: config.lanePreferenceDiscount,
     obstacleHazardCost: config.obstacleHazardCost,
     speedLimit: config.speedLimit,
     speedLimitPenalty: config.speedLimitPenalty,
     hardAccelerationPenalty: config.hardAccelerationPenalty,
     hardDecelerationPenalty: config.hardDecelerationPenalty,
-    lateralAccelerationLimit: config.lateralAccelerationLimit,
+    softLateralAccelerationLimit: config.softLateralAccelerationLimit,
     softLateralAccelerationPenalty: config.softLateralAccelerationPenalty,
     linearLateralAccelerationPenalty: config.linearLateralAccelerationPenalty,
     dCurvatureMax: config.dCurvatureMax,

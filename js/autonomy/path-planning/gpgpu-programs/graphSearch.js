@@ -39,8 +39,6 @@
  *   and latitude 1 will correspond to a quintic path. All other latitudes will be skipped.
  */
 
-// TODO: penalty when acceleration changes from one vertex to another
-
 import { SHARED_SHADER, SAMPLE_CUBIC_PATH_FN, SAMPLE_QUINTIC_PATH_FN, NUM_ACCELERATION_PROFILES, NUM_VELOCITY_RANGES, NUM_TIME_RANGES, SHARED_UNIFORMS, buildUniformValues } from "./graphSearchShared.js";
 
 const SOLVE_STATION_KERNEL =
@@ -75,7 +73,7 @@ vec4 kernel() {
   float maxTime = timeRanges[timeIndex + 1];
 
   vec4 bestTrajectory = vec4(-1); // -1 means infinite cost
-  float bestCost = 1000000000.0;
+  float bestTerminalCost = 1.0 / 0.0;
 
   float hysteresisAdjustment = (slIndex == firstLatticePoint || slIndex == secondLatticePoint) ?  0.0 : hysteresisDiscount;
 
@@ -138,8 +136,8 @@ vec4 kernel() {
             float totalCost = (averageStaticCost + averageDynamicCost) * pathLength + costTableEntry.x;
 
             float terminalCost = totalCost + extraTimePenalty * finalTime;
-            if (terminalCost >= bestCost) continue;
-            bestCost = terminalCost;
+            if (terminalCost >= bestTerminalCost) continue;
+            bestTerminalCost = terminalCost;
 
             int incomingIndex = avtIndex + numPerTime * numTimes * (prevLatitude + numLatitudes * prevStation);
             bestTrajectory = vec4(totalCost, finalVelocity, finalTime, incomingIndex);
@@ -158,8 +156,8 @@ vec4 kernel() {
     if (costTableEntry.x >= 0.0) {
       terminalCost = costTableEntry.x + extraTimePenalty * costTableEntry.z;
 
-      if (terminalCost < bestCost) {
-        bestCost = terminalCost;
+      if (terminalCost < bestTerminalCost) {
+        bestTerminalCost = terminalCost;
         bestTrajectory = costTableEntry;
       }
     }
@@ -169,8 +167,8 @@ vec4 kernel() {
     if (costTableEntry.x >= 0.0) {
       terminalCost = costTableEntry.x + extraTimePenalty * costTableEntry.z;
 
-      if (terminalCost < bestCost) {
-        bestCost = terminalCost;
+      if (terminalCost < bestTerminalCost) {
+        bestTerminalCost = terminalCost;
         bestTrajectory = costTableEntry;
       }
     }

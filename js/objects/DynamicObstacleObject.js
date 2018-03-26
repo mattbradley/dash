@@ -5,9 +5,15 @@ export default class DynamicObstacleObject extends THREE.Object3D {
     this.dynamicObstacle = dynamicObstacle;
     this.lanePath = lanePath;
 
+    const colors = {
+      vehicle: 0xff8800,
+      cyclist: 0x00ccff,
+      pedestrian: 0xff3333
+    };
+
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(dynamicObstacle.size.w * 2, dynamicObstacle.size.h * 2),
-      new THREE.MeshBasicMaterial({ color: 0xff8800, depthTest: false, transparent: true, opacity: 0.7 })
+      new THREE.MeshBasicMaterial({ color: colors[dynamicObstacle.type] || 0xff8800, depthTest: false, transparent: true, opacity: 0.7 })
     );
     mesh.rotation.x = -Math.PI / 2;
     this.add(mesh);
