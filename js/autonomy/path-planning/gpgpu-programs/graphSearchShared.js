@@ -64,12 +64,13 @@ float calculateAverageStaticCost(int numSamples) {
   return averageStaticCost;
 }
 
-float calculateAverageDynamicCost(int numSamples, float pathLength, float initialTime, float initialVelocity, float acceleration) {
+float calculateAverageDynamicCost(int numSamples, float pathLength, float initialTime, float initialVelocity, float acceleration, float abandonThreshold) {
   float s = 0.0;
   float ds = pathLength / float(numSamples - 1);
   float averageDynamicCost = 0.0;
   float maxVelocity = 0.0;
   float maxLateralAcceleration = 0.0;
+  float numSamples_f = float(numSamples);
 
   for (int i = 0; i < numSamples; i++) {
     vec4 pathSample = pathSamples[i]; // vec4(x-pos, y-pos, theta (rotation), kappa (curvature))
@@ -88,10 +89,12 @@ float calculateAverageDynamicCost(int numSamples, float pathLength, float initia
     if (cost < 0.0) return cost;
 
     averageDynamicCost += cost;
+    if (averageDynamicCost / numSamples_f >= abandonThreshold) return -1.0;
+
     s += ds;
   }
 
-  averageDynamicCost /= float(numSamples);
+  averageDynamicCost /= numSamples_f;
 
   // Apply speeding penality if any velocity along the trajectory is over the speed limit
   averageDynamicCost += step(speedLimit, maxVelocity) * speedLimitPenalty;

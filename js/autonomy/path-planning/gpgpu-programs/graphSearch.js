@@ -100,6 +100,8 @@ vec4 kernel() {
 
       averageStaticCost += hysteresisAdjustment;
 
+      if (averageStaticCost * pathLength >= bestTerminalCost) continue;
+
       for (int prevVelocity = 0; prevVelocity < numVelocities; prevVelocity++) {
         for (int prevTime = 0; prevTime < numTimes; prevTime++) {
           for (int prevAccel = 0; prevAccel < numAccelerations; prevAccel++) {
@@ -113,12 +115,14 @@ vec4 kernel() {
             vec4 costTableEntry = texelFetch(costTable, ivec3(avtIndex, prevLatitude, prevStation), 0);
 
             // If cost entry is infinity
-            if (costTableEntry.x < 0.0) continue;
+            if (costTableEntry.x < 0.0 || averageStaticCost * pathLength + costTableEntry.x >= bestTerminalCost) continue;
 
             vec3 avt = calculateAVT(accelerationIndex, costTableEntry.y, costTableEntry.z, pathLength);
             float acceleration = avt.x;
             float finalVelocity = avt.y;
             float finalTime = avt.z;
+
+            if (averageStaticCost * pathLength + costTableEntry.x + extraTimePenalty * finalTime >= bestTerminalCost) continue;
 
             // If the calculated final velocity does not match this fragment's velocity range, then skip this trajectory
             if (finalVelocity < minVelocity || finalVelocity >= maxVelocity) continue;
@@ -126,7 +130,8 @@ vec4 kernel() {
             // If the calculated final time does not match this fragment's time range, then skip this trajectory
             if (finalTime < minTime || finalTime >= maxTime) continue;
 
-            float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.z, costTableEntry.y, acceleration);
+            float abandonThreshold = (bestTerminalCost - extraTimePenalty * finalTime - costTableEntry.x) / pathLength - averageStaticCost;
+            float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, costTableEntry.z, costTableEntry.y, acceleration, abandonThreshold);
             if (averageDynamicCost < 0.0) continue;
 
             if (accelerationIndex != prevAccel)

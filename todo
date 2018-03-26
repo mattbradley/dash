@@ -23,4 +23,6 @@ TODO
 [ ] Collision detection (full stop or pause?)
 [ ] Obstacle tossing during simulation
 [ ] Toggles to show/hide simulation components (planned path, lattice, current curvature?, obstacle cost maps, velocity profile?)
-[ ] Try optimizing graph search by continuing early if cost already exceeds best trajectory cost
+[x] Try optimizing graph search by continuing early if cost already exceeds best trajectory cost
+[ ] Max top-down zoom out
+[ ] Try to add offset to obstacle detection (obstacles are dilated from the center of the vehicle, but the rear axle is the point that is checked for collision costs)

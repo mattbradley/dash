@@ -30,15 +30,15 @@ const defaultConfig = {
 
   cubicPathPenalty: 0,
 
-  collisionDilationS: Car.HALF_CAR_LENGTH + 4, // meters
+  collisionDilationS: Car.HALF_CAR_LENGTH + 8, // meters
   hazardDilationS: 12, // meters
   collisionDilationL: Car.HALF_CAR_WIDTH + 0.5, //meters
   hazardDilationL: 1, // meters
 
   dynamicHazardDilationS: 24,
-  dynamicHazardDilationL: 1,
+  dynamicHazardDilationL: 1.5,
 
-  obstacleHazardCost: 30,
+  obstacleHazardCost: 100,
 
   laneCenterLatitude: internalConfig.laneWidth / 4,
   laneShoulderLatitude: internalConfig.laneWidth / 2 - Car.HALF_CAR_WIDTH,
@@ -49,7 +49,7 @@ const defaultConfig = {
   stationReachDiscount: 400,
   extraTimePenalty: 1000,
 
-  hysteresisDiscount: 20,
+  hysteresisDiscount: 50,
 
   speedLimit: 20, // m/s
   speedLimitPenalty: 50,

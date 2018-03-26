@@ -41,7 +41,7 @@ vec4 kernel() {
   float finalVelocity = avt.y;
   float finalTime = avt.z;
 
-  float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, 0.0, velocityVehicle, acceleration);
+  float averageDynamicCost = calculateAverageDynamicCost(numSamples, pathLength, 0.0, velocityVehicle, acceleration, 1.0 / 0.0);
   if (averageDynamicCost < 0.0) return vec4(-1);
 
   averageDynamicCost += accelerationChangePenalty;
