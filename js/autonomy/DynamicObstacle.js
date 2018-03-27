@@ -1,7 +1,7 @@
 // Half width and half height
 const VEHICLE_SIZE = { w: 2.5, h: 1 };
-const CYCLIST_SIZE = { w: 1, h: 0.25 };
-const PEDESTRIAN_SIZE = { w: 0.4, h: 0.4 };
+const CYCLIST_SIZE = { w: 1.2, h: 0.3 };
+const PEDESTRIAN_SIZE = { w: 0.7, h: 0.7 };
 
 export default class DynamicObstacle {
   static hydrate(obj) {

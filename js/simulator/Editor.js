@@ -51,6 +51,9 @@ export default class Editor {
     this.editorDynamicObstaclesButton = document.getElementById('editor-dynamic-obstacles');
     this.editorDynamicObstaclesButton.addEventListener('click', e => this.changeEditMode('dynamicObstacles'));
 
+    this.statsRoadLength = document.getElementById('editor-stats-road-length');
+    this.statsStaticObstacles = document.getElementById('editor-stats-static-obstacles');
+
     this.changeEditMode('path');
     this.removeMode = false;
 
@@ -261,10 +264,12 @@ export default class Editor {
     obstacle.userData = { index: this.obstacleIndex++, width: width, height: height };
 
     this.obstacleGroup.add(obstacle);
+    this.statsStaticObstacles.textContent = this.obstacleGroup.children.length;
   }
 
   removeStaticObstacle(obstacle) {
     this.obstacleGroup.remove(obstacle);
+    this.statsStaticObstacles.textContent = this.obstacleGroup.children.length;
   }
 
   clearStaticObstacles() {
@@ -273,6 +278,7 @@ export default class Editor {
     this.obstacleGroup.renderOrder = 1;
     this.group.add(this.obstacleGroup);
     this.obstacleIndex = 0;
+    this.statsStaticObstacles.textContent = 0;
   }
 
   clearAll() {
@@ -296,6 +302,8 @@ export default class Editor {
     const rightBoundary = new MeshLine();
     rightBoundary.setGeometry(this.rightBoundaryGeometry);
     this.rightBoundaryObject.geometry = rightBoundary.geometry;
+
+    this.statsRoadLength.textContent = this.lanePath.arcLength.toFixed(1);
   }
 
   addPoint(pos) {

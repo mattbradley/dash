@@ -1,9 +1,11 @@
 import DynamicObstacle from "../autonomy/DynamicObstacle.js";
+import PathPlannerConfigEditor from "./PathPlannerConfigEditor.js";
 
 export default class DynamicObstacleEditor {
   constructor() {
     this.editorDom = document.getElementById('editor-dynamic-obstacles-box');
     this.formsContainer = document.getElementById('editor-dynamic-obstacle-forms');
+    this.statsDynamicObstacles = document.getElementById('editor-stats-dynamic-obstacles');
 
     document.getElementById('editor-add-dynamic-obstacle').addEventListener('click', this.addDynamicObstacle.bind(this));
   }
@@ -27,7 +29,7 @@ export default class DynamicObstacleEditor {
       for (const [k, v] of formData.entries())
         params[k] = v;
 
-      const pos = new THREE.Vector2(Number(params.sPos) || 0, Number(params.lPos) || 0);
+      const pos = new THREE.Vector2(Number(params.sPos) || 0, (Number(params.lPos) || 0) * PathPlannerConfigEditor.internalConfig.roadWidth / 2);
       const vel = new THREE.Vector2(Number(params.sVel) || 0, Number(params.lVel) || 0);
       const parallel = !!params.parallel;
 
@@ -42,15 +44,18 @@ export default class DynamicObstacleEditor {
     const form = this.buildForm(index);
 
     this.formsContainer.appendChild(form);
+    this.statsDynamicObstacles.textContent = this.formsContainer.getElementsByTagName('form').length;
   }
 
   removeDynamicObstacle(form) {
     this.formsContainer.removeChild(form);
     this.reindexForms();
+    this.statsDynamicObstacles.textContent = this.formsContainer.getElementsByTagName('form').length;
   }
 
   clearDynamicObstacles() {
     this.formsContainer.innerHTML = '';
+    this.statsDynamicObstacles.textContent = 0;
   }
 
   reindexForms() {

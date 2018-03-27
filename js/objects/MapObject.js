@@ -1,18 +1,19 @@
+// geolocation = [33.523900, -111.908756];
 export default class MapObject extends THREE.Object3D {
-  constructor(geolocation, drawTiles = true) {
+  constructor(geolocation = null) {
     super();
 
     this.geolocation = geolocation;
     this.tilesGroup = null;
 
-    const tileSize = this.tileSizeInMeters();
+    const tileSize = geolocation ? this.tileSizeInMeters() : 10;
     const grid = new THREE.GridHelper(MapObject.HALF_NUM_TILES * 8 * tileSize, MapObject.HALF_NUM_TILES * 8, 0x333333, 0x333333);
     grid.renderOrder = -1;
     grid.material.depthTest = false;
     grid.position.add(new THREE.Vector3(-tileSize / 2, 0, -tileSize / 2));
     this.add(grid);
 
-    if (drawTiles)
+    if (geolocation)
       this.drawTiles();
   }
 
@@ -55,7 +56,6 @@ export default class MapObject extends THREE.Object3D {
   }
 
   tileSizeInMeters() {
-    return 30;
     // Because of the Mercator projection used to create the tile images, the size of a tile (in meters) depends on the latitude
     return 2 * Math.PI * MapObject.EARTH_RADIUS * Math.cos(this.geolocation[0] * Math.PI / 180) / Math.pow(2, MapObject.ZOOM);
   }

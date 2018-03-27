@@ -11,7 +11,8 @@
   "devDependencies": {
     "script-loader": "^0.7.2",
     "webpack": "^4.0.1",
-    "webpack-cli": "^2.0.9"
+    "webpack-cli": "^2.0.9",
+    "wrapper-webpack-plugin": "1.0.0"
   },
   "dependencies": {
     "npm": "^5.7.1"

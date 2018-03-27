@@ -8,6 +8,9 @@ export default class TopDownCameraControls {
     this.enablePanning = false;
     this.enabled = true;
 
+    this.minAltitude = Number.NEGATIVE_INFINITY;
+    this.maxAltitude = Number.POSITIVE_INFINITY;
+
     this.mouseDown = this.mouseDown.bind(this);
     this.mouseMove = this.mouseMove.bind(this);
     this.mouseUp = this.mouseUp.bind(this);
@@ -58,6 +61,6 @@ export default class TopDownCameraControls {
 
     event.preventDefault();
 
-    this.camera.position.y = Math.max(5, this.camera.position.y * Math.pow(0.995, -event.deltaY));
+    this.camera.position.y = Math.max(this.minAltitude, Math.min(this.maxAltitude, this.camera.position.y * Math.pow(0.995, -event.deltaY)));
   }
 }

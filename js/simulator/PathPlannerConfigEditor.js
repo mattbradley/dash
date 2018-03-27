@@ -1,6 +1,6 @@
 import Car from "../physics/Car.js";
 
-const LOCAL_STORAGE_KEY = 'dashPathPlannerConfig';
+const LOCAL_STORAGE_KEY = 'dash_PathPlannerConfig';
 
 const internalConfig = {
   lattice: {
@@ -10,7 +10,7 @@ const internalConfig = {
     latitudeConnectivity: 7
   },
 
-  laneWidth: 3.7 * 2, // meters
+  roadWidth: 3.7 * 2, // meters
 
   numDynamicFrames: 10,
   numDynamicSubframes: 4,
@@ -38,12 +38,12 @@ const defaultConfig = {
   dynamicHazardDilationS: 24,
   dynamicHazardDilationL: 1.5,
 
-  obstacleHazardCost: 100,
+  obstacleHazardCost: 200,
 
-  laneCenterLatitude: internalConfig.laneWidth / 4,
-  laneShoulderLatitude: internalConfig.laneWidth / 2 - Car.HALF_CAR_WIDTH,
+  laneCenterLatitude: internalConfig.roadWidth / 4,
+  laneShoulderLatitude: internalConfig.roadWidth / 2 - Car.HALF_CAR_WIDTH,
   lanePreference: +1,
-  laneCostSlope: 15, // cost / meter
+  laneCostSlope: 20, // cost / meter
   lanePreferenceDiscount: 40,
 
   stationReachDiscount: 400,
@@ -157,3 +157,5 @@ export default class PathPlannerConfigEditor {
       this.configForm.appendChild(this._createConfigField(key, this._config[key]));
   }
 }
+
+PathPlannerConfigEditor.internalConfig = internalConfig;

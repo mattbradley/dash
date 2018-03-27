@@ -97,7 +97,7 @@ export default class PathPlanner {
 
     // Sizes of the sl grids (in pixels, not meters)
     const slWidth = Math.ceil(this.config.spatialHorizon / this.config.slGridCellSize);
-    const slHeight = Math.ceil((this.config.laneWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
+    const slHeight = Math.ceil((this.config.roadWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
 
     const latticeStationInterval = this._latticeStationInterval();
     let startStation;
@@ -233,11 +233,11 @@ export default class PathPlanner {
     const lattice = new Float32Array(this.config.lattice.numStations * this.config.lattice.numLatitudes * 4);
     let index = 0;
 
-    for (let s = 0; s < this.config.lattice.numStations; s++) {
+    for (let s = 0; s < centerline.length; s++) {
       const sample = centerline[s];
 
       for (let l = 0; l < this.config.lattice.numLatitudes; l++) {
-        const latitude = (l - offset) / offset * this.config.laneWidth / 2;
+        const latitude = (l - offset) / offset * this.config.roadWidth / 2;
         const rot = sample.rot - vehicleRot;
         const pos = THREE.Vector2.fromAngle(rot + Math.PI / 2).multiplyScalar(latitude).add(sample.pos.clone().applyMatrix3(vehicleXform));
         const curv = sample.curv == 0 ? 0 : 1 / (1 / sample.curv - latitude);

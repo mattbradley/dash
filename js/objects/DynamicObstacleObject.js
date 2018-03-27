@@ -8,7 +8,7 @@ export default class DynamicObstacleObject extends THREE.Object3D {
     const colors = {
       vehicle: 0xff8800,
       cyclist: 0x00ccff,
-      pedestrian: 0xff3333
+      pedestrian: 0xffdd00
     };
 
     const mesh = new THREE.Mesh(
@@ -24,6 +24,11 @@ export default class DynamicObstacleObject extends THREE.Object3D {
 
     // Sample just the station this dynamic obstacle is at
     const [sample] = this.lanePath.sampleStations(slPos.x, 1, 0);
+
+    if (sample === undefined) {
+      this.visible = false;
+      return;
+    }
 
     const rot = sample.rot;
     const pos = THREE.Vector2.fromAngle(rot + Math.PI / 2).multiplyScalar(slPos.y).add(sample.pos);

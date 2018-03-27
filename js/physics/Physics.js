@@ -2,14 +2,17 @@ import Car from "./Car.js";
 
 export default class Physics {
   constructor() {
-    this.world = new Box2D.b2World(new Box2D.b2Vec2(0, 0));
+    this.cars = [];
   }
 
   step(dt) {
-    this.world.Step(dt, 2, 2);
+    this.cars.forEach(c => c.step(dt));
   }
 
   createCar() {
-    return new Car(this.world);
+    const newCar = new Car();
+    this.cars.push(newCar);
+
+    return newCar;
   }
 };

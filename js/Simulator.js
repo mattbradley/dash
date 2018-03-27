@@ -1,4 +1,4 @@
-import Physics from "./physics/simple/Physics.js";
+import Physics from "./physics/Physics.js";
 import Path from "./autonomy/Path.js";
 import CubicPath from "./autonomy/path-planning/CubicPath.js";
 import AutonomousController from "./autonomy/control/AutonomousController.js";
@@ -22,10 +22,8 @@ import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 const FRAME_TIMESTEP = 1 / 60;
 
 export default class Simulator {
-  constructor(geolocation, domElement) {
-    this.geolocation = geolocation;
-
-    this.pathPlannerWorker = new Worker('dist/PathPlannerWorker.js');
+  constructor(domElement) {
+    this.pathPlannerWorker = new Worker(URL.createObjectURL(new Blob([`(${dash_initPathPlannerWorker.toString()})()`], { type: 'text/javascript' })));
     this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
     this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
 
@@ -54,7 +52,7 @@ export default class Simulator {
 
     this.editor = new Editor(this.renderer.domElement, this.editorCamera, this.scene);
 
-    const map = new MapObject(this.geolocation, false);
+    const map = new MapObject();
     this.scene.add(map);
 
     this.carObject = new CarObject(this.car);
@@ -138,6 +136,8 @@ export default class Simulator {
   _setUpCameras(domElement) {
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
+    this.chaseCameraControls.minDistance = 4;
+    this.chaseCameraControls.maxDistance = 5000;
     this.chaseCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.chaseCameraControls.enablePan = false;
     this.chaseCameraControls.enabled = false;
@@ -145,6 +145,8 @@ export default class Simulator {
 
     this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
+    this.freeCameraControls.minDistance = 5;
+    this.freeCameraControls.maxDistance = 5000;
     this.freeCameraControls.maxPolarAngle = Math.PI / 2.02;
     this.freeCameraControls.enabled = true;
     this._resetFreeCamera();
@@ -154,6 +156,8 @@ export default class Simulator {
     this.topDownCamera.lookAt(0, 0, 0);
     this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
     this.topDownControls.enabled = false;
+    this.topDownControls.minAltitude = 5;
+    this.topDownControls.maxAltitude = 10000;
 
     this.editorCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.editorCamera.position.set(0, 50, 0);
@@ -161,6 +165,8 @@ export default class Simulator {
     this.editorCameraControls = new TopDownCameraControls(domElement, this.editorCamera);
     this.editorCameraControls.enabled = false;
     this.editorCameraControls.enablePanning = true;
+    this.editorCameraControls.minAltitude = 10;
+    this.editorCameraControls.maxAltitude = 10000;
 
     this.cameraButtons = {};
 
@@ -424,7 +430,30 @@ export default class Simulator {
     this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
     this.plannerReady = true;
 
-    if (path === null || this.plannerReset) return;
+    if (this.plannerReset) return;
+
+    if (this.plannedPathGroup)
+      this.scene.remove(this.plannedPathGroup);
+    this.plannedPathGroup = new THREE.Group();
+    this.scene.add(this.plannedPathGroup);
+
+    const circleGeom = new THREE.CircleGeometry(0.1, 32);
+    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
+
+    const lattice = new RoadLattice(this.editor.lanePath, latticeStartStation, config);
+    lattice.lattice.forEach(cells => {
+      cells.forEach(c => {
+        const circle = new THREE.Mesh(circleGeom, circleMat);
+        circle.position.set(c.pos.x, 0, c.pos.y);
+        circle.rotation.x = -Math.PI / 2;
+        this.plannedPathGroup.add(circle);
+      });
+    });
+
+    if (path === null) {
+      this.autonomousCarController = null;
+      return;
+    }
 
     if (fromVehicleParams.type == 'cubic') {
       const start = this.car.pose;
@@ -457,24 +486,6 @@ export default class Simulator {
       this.autonomousCarController.replacePath(followPath);
     else
       this.autonomousCarController = new FollowController(followPath, this.car);
-
-    if (this.plannedPathGroup)
-      this.scene.remove(this.plannedPathGroup);
-    this.plannedPathGroup = new THREE.Group();
-    this.scene.add(this.plannedPathGroup);
-
-    const circleGeom = new THREE.CircleGeometry(0.1, 32);
-    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ff80, depthTest: false, transparent: true, opacity: 0.7 });
-
-    const lattice = new RoadLattice(this.editor.lanePath, latticeStartStation, config);
-    lattice.lattice.forEach(cells => {
-      cells.forEach(c => {
-        const circle = new THREE.Mesh(circleGeom, circleMat);
-        circle.position.set(c.pos.x, 0, c.pos.y);
-        circle.rotation.x = -Math.PI / 2;
-        this.plannedPathGroup.add(circle);
-      });
-    });
 
     const pathGeometry = new THREE.Geometry();
     pathGeometry.setFromPoints(path.map(p => new THREE.Vector3(p.pos.x, 0, p.pos.y)));

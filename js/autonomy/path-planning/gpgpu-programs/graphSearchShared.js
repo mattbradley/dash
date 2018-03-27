@@ -15,10 +15,14 @@ float calculateAcceleration(int index, float initialVelocitySq, float distance) 
   }
 }
 
-float sampleStaticCost(vec4 xytk) {
-  vec2 xyTexCoords = (xytk.xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
-  vec2 sl = texture(xyslMap, xyTexCoords).xy;
+vec2 xy2sl(vec4 xytk) {
+  vec2 xy = xytk.xy + rearAxleToCenter * vec2(cos(xytk.z), sin(xytk.z));
+  vec2 xyTexCoords = (xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
+  return texture(xyslMap, xyTexCoords).xy;
+}
 
+float sampleStaticCost(vec4 xytk) {
+  vec2 sl = xy2sl(xytk);
   vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slObstacleGrid, 0)) / vec2(slGridCellSize) + 0.5;
   float obstacleCost = texture(slObstacleGrid, slTexCoords).r;
 
@@ -35,9 +39,7 @@ float sampleStaticCost(vec4 xytk) {
 }
 
 float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleration) {
-  vec2 xyTexCoords = (xytk.xy - xyCenterPoint) / vec2(textureSize(xyslMap, 0)) / vec2(xyGridCellSize) + 0.5;
-  vec2 sl = texture(xyslMap, xyTexCoords).xy;
-
+  vec2 sl = xy2sl(xytk);
   vec2 slTexCoords = (sl - slCenterPoint) / vec2(textureSize(slDynamicObstacleGrid, 0).xy) / vec2(slGridCellSize) + 0.5;
   float dynamicFrame = floor(time / dynamicFrameTime);
 

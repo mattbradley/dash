@@ -4,18 +4,18 @@ TODO
 [x] Move [Manual|Autonomous] switch to dashboard
 [x] Move Scenario box to left side and add play/pause button and replace restart button with restart icon
 [x] Switch to manual mode on gas/brake/steer keyboard input
-[ ] Fix not-enough-road-left-for-spatial-horizon bug; just plan until the end of the road then full brake (with dynamic obstacles too)
+[x] Fix not-enough-road-left-for-spatial-horizon bug; just plan until the end of the road then full brake (with dynamic obstacles too)
 [x] Hide dynamic obstacles that aren't before station 0
 [x] Catch finalized scenarios with no points; just do nothing instead of starting the planner
 [x] Ability to add obstacles to scenario in editor
-[ ] Scenario info like road length, number of obstacles, etc.
+[x] Scenario info like road length, number of obstacles, etc.
 [x] Hook up clear path/obstacle/all button in editor
 [x] Dynamic obstacles with dynamic obstacle grid gpgpu program
 [?] Separate collision/hazard dilations for dynamic obstacles
 [?] Weird bug where lattice isn't shifted (maybe more than one station point is passed)
 [x] Static obstacle rotation
 [ ] README
-[ ] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
+[x] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
 [ ] Save/load scenarios (maybe use querystring so that scenarios can be easily shared)
 [?] Add compass to dashboard
 [ ] On pause, show more detailed planner results (maybe top 10/100? best trajectories)
@@ -24,5 +24,6 @@ TODO
 [ ] Obstacle tossing during simulation
 [ ] Toggles to show/hide simulation components (planned path, lattice, current curvature?, obstacle cost maps, velocity profile?)
 [x] Try optimizing graph search by continuing early if cost already exceeds best trajectory cost
-[ ] Max top-down zoom out
-[ ] Try to add offset to obstacle detection (obstacles are dilated from the center of the vehicle, but the rear axle is the point that is checked for collision costs)
+[x] Max top-down zoom out
+[x] Try to add offset to obstacle detection (obstacles are dilated from the center of the vehicle, but the rear axle is the point that is checked for collision costs)
+[ ] Help dialogs/instructions

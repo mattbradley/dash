@@ -22,16 +22,16 @@ export default class LanePath {
     return [].concat(...this.centerlines);
   }
 
-  get centerlineLengths() {
-    return [].concat(...this.arclengths);
-  }
-
   get leftBoundary() {
     return [].concat(...this.leftBoundaries);
   }
 
   get rightBoundary() {
     return [].concat(...this.rightBoundaries);
+  }
+
+  get arcLength() {
+    return this.arcLengths.reduce((sum, l) => sum + l, 0);
   }
 
   sampleStations(startStation, num, interval) {
@@ -45,7 +45,7 @@ export default class LanePath {
       totalLength += this.arcLengths[anchorIndex];
 
       if (++anchorIndex >= this.arcLengths.length)
-        throw new Error(`Exhausted lane path before reaching ${num} centerline samples at ${interval}m intervals.`);
+        return samples;
     }
 
     for (let i = 0; i < num; i++) {
@@ -57,7 +57,7 @@ export default class LanePath {
           sampleIndex = 0;
 
           if (++anchorIndex >= this.sampleLengths.length)
-            throw new Error(`Exhausted lane path before reaching ${num} centerline samples at ${interval}m intervals.`);
+            return samples;
         }
 
         length = this.sampleLengths[anchorIndex][sampleIndex];
@@ -233,7 +233,7 @@ export default class LanePath {
     this.sampleLengths[index] = lengths;
     this.leftBoundaries[index] = leftBoundary;
     this.rightBoundaries[index] = rightBoundary;
-    this.arcLengths[index] = lengths.reduce((sum, l) => sum + l);
+    this.arcLengths[index] = lengths.reduce((sum, l) => sum + l, 0);
   }
 
   anchorsForSplineIndex(index) {
