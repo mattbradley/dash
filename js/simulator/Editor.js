@@ -82,9 +82,9 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0x004488),
         lineWidth: 8,
-        depthTest: false,
-        transparent: true,
-        opacity: NORMAL_OPACITY,
+        //depthTest: false,
+        //transparent: true,
+        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
         sizeAttenuation: false,
         near: camera.near,
@@ -100,9 +100,9 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        depthTest: false,
-        transparent: true,
-        opacity: NORMAL_OPACITY,
+        //depthTest: false,
+        //transparent: true,
+        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
       })
     );
@@ -115,9 +115,9 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        depthTest: false,
-        transparent: true,
-        opacity: NORMAL_OPACITY,
+        //depthTest: false,
+        //transparent: true,
+        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
       })
     );
@@ -132,7 +132,7 @@ export default class Editor {
 
   set enabled(e) {
     this.isEnabled = e;
-    this.pointGroup.visible = !!this.isEnabled
+    this.pointGroup.visible = this.obstacleGroup.visible = !!this.isEnabled
   }
 
   get staticObstacles() {

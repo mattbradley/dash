@@ -6,6 +6,7 @@ import FollowController from "./autonomy/control/FollowController.js";
 import ManualController from "./autonomy/control/ManualController.js";
 import MapObject from "./objects/MapObject.js";
 import CarObject from "./objects/CarObject.js";
+import StaticObstacleObject from "./objects/StaticObstacleObject.js";
 import DynamicObstacleObject from "./objects/DynamicObstacleObject.js";
 import Editor from "./simulator/Editor.js";
 import OrbitControls from "./simulator/OrbitControls.js";
@@ -58,6 +59,11 @@ export default class Simulator {
     this.carObject = new CarObject(this.car);
     this.scene.add(this.carObject);
 
+    this.scene.add(new THREE.AmbientLight(0x666666));
+    const light = new THREE.DirectionalLight(0xffffff, 0.75);
+    light.position.set(1, 1, 1).normalize();
+    this.scene.add(light);
+
     this.manualCarController = new ManualController();
     this.autonomousCarController = null;
 
@@ -69,6 +75,8 @@ export default class Simulator {
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
+    this.staticObstaclesGroup = new THREE.Group();
+    this.scene.add(this.staticObstaclesGroup);
     this.dynamicObstaclesGroup = new THREE.Group();
     this.scene.add(this.dynamicObstaclesGroup);
 
@@ -135,6 +143,7 @@ export default class Simulator {
 
   _setUpCameras(domElement) {
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.chaseCamera.layers.enable(3);
     this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
     this.chaseCameraControls.minDistance = 4;
     this.chaseCameraControls.maxDistance = 5000;
@@ -144,6 +153,7 @@ export default class Simulator {
     this._resetChaseCamera();
 
     this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.freeCamera.layers.enable(2);
     this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
     this.freeCameraControls.minDistance = 5;
     this.freeCameraControls.maxDistance = 5000;
@@ -152,6 +162,7 @@ export default class Simulator {
     this._resetFreeCamera();
 
     this.topDownCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.topDownCamera.layers.enable(2);
     this.topDownCamera.position.set(0, 50, 0);
     this.topDownCamera.lookAt(0, 0, 0);
     this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
@@ -160,7 +171,8 @@ export default class Simulator {
     this.topDownControls.maxAltitude = 10000;
 
     this.editorCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.editorCamera.position.set(0, 50, 0);
+    this.editorCamera.layers.enable(2);
+    this.editorCamera.position.set(0, 200, 0);
     this.editorCamera.lookAt(0, 0, 0);
     this.editorCameraControls = new TopDownCameraControls(domElement, this.editorCamera);
     this.editorCameraControls.enabled = false;
@@ -220,6 +232,7 @@ export default class Simulator {
     this.scene.fog = null;
     this.carObject.visible = false;
     if (this.plannedPathGroup) this.plannedPathGroup.visible = false;
+    this.staticObstaclesGroup.visible = false;
     this.dynamicObstaclesGroup.visible = false;
 
     this.simModeBoxes.forEach(el => el.classList.add('is-hidden'));
@@ -244,6 +257,8 @@ export default class Simulator {
       this.car.setPose(pos.x, pos.y, rot);
 
       this.staticObstacles = this.editor.staticObstacles;
+      this.recreateStaticObstacleObjects();
+
       this.dynamicObstacles = this.editor.dynamicObstacles;
       this.recreateDynamicObstacleObjects();
 
@@ -273,6 +288,17 @@ export default class Simulator {
     this._resetFreeCamera();
     this._resetChaseCamera();
     this._resetTopDownCamera();
+  }
+
+  recreateStaticObstacleObjects() {
+    this.scene.remove(this.staticObstaclesGroup);
+    this.staticObstaclesGroup = new THREE.Group();
+    this.scene.add(this.staticObstaclesGroup);
+
+    this.staticObstacles.forEach(o => {
+      const obstacleObject = new StaticObstacleObject(o);
+      this.staticObstaclesGroup.add(obstacleObject);
+    });
   }
 
   recreateDynamicObstacleObjects() {

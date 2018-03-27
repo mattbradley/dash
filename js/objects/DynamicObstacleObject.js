@@ -11,12 +11,27 @@ export default class DynamicObstacleObject extends THREE.Object3D {
       pedestrian: 0xffdd00
     };
 
-    const mesh = new THREE.Mesh(
+    const heights = {
+      vehicle: 1.5,
+      cyclist: 1.5,
+      pedestrian: 1.8
+    };
+
+    const mesh2D = new THREE.Mesh(
       new THREE.PlaneGeometry(dynamicObstacle.size.w * 2, dynamicObstacle.size.h * 2),
       new THREE.MeshBasicMaterial({ color: colors[dynamicObstacle.type] || 0xff8800, depthTest: false, transparent: true, opacity: 0.7 })
     );
-    mesh.rotation.x = -Math.PI / 2;
-    this.add(mesh);
+    mesh2D.rotation.x = -Math.PI / 2;
+    mesh2D.layers.set(2);
+    this.add(mesh2D);
+
+    const mesh3D = new THREE.Mesh(
+      new THREE.BoxBufferGeometry(dynamicObstacle.size.w * 2, heights[dynamicObstacle.type] || 1.5, dynamicObstacle.size.h * 2),
+      new THREE.MeshToonMaterial({ color: colors[dynamicObstacle.type] || 0xff8800, transparent: true, opacity: 0.7 })
+    );
+    mesh3D.position.setY((heights[dynamicObstacle.type] || 1.5) / 2);
+    mesh3D.layers.set(3);
+    this.add(mesh3D);
   }
 
   update(time) {
