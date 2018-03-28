@@ -104,7 +104,7 @@ export default class Car {
 
 Car.HALF_CAR_LENGTH = 2.5; // meters
 Car.HALF_CAR_WIDTH = 1; // meters
-Car.HALF_WHEEL_LENGTH = 0.33; // meters
+Car.HALF_WHEEL_LENGTH = 0.38; // meters
 Car.HALF_WHEEL_WIDTH = 0.12; // meters
 Car.MAX_WHEEL_ANGLE = 32 / 180 * Math.PI; // radians
 Car.MASS = 1600; // kg
@@ -116,7 +116,7 @@ Car.MAX_STEER_SPEED = 0.8;//1.2; // Radians per second
 Car.MAX_GAS_ACCEL = 3.5; // m / s^2
 Car.MAX_BRAKE_DECEL = 6.5; // m / s^2
 Car.WHEEL_LATERAL_POS = 0.843; // meters
-Car.FRONT_AXLE_POS = 1.56; // meters
-Car.REAR_AXLE_POS = -1.37; // meters
+Car.FRONT_AXLE_POS = 1.6; // meters
+Car.REAR_AXLE_POS = -1.43; // meters
 Car.WHEEL_BASE = Car.FRONT_AXLE_POS - Car.REAR_AXLE_POS; // meters
 Car.MAX_LATERAL_ACCEL = 9.81; // m / s^2

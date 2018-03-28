@@ -23,7 +23,7 @@ const DYNAMIC_OBSTACLE_KERNEL = `
 
 let obstacleVertices;
 let obstacleXform;
-const numDynamicFrames = 10;
+const numDynamicFrames = 20;
 
 // Draw dynamic obstacle triangles to SL-space obstacle grid
 export default {

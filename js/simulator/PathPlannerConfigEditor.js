@@ -12,7 +12,7 @@ const internalConfig = {
 
   roadWidth: 3.7 * 2, // meters
 
-  numDynamicFrames: 10,
+  numDynamicFrames: 20,
   numDynamicSubframes: 4,
 
   dCurvatureMax: Car.MAX_STEER_SPEED / Car.WHEEL_BASE,
@@ -30,7 +30,7 @@ const defaultConfig = {
 
   cubicPathPenalty: 0,
 
-  collisionDilationS: Car.HALF_CAR_LENGTH + 8, // meters
+  collisionDilationS: Car.HALF_CAR_LENGTH + 4, // meters
   hazardDilationS: 12, // meters
   collisionDilationL: Car.HALF_CAR_WIDTH + 0.5, //meters
   hazardDilationL: 1, // meters
@@ -41,7 +41,7 @@ const defaultConfig = {
   obstacleHazardCost: 200,
 
   laneCenterLatitude: internalConfig.roadWidth / 4,
-  laneShoulderLatitude: internalConfig.roadWidth / 2 - Car.HALF_CAR_WIDTH,
+  laneShoulderLatitude: internalConfig.roadWidth / 2 * 1.1 - Car.HALF_CAR_WIDTH,
   lanePreference: +1,
   laneCostSlope: 20, // cost / meter
   lanePreferenceDiscount: 40,

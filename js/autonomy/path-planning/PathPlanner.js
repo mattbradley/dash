@@ -258,8 +258,8 @@ export default class PathPlanner {
 
   _terminalCost([stationIndex, latitudeIndex, timeIndex, velocityIndex, accelerationIndex], [cost, finalVelocity, finalTime, incomingIndex]) {
     // Only consider vertices that reach the end of the spatial or temporal horizon
-    if (stationIndex != this.config.lattice.numStations - 1 && finalVelocity > 0.05)
-      return Number.POSITIVE_INFINITY;
+    //if (stationIndex != this.config.lattice.numStations - 1 && finalVelocity > 0.05)
+      //return Number.POSITIVE_INFINITY;
 
     const station = (this.config.spatialHorizon / this.config.lattice.numStations) * (stationIndex + 1);
 

@@ -1,7 +1,7 @@
 // Half width and half height
 const VEHICLE_SIZE = { w: 2.5, h: 1 };
-const CYCLIST_SIZE = { w: 1.2, h: 0.3 };
-const PEDESTRIAN_SIZE = { w: 0.7, h: 0.7 };
+const CYCLIST_SIZE = { w: 1.2, h: 0.6 };
+const PEDESTRIAN_SIZE = { w: 0.6, h: 0.6 };
 
 export default class DynamicObstacle {
   static hydrate(obj) {
@@ -41,7 +41,7 @@ export default class DynamicObstacle {
     const positions = [];
     let time = startTime;
 
-    for (let i = 0; i < numFrames; i++) {
+    for (let i = 0; i <= numFrames; i++) {
       positions.push(this.positionAtTime(time));
       time += dt;
     }

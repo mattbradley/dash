@@ -72,6 +72,7 @@ export default class Simulator {
     this.plannerReady = false;
     this.plannerRunning = false;
     this.plannerReset = false;
+    this.carStation = null;
     this.plannedPathGroup = new THREE.Group();
     this.scene.add(this.plannedPathGroup);
 
@@ -143,7 +144,6 @@ export default class Simulator {
 
   _setUpCameras(domElement) {
     this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.chaseCamera.layers.enable(3);
     this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
     this.chaseCameraControls.minDistance = 4;
     this.chaseCameraControls.maxDistance = 5000;
@@ -153,7 +153,6 @@ export default class Simulator {
     this._resetChaseCamera();
 
     this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.freeCamera.layers.enable(2);
     this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
     this.freeCameraControls.minDistance = 5;
     this.freeCameraControls.maxDistance = 5000;
@@ -187,6 +186,13 @@ export default class Simulator {
       cameraButton.addEventListener('click', () => this.changeCamera(c));
       this.cameraButtons[c] = cameraButton;
     });
+
+    this.switchTo2DButton = document.getElementById('camera-2D');
+    this.switchTo2DButton.addEventListener('click', this.switchTo2D.bind(this));
+    this.switchTo3DButton = document.getElementById('camera-3D');
+    this.switchTo3DButton.addEventListener('click', this.switchTo3D.bind(this));
+
+    this.switchTo3D();
   }
 
   _resetFreeCamera() {
@@ -270,7 +276,10 @@ export default class Simulator {
       }
       this.plannerReset = true;
       this.simulatedTime = 0;
+      this.carStation = 0;
     }
+
+    this.dashboard.update({ steer: 0, brake: 0, gas: 0 }, 0, null, null, 0, this.averagePlanTime.average);
 
     if (replaceCamera) {
       this.camera = this.previousCamera;
@@ -409,6 +418,30 @@ export default class Simulator {
     }
   }
 
+  switchTo2D() {
+    this.switchTo2DButton.classList.remove('is-outlined');
+    this.switchTo2DButton.classList.add('is-selected');
+    this.switchTo3DButton.classList.add('is-outlined');
+    this.switchTo3DButton.classList.remove('is-selected');
+
+    this.chaseCamera.layers.enable(2);
+    this.freeCamera.layers.enable(2);
+    this.chaseCamera.layers.disable(3);
+    this.freeCamera.layers.disable(3);
+  }
+
+  switchTo3D() {
+    this.switchTo3DButton.classList.remove('is-outlined');
+    this.switchTo3DButton.classList.add('is-selected');
+    this.switchTo2DButton.classList.add('is-outlined');
+    this.switchTo2DButton.classList.remove('is-selected');
+
+    this.chaseCamera.layers.enable(3);
+    this.freeCamera.layers.enable(3);
+    this.chaseCamera.layers.disable(2);
+    this.freeCamera.layers.disable(2);
+  }
+
   startPlanner(pose, station) {
     this.plannerReady = false;
     this.lastPlanTime = performance.now();
@@ -545,7 +578,6 @@ function step(timestamp) {
   this.editor.update();
 
   if (!this.editor.enabled && !this.paused) {
-    //const dt = Math.min((timestamp - this.prevTimestamp) / 1000, 1 / 30);
     const dt = FRAME_TIMESTEP;
     this.simulatedTime += dt;
 
@@ -580,21 +612,22 @@ function step(timestamp) {
     this.topDownCamera.position.setZ(carPosition.y);
     this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
 
-    let station = null;
     let latitude = null;
 
     if (this.editor.lanePath.anchors.length > 1) {
       const [s, l, aroundAnchorIndex] = this.editor.lanePath.stationLatitudeFromPosition(carRearAxle, this.aroundAnchorIndex);
       this.aroundAnchorIndex = aroundAnchorIndex;
 
-      station = s;
+      this.carStation = s;
       latitude = l;
     }
 
-    if (this.plannerReady)
-      this.startPlanner(this.car.pose, station);
+    this.dashboard.update(controls, carVelocity, this.carStation, latitude, this.simulatedTime, this.averagePlanTime.average);
+  }
 
-    this.dashboard.update(controls, carVelocity, station, latitude, this.simulatedTime, this.averagePlanTime.average);
+  if (!this.editor.enabled && this.plannerReady) {
+    this.startPlanner(this.car.pose, this.carStation || 0);
+    this.dashboard.updatePlanTime(this.averagePlanTime.average);
   }
 
   this.frameCounter++;

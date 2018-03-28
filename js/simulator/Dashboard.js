@@ -62,6 +62,12 @@ export default class Dashboard {
     this.latitudeUnitsDom.textContent = distanceUnits;
   }
 
+  updatePlanTime(planTime) {
+    if (!this.wheelDom) return;
+
+    this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toFixed(0) : '—';
+  }
+
   update(controls, speed, station, latitude, elapsedTime, planTime) {
     if (!this.wheelDom) return;
 
@@ -107,7 +113,7 @@ export default class Dashboard {
     this.speedDom.textContent = speed.toFixed(1);
     this.stationDom.textContent = station !== null ? station.toFixed(1) : '—';
     this.latitudeDom.textContent = latitudeText;
-    this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toFixed(0) : '—';
+    this.updatePlanTime(planTime);
 
     let mins = Math.floor(elapsedTime / 60);
     let seconds = elapsedTime % 60;

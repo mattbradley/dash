@@ -12,8 +12,8 @@ export default class DynamicObstacleObject extends THREE.Object3D {
     };
 
     const heights = {
-      vehicle: 1.5,
-      cyclist: 1.5,
+      vehicle: 2.0,
+      cyclist: 1.8,
       pedestrian: 1.8
     };
 
