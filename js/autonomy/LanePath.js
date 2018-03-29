@@ -168,11 +168,13 @@ export default class LanePath {
     return [bestAnchorIndex, bestSampleIndex, bestStation, bestPrevStation];
   }
 
-  addAnchor(position) {
+  addAnchor(position, resample = true) {
     const index = this.anchors.push(position) - 1;
 
-    for (let i = index - 2; i < index; i++)
-      this.resample(i);
+    if (resample) {
+      for (let i = index - 2; i < index; i++)
+        this.resample(i);
+    }
   }
 
   updateAnchor(index, position) {
@@ -234,6 +236,11 @@ export default class LanePath {
     this.leftBoundaries[index] = leftBoundary;
     this.rightBoundaries[index] = rightBoundary;
     this.arcLengths[index] = lengths.reduce((sum, l) => sum + l, 0);
+  }
+
+  resampleAll() {
+    for (let i = 0; i < this.anchors.length; i++)
+      this.resample(i);
   }
 
   anchorsForSplineIndex(index) {

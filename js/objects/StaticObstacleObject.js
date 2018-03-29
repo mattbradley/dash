@@ -1,4 +1,5 @@
 const COLOR = 0xdd0000;
+const HEIGHT = 5;
 
 export default class StaticObstacleObject extends THREE.Object3D {
   constructor(staticObstacle) {
@@ -13,7 +14,7 @@ export default class StaticObstacleObject extends THREE.Object3D {
     this.add(mesh2D);
 
     const mesh3D = new THREE.Mesh(
-      new THREE.BoxBufferGeometry(staticObstacle.width, 1, staticObstacle.height),
+      new THREE.BoxBufferGeometry(staticObstacle.width, HEIGHT, staticObstacle.height),
       new THREE.MeshToonMaterial({ color: COLOR, transparent: true, opacity: 0.5 })
     );
     mesh3D.position.setY(0.5);
@@ -21,6 +22,6 @@ export default class StaticObstacleObject extends THREE.Object3D {
     this.add(mesh3D);
 
     this.rotation.y = -staticObstacle.rot;
-    this.position.set(staticObstacle.pos.x, 0, staticObstacle.pos.y);
+    this.position.set(staticObstacle.pos.x, HEIGHT / 2, staticObstacle.pos.y);
   }
 }

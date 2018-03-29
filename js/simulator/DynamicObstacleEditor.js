@@ -46,6 +46,21 @@ export default class DynamicObstacleEditor {
     return obstacles;
   }
 
+  loadJSON(json) {
+    this.clearDynamicObstacles();
+
+    json.forEach(o => {
+      const form = this.addDynamicObstacle();
+
+      form['sPos'].value = o.p[0];
+      form['lPos'].value = o.p[1];
+      form['sVel'].value = o.v[0];
+      form['lVel'].value = o.v[1];
+      form['parallel'].checked = !!o.l;
+      form['type'].selectedIndex = o.t;
+    });
+  }
+
   collectDynamicObstacles() {
     const forms = this.formsContainer.getElementsByTagName('form');
     const obstacles = [];
@@ -73,6 +88,8 @@ export default class DynamicObstacleEditor {
 
     this.formsContainer.appendChild(form);
     this.statsDynamicObstacles.textContent = this.formsContainer.getElementsByTagName('form').length;
+
+    return form;
   }
 
   removeDynamicObstacle(form) {
@@ -88,7 +105,7 @@ export default class DynamicObstacleEditor {
 
   reindexForms() {
     const forms = this.formsContainer.getElementsByTagName('form');
-    
+
     for (let i = 0; i < forms.length; i++) {
       forms[i].getElementsByClassName('dynamic-obstacle-index')[0].textContent = i + 1;
     }

@@ -134,16 +134,38 @@ export default class Editor {
     return this.dynamicObstacleEditor.collectDynamicObstacles();
   }
 
-  stringify() {
+  toJSON() {
     const trunc = n => +n.toFixed(5);
 
     const json = {
-      r: Array.prototype.concat.apply([], this.lanePath.anchors.map(a => [trunc(a.x), trunc(a.y)])),
+      p: Array.prototype.concat.apply([], this.lanePath.anchors.map(a => [trunc(a.x), trunc(a.y)])),
       s: this.staticObstacles.map(o => o.toJSON()),
       d: this.dynamicObstacleEditor.toJSON()
     };
 
-    return JSON.stringify(json);
+    return json;
+  }
+
+  loadJSON(json) {
+    if (!json.p || json.p.length % 2 != 0) {
+      throw new Error('Incomplete lane path.');
+    }
+
+    this.clearAll();
+
+    this.lanePath = new LanePath();
+    for (let i = 0; i < json.p.length; i += 2) {
+      this.addPoint(new THREE.Vector2(json.p[i], json.p[i + 1]), false);
+    }
+    this.lanePath.resampleAll();
+    this.rebuildPathGeometry();
+
+    json.s.forEach(o => {
+      const staticObstacle = StaticObstacle.fromJSON(o);
+      this.addStaticObstacle(new THREE.Vector3(staticObstacle.pos.x, 0, staticObstacle.pos.y), staticObstacle.width, staticObstacle.height, staticObstacle.rot)
+    });
+
+    this.dynamicObstacleEditor.loadJSON(json.d);
   }
 
   update() {
@@ -257,12 +279,13 @@ export default class Editor {
     }
   }
 
-  addStaticObstacle(center, width, height) {
+  addStaticObstacle(center, width, height, rotation = 0) {
     const obstacle = new THREE.Mesh(
       new THREE.PlaneGeometry(width, height),
       new THREE.MeshBasicMaterial({ color: NORMAL_STATIC_OBSTACLE_COLOR, depthTest: false, transparent: true, opacity: NORMAL_OPACITY })
     );
     obstacle.rotation.x = -Math.PI / 2;
+    obstacle.rotation.z = -Math.wrapAngle(rotation);
     obstacle.position.copy(center);
     obstacle.userData = { index: this.obstacleIndex++, width: width, height: height };
 
@@ -309,7 +332,7 @@ export default class Editor {
     this.statsRoadLength.textContent = this.lanePath.arcLength.toFixed(1);
   }
 
-  addPoint(pos) {
+  addPoint(pos, resample = true) {
     const point = new THREE.Mesh(
       new THREE.CircleGeometry(1, 32),
       new THREE.MeshBasicMaterial({
@@ -323,7 +346,7 @@ export default class Editor {
     point.position.set(pos.x, 0, pos.y);
     point.userData = { index: this.pointIndex++ };
 
-    this.lanePath.addAnchor(pos);
+    this.lanePath.addAnchor(pos, resample);
     this.pointGroup.add(point);
 
     return point;

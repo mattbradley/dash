@@ -161,7 +161,6 @@ export default class Simulator {
     this._resetFreeCamera();
 
     this.topDownCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.topDownCamera.layers.enable(2);
     this.topDownCamera.position.set(0, 50, 0);
     this.topDownCamera.lookAt(0, 0, 0);
     this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
@@ -425,8 +424,10 @@ export default class Simulator {
     this.switchTo3DButton.classList.remove('is-selected');
 
     this.chaseCamera.layers.enable(2);
+    this.topDownCamera.layers.enable(2);
     this.freeCamera.layers.enable(2);
     this.chaseCamera.layers.disable(3);
+    this.topDownCamera.layers.disable(3);
     this.freeCamera.layers.disable(3);
   }
 
@@ -437,8 +438,10 @@ export default class Simulator {
     this.switchTo2DButton.classList.remove('is-selected');
 
     this.chaseCamera.layers.enable(3);
+    this.topDownCamera.layers.enable(3);
     this.freeCamera.layers.enable(3);
     this.chaseCamera.layers.disable(2);
+    this.topDownCamera.layers.disable(2);
     this.freeCamera.layers.disable(2);
   }
 
