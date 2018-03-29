@@ -20,9 +20,9 @@ function init() {
     pathPlanner.config = config;
 
     try {
-      const { path, fromVehicleSegment, fromVehicleParams, latticeStartStation } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles);
+      const { path, fromVehicleSegment, fromVehicleParams, latticeStartStation, dynamicObstacleGrid } = pathPlanner.plan(vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles);
 
-      self.postMessage({ path, fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config });
+      self.postMessage({ path, fromVehicleSegment, fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config, dynamicObstacleGrid });
     } catch (error) {
       console.log('PathPlannerWorker error');
       console.log(error);

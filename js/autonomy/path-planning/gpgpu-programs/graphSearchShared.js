@@ -45,7 +45,7 @@ float sampleDynamicCost(vec4 xytk, float time, float velocity, float acceleratio
 
   float obstacleCost = texture(slDynamicObstacleGrid, vec3(slTexCoords, dynamicFrame)).r;
 
-  if (obstacleCost >= 0.75) return -1.0; // Infinite cost
+  if (obstacleCost > 0.75) return -1.0; // Infinite cost
 
   return step(0.25, obstacleCost) * obstacleHazardCost;
 }

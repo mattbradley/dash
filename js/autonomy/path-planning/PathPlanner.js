@@ -65,7 +65,9 @@ export default class PathPlanner {
   }
 
   plan(vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles) {
-    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil(this.config.spatialHorizon / this.config.centerlineStationInterval) + 1, this.config.centerlineStationInterval);
+    const latticeStationInterval = this._latticeStationInterval();
+
+    const centerlineRaw = lanePath.sampleStations(vehicleStation, Math.ceil((this.config.spatialHorizon + latticeStationInterval) / this.config.centerlineStationInterval) + 1, this.config.centerlineStationInterval);
 
     // Transform all centerline points into vehicle frame
     const vehicleXform = vehicleTransform(vehiclePose);
@@ -93,13 +95,13 @@ export default class PathPlanner {
     const xyWidth = Math.ceil((diff.x + this.config.gridMargin * 2) / this.config.xyGridCellSize);
     const xyHeight = Math.ceil((diff.y + this.config.gridMargin * 2) / this.config.xyGridCellSize);
 
+    const stationWidth = this.config.spatialHorizon + latticeStationInterval * 2;
     const slCenterPoint = new THREE.Vector2(this.config.spatialHorizon / 2, 0);
 
     // Sizes of the sl grids (in pixels, not meters)
-    const slWidth = Math.ceil(this.config.spatialHorizon / this.config.slGridCellSize);
+    const slWidth = Math.ceil(stationWidth / this.config.slGridCellSize);
     const slHeight = Math.ceil((this.config.roadWidth + this.config.gridMargin * 2) / this.config.slGridCellSize);
 
-    const latticeStationInterval = this._latticeStationInterval();
     let startStation;
 
     if (this.previousStartStation === null || vehicleStation + latticeStationInterval / 2 > this.previousStartStation) {
@@ -120,7 +122,7 @@ export default class PathPlanner {
       xyObstacleGrid.update(this.config, xyWidth, xyHeight, xyCenterPoint, vehicleXform, staticObstacles),
       slObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, xyCenterPoint),
       ...slObstacleGridDilation.update(this.config, slWidth, slHeight),
-      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, startStation, startTime, dynamicFrameTime, dynamicObstacles),
+      slDynamicObstacleGrid.update(this.config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles),
       xyslMap.update(this.config, xyWidth, xyHeight, xyCenterPoint),
       ...optimizeCubicPaths.update(this.config, vehiclePose),
       optimizeQuinticPaths.update(this.config, vehiclePose),
@@ -223,7 +225,8 @@ export default class PathPlanner {
       path: bestTrajectory,
       fromVehicleSegment: fromVehicleSegment,
       fromVehicleParams: fromVehicleParams,
-      latticeStartStation: this.previousStartStation
+      latticeStartStation: this.previousStartStation,
+      dynamicObstacleGrid: { data: this.gpgpu._dynamicObstacleGrid, width: slWidth, height: slHeight }
     };
   }
 

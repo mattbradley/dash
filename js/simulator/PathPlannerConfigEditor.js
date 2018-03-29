@@ -36,7 +36,7 @@ const defaultConfig = {
   hazardDilationL: 1, // meters
 
   dynamicHazardDilationS: 24,
-  dynamicHazardDilationL: 1.5,
+  dynamicHazardDilationL: 1,
 
   obstacleHazardCost: 200,
 

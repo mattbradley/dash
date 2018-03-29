@@ -14,6 +14,7 @@ export default class DynamicObstacle {
     this.type = type;
     this.startPos = startPos;
     this.velocity = velocity;
+    this.parallel = parallel;
 
     switch (type) {
         case 'cyclist':

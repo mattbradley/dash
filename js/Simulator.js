@@ -456,7 +456,7 @@ export default class Simulator {
     let predictedStation = station;
     let startTime = this.simulatedTime;
 
-    if (!this.plannerReset && this.autonomousCarController && this.carControllerMode == 'autonomous') {
+    if (!this.plannerReset && !this.paused && this.autonomousCarController && this.carControllerMode == 'autonomous') {
       const latency = this.averagePlanTime.average * this.fps * FRAME_TIMESTEP;
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, latency);
       let [predictedStation] = this.editor.lanePath.stationLatitudeFromPosition(predictedPose.pos, this.aroundAnchorIndex);
@@ -483,7 +483,7 @@ export default class Simulator {
   receivePlannedPath(event) {
     if (this.editor.enabled) return;
 
-    const { fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config } = event.data;
+    const { fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config, dynamicObstacleGrid } = event.data;
     let { path, fromVehicleSegment } = event.data;
 
     this.averagePlanTime.addSample((performance.now() - this.lastPlanTime) / 1000);
@@ -508,6 +508,23 @@ export default class Simulator {
         this.plannedPathGroup.add(circle);
       });
     });
+
+    const dynamicGridTex = new THREE.DataTexture(dynamicObstacleGrid.data, dynamicObstacleGrid.width, dynamicObstacleGrid.height, THREE.RGBAFormat, THREE.FloatType);
+    dynamicGridTex.flipY = true;
+    dynamicGridTex.needsUpdate = true;
+
+    const [gridStart] = this.editor.lanePath.sampleStations(vehicleStation, 1, 0);
+    if (gridStart) {
+      const dynamicGridGeom = new THREE.PlaneGeometry(dynamicObstacleGrid.width * config.slGridCellSize, dynamicObstacleGrid.height * config.slGridCellSize);
+      const dynamicGridMat = new THREE.MeshBasicMaterial({ map: dynamicGridTex, depthTest: false, transparent: true, opacity: 0.5 });
+      const dynamicGridObj = new THREE.Mesh(dynamicGridGeom, dynamicGridMat);
+      dynamicGridObj.rotation.x = -Math.PI / 2;
+      dynamicGridObj.rotation.z = -gridStart.rot;
+      const offset = THREE.Vector2.fromAngle(gridStart.rot).multiplyScalar(dynamicObstacleGrid.width * config.slGridCellSize / 2 - config.spatialHorizon / config.lattice.numStations);
+      dynamicGridObj.position.set(gridStart.pos.x + offset.x, 0, gridStart.pos.y + offset.y);
+
+      this.plannedPathGroup.add(dynamicGridObj);
+    }
 
     if (path === null) {
       this.autonomousCarController = null;

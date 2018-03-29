@@ -23,7 +23,9 @@ export default {
       kernel: OBSTACLE_KERNEL,
       vertexShader: OBSTACLE_VERTEX_SHADER,
       output: { name: 'xyObstacleGrid' },
-      draw: (gl, program) => {
+      draw: (gpgpu, program) => {
+        const gl = gpgpu.gl;
+
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 

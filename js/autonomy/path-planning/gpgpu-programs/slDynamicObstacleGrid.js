@@ -32,7 +32,9 @@ export default {
       kernel: DYNAMIC_OBSTACLE_KERNEL,
       vertexShader: DYNAMIC_OBSTACLE_VERTEX_SHADER,
       output: { name: 'slDynamicObstacleGrid', textureType: '2DArray', depth: numDynamicFrames },
-      draw: (gl, program) => {
+      draw: (gpgpu, program) => {
+        const gl = gpgpu.gl;
+
         gl.enable(gl.DEPTH_TEST);
 
         const renderbuffer = gl.createRenderbuffer();
@@ -62,6 +64,12 @@ export default {
 
             gl.drawArrays(gl.TRIANGLES, 0, obstacleVertices[frame].length / 3);
 
+            if (frame == 0) {
+              const obstacleGrid = new Float32Array(program.inputWidth * program.inputHeight * 4);
+              gl.readPixels(0, 0, program.inputWidth, program.inputHeight, gl.RGBA, gl.FLOAT, obstacleGrid);
+              gpgpu._dynamicObstacleGrid = obstacleGrid;
+            }
+
             gl.deleteBuffer(buf);
           }
         }
@@ -73,7 +81,7 @@ export default {
     };
   },
 
-  update(config, slWidth, slHeight, slCenterPoint, startStation, startTime, dynamicFrameTime, dynamicObstacles) {
+  update(config, slWidth, slHeight, slCenterPoint, vehicleStation, startTime, dynamicFrameTime, dynamicObstacles) {
     obstacleVertices = [];
 
     let time = startTime;
@@ -85,7 +93,7 @@ export default {
 
     const translate = new THREE.Matrix3();
     translate.set(
-      1, 0, -slCenterPoint.x - startStation,
+      1, 0, -slCenterPoint.x - vehicleStation,
       0, 1, -slCenterPoint.y,
       0, 0, 1
     );

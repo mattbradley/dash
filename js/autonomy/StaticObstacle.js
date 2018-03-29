@@ -1,6 +1,11 @@
 export default class StaticObstacle {
   static hydrate(obj) {
     Object.setPrototypeOf(obj, StaticObstacle.prototype);
+    Object.setPrototypeOf(obj.pos, THREE.Vector2.prototype);
+  }
+
+  static fromJSON(json) {
+    return new StaticObstacle(new THREE.Vector2(json.p[0], json.p[1]), json.r, json.w, json.h);
   }
 
   constructor(pos, rot, width, height) {
@@ -10,6 +15,17 @@ export default class StaticObstacle {
     this.height = height;
 
     this.updateVertices();
+  }
+
+  toJSON() {
+    const trunc = n => +n.toFixed(5);
+
+    return {
+      p: [trunc(this.pos.x), trunc(this.pos.y)],
+      r: trunc(this.rot),
+      w: trunc(this.width),
+      h: trunc(this.height)
+    };
   }
 
   updateVertices() {

@@ -27,3 +27,4 @@ TODO
 [x] Max top-down zoom out
 [x] Try to add offset to obstacle detection (obstacles are dilated from the center of the vehicle, but the rear axle is the point that is checked for collision costs)
 [ ] Help dialogs/instructions
+[ ] Fix memory leaks with geometry/material/texture disposal

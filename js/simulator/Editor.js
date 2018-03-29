@@ -82,9 +82,6 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0x004488),
         lineWidth: 8,
-        //depthTest: false,
-        //transparent: true,
-        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
         sizeAttenuation: false,
         near: camera.near,
@@ -100,9 +97,6 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        //depthTest: false,
-        //transparent: true,
-        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
       })
     );
@@ -115,9 +109,6 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        //depthTest: false,
-        //transparent: true,
-        //opacity: NORMAL_OPACITY,
         resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
       })
     );
@@ -141,6 +132,18 @@ export default class Editor {
 
   get dynamicObstacles() {
     return this.dynamicObstacleEditor.collectDynamicObstacles();
+  }
+
+  stringify() {
+    const trunc = n => +n.toFixed(5);
+
+    const json = {
+      r: Array.prototype.concat.apply([], this.lanePath.anchors.map(a => [trunc(a.x), trunc(a.y)])),
+      s: this.staticObstacles.map(o => o.toJSON()),
+      d: this.dynamicObstacleEditor.toJSON()
+    };
+
+    return JSON.stringify(json);
   }
 
   update() {

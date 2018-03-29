@@ -18,6 +18,34 @@ export default class DynamicObstacleEditor {
     this.editorDom.classList.add('is-hidden');
   }
 
+  toJSON() {
+    const forms = this.formsContainer.getElementsByTagName('form');
+    const obstacles = [];
+
+    for (let i = 0; i < forms.length; i++) {
+      const formData = new FormData(forms[i]);
+      const params = { parallel: false };
+
+      for (const [k, v] of formData.entries())
+        params[k] = v;
+
+      let type = 0;
+      if (params.type == 'cyclist')
+        type = 1;
+      else if (params.type == 'pedestrian')
+        type = 2;
+
+      obstacles.push({
+        p: [params.sPos, params.lPos],
+        v: [params.sVel, params.lVel],
+        l: !!params.parallel ? 1 : 0,
+        t: type
+      });
+    }
+
+    return obstacles;
+  }
+
   collectDynamicObstacles() {
     const forms = this.formsContainer.getElementsByTagName('form');
     const obstacles = [];
