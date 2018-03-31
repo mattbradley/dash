@@ -65,7 +65,7 @@ export default class Dashboard {
   updatePlanTime(planTime) {
     if (!this.wheelDom) return;
 
-    this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toFixed(0) : '—';
+    this.planTimeDom.textContent = planTime !== null ? (planTime * 1000).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
   }
 
   update(controls, speed, station, latitude, elapsedTime, planTime) {
@@ -111,7 +111,7 @@ export default class Dashboard {
     if (latitudeText == '-0.00') latitudeText = '0.00';
 
     this.speedDom.textContent = speed.toFixed(1);
-    this.stationDom.textContent = station !== null ? station.toFixed(1) : '—';
+    this.stationDom.textContent = station !== null ? station.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—';
     this.latitudeDom.textContent = latitudeText;
     this.updatePlanTime(planTime);
 

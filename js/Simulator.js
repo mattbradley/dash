@@ -53,7 +53,8 @@ export default class Simulator {
 
     this.editor = new Editor(this.renderer.domElement, this.editorCamera, this.scene);
 
-    const map = new MapObject();
+    const geolocation = null;//[33.523900, -111.908756];
+    const map = new MapObject(geolocation);
     this.scene.add(map);
 
     this.carObject = new CarObject(this.car);
@@ -101,7 +102,7 @@ export default class Simulator {
     this.autonomousModeButton.addEventListener('click', this.enableAutonomousMode.bind(this));
 
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
-    document.getElementById('editor-save').addEventListener('click', this.finalizeEditor.bind(this));
+    document.getElementById('editor-finalize').addEventListener('click', this.finalizeEditor.bind(this));
 
     this.scenarioPlayButton = document.getElementById('scenario-play');
     this.scenarioPlayButton.addEventListener('click', this.playScenario.bind(this));
@@ -261,11 +262,7 @@ export default class Simulator {
       const rot = Math.atan2(dir.y, dir.x);
       this.car.setPose(pos.x, pos.y, rot);
 
-      this.staticObstacles = this.editor.staticObstacles;
-      this.recreateStaticObstacleObjects();
-
       this.dynamicObstacles = this.editor.dynamicObstacles;
-      this.recreateDynamicObstacleObjects();
 
       this.autonomousCarController = null;
 
@@ -276,7 +273,13 @@ export default class Simulator {
       this.plannerReset = true;
       this.simulatedTime = 0;
       this.carStation = 0;
+    } else {
+      this.dynamicObstacles = [];
     }
+
+    this.staticObstacles = this.editor.staticObstacles;
+    this.recreateStaticObstacleObjects();
+    this.recreateDynamicObstacleObjects();
 
     this.dashboard.update({ steer: 0, brake: 0, gas: 0 }, 0, null, null, 0, this.averagePlanTime.average);
 
@@ -512,21 +515,23 @@ export default class Simulator {
       });
     });
 
-    const dynamicGridTex = new THREE.DataTexture(dynamicObstacleGrid.data, dynamicObstacleGrid.width, dynamicObstacleGrid.height, THREE.RGBAFormat, THREE.FloatType);
-    dynamicGridTex.flipY = true;
-    dynamicGridTex.needsUpdate = true;
+    if (dynamicObstacleGrid) {
+      const dynamicGridTex = new THREE.DataTexture(dynamicObstacleGrid.data, dynamicObstacleGrid.width, dynamicObstacleGrid.height, THREE.RGBAFormat, THREE.FloatType);
+      dynamicGridTex.flipY = true;
+      dynamicGridTex.needsUpdate = true;
 
-    const [gridStart] = this.editor.lanePath.sampleStations(vehicleStation, 1, 0);
-    if (gridStart) {
-      const dynamicGridGeom = new THREE.PlaneGeometry(dynamicObstacleGrid.width * config.slGridCellSize, dynamicObstacleGrid.height * config.slGridCellSize);
-      const dynamicGridMat = new THREE.MeshBasicMaterial({ map: dynamicGridTex, depthTest: false, transparent: true, opacity: 0.5 });
-      const dynamicGridObj = new THREE.Mesh(dynamicGridGeom, dynamicGridMat);
-      dynamicGridObj.rotation.x = -Math.PI / 2;
-      dynamicGridObj.rotation.z = -gridStart.rot;
-      const offset = THREE.Vector2.fromAngle(gridStart.rot).multiplyScalar(dynamicObstacleGrid.width * config.slGridCellSize / 2 - config.spatialHorizon / config.lattice.numStations);
-      dynamicGridObj.position.set(gridStart.pos.x + offset.x, 0, gridStart.pos.y + offset.y);
+      const [gridStart] = this.editor.lanePath.sampleStations(vehicleStation, 1, 0);
+      if (gridStart) {
+        const dynamicGridGeom = new THREE.PlaneGeometry(dynamicObstacleGrid.width * config.slGridCellSize, dynamicObstacleGrid.height * config.slGridCellSize);
+        const dynamicGridMat = new THREE.MeshBasicMaterial({ map: dynamicGridTex, depthTest: false, transparent: true, opacity: 0.5 });
+        const dynamicGridObj = new THREE.Mesh(dynamicGridGeom, dynamicGridMat);
+        dynamicGridObj.rotation.x = -Math.PI / 2;
+        dynamicGridObj.rotation.z = -gridStart.rot;
+        const offset = THREE.Vector2.fromAngle(gridStart.rot).multiplyScalar(dynamicObstacleGrid.width * config.slGridCellSize / 2 - config.spatialHorizon / config.lattice.numStations);
+        dynamicGridObj.position.set(gridStart.pos.x + offset.x, 0, gridStart.pos.y + offset.y);
 
-      this.plannedPathGroup.add(dynamicGridObj);
+        this.plannedPathGroup.add(dynamicGridObj);
+      }
     }
 
     if (path === null) {

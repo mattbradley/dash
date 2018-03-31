@@ -1,6 +1,8 @@
 import LanePath from "../autonomy/LanePath.js";
 import StaticObstacle from "../autonomy/StaticObstacle.js";
 import DynamicObstacleEditor from "./DynamicObstacleEditor.js";
+import ScenarioManager from "./ScenarioManager.js";
+import { formatDate } from "../Helpers.js";
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 
@@ -25,6 +27,8 @@ export default class Editor {
     this.draggingPoint = null;
     this.pointIndex = 0;
     this.obstacleIndex = 0;
+    this.previousSavedName = null;
+    this.scenarioManager = new ScenarioManager(this);
 
     this.centerlineGeometry = new THREE.Geometry();
     this.leftBoundaryGeometry = new THREE.Geometry();
@@ -53,6 +57,8 @@ export default class Editor {
 
     this.statsRoadLength = document.getElementById('editor-stats-road-length');
     this.statsStaticObstacles = document.getElementById('editor-stats-static-obstacles');
+    this.scenarioNameDom = document.getElementById('editor-scenario-name');
+    this.scenarioSavedAtDom = document.getElementById('editor-scenario-saved-at');
 
     this.changeEditMode('path');
     this.removeMode = false;
@@ -73,6 +79,9 @@ export default class Editor {
     document.getElementById('editor-clear-dynamic-obstacles').addEventListener('click', this.dynamicObstacleEditor.clearDynamicObstacles.bind(this.dynamicObstacleEditor));
     document.getElementById('editor-clear-path').addEventListener('click', this.clearPoints.bind(this));
     document.getElementById('editor-clear-all').addEventListener('click', this.clearAll.bind(this));
+
+    document.getElementById('editor-save').addEventListener('click', this.saveClicked.bind(this));
+    document.getElementById('editor-load').addEventListener('click', this.loadClicked.bind(this));
 
     document.addEventListener('keydown', this.keyDown.bind(this));
     document.addEventListener('keyup', this.keyUp.bind(this));
@@ -134,20 +143,22 @@ export default class Editor {
     return this.dynamicObstacleEditor.collectDynamicObstacles();
   }
 
-  toJSON() {
+  scenarioToJSON() {
     const trunc = n => +n.toFixed(5);
 
     const json = {
       p: Array.prototype.concat.apply([], this.lanePath.anchors.map(a => [trunc(a.x), trunc(a.y)])),
       s: this.staticObstacles.map(o => o.toJSON()),
-      d: this.dynamicObstacleEditor.toJSON()
+      d: this.dynamicObstacleEditor.toJSON(),
+      l: Number(this.lanePath.arcLength.toFixed(3)),
+      v: 1
     };
 
     return json;
   }
 
   loadJSON(json) {
-    if (!json.p || json.p.length % 2 != 0) {
+    if (json.p === undefined || json.p.length % 2 != 0) {
       throw new Error('Incomplete lane path.');
     }
 
@@ -329,7 +340,7 @@ export default class Editor {
     rightBoundary.setGeometry(this.rightBoundaryGeometry);
     this.rightBoundaryObject.geometry = rightBoundary.geometry;
 
-    this.statsRoadLength.textContent = this.lanePath.arcLength.toFixed(1);
+    this.statsRoadLength.textContent = this.lanePath.arcLength.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   }
 
   addPoint(pos, resample = true) {
@@ -379,13 +390,6 @@ export default class Editor {
     this.pointIndex = 0;
 
     this.lanePath = new LanePath();
-    this.rebuildPathGeometry();
-  }
-
-  loadPoints(points) {
-    this.clearPoints();
-
-    points.forEach(p => this.addPoint(new THREE.Vector2(p.x, p.y)));
     this.rebuildPathGeometry();
   }
 
@@ -505,6 +509,40 @@ export default class Editor {
     this.draggingObstacle = null;
     this.rotatingObstacle = null;
     this.canvas.classList.remove('editor-grab', 'editor-grabbing');
+  }
+
+  updateSavedInfo(name, savedAt) {
+    this.previousSavedName = name || null;
+
+    name = name || 'Untitled';
+    savedAt = savedAt || 'Unsaved';
+
+    this.scenarioNameDom.textContent = name;
+    this.scenarioNameDom.title = name;
+    this.scenarioSavedAtDom.textContent = savedAt;
+  }
+
+  saveClicked() {
+    const name = window.prompt('Name your scenario:', this.previousSavedName || '');
+    if (name === null) return;
+    if (name === '') {
+      window.alert('The scenario name cannot be blank.');
+      return;
+    }
+
+    let [success, savedAt] = this.scenarioManager.saveScenario(name, this.scenarioToJSON(), name === this.previousSavedName);
+    const formattedSavedAt = formatDate(savedAt);
+
+    if (success) {
+      this.updateSavedInfo(name, formattedSavedAt);
+    } else if (confirm(`A scenario named "${name}" already exists, last saved ${formattedSavedAt}. Do you want to overwrite it?`)) {
+      [success, savedAt] = this.scenarioManager.saveScenario(name, this.scenarioToJSON(), true);
+      this.updateSavedInfo(name, formatDate(savedAt));
+    }
+  }
+
+  loadClicked() {
+    this.scenarioManager.showModal();
   }
 
   _dimensionsFromRect(from, to) {

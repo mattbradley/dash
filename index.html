@@ -137,6 +137,13 @@
                     </p>
                 </div>
             </div>
+            <div id="editor-scenario-info" class="gui-box edit-mode-box is-hidden has-text-right allow-user-select">
+                <div id="editor-scenario-name" class="title is-5 has-text-grey-lighter" title="Untitled">Untitled</div>
+                <div class="subtitle is-7">
+                    <span class="has-text-grey">Last Saved:</span>
+                    <span id="editor-scenario-saved-at" class="has-text-grey-lighter">Unsaved</span>
+                </div>
+            </div>
             <div class="edit-mode-box is-hidden">
                 <div id="editor-dynamic-obstacles-box" class="gui-box is-hidden">
                     <div class="is-clearfix">
@@ -172,15 +179,15 @@
             </div>
             <div id="editor-stats" class="gui-box edit-mode-box is-hidden">
                 <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
-                    Road Length:&nbsp;<strong id="editor-stats-road-length">0</strong>m
+                    Road Length:&nbsp;<b id="editor-stats-road-length">0</b>m
                 </div>
                 &nbsp;
                 <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
-                    Static Obstacles:&nbsp;<strong id="editor-stats-static-obstacles">0</strong>
+                    Static Obstacles:&nbsp;<b id="editor-stats-static-obstacles">0</b>
                 </div>
                 &nbsp;
                 <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
-                    Dynamic Obstacles:&nbsp;<strong id="editor-stats-dynamic-obstacles">0</strong>
+                    Dynamic Obstacles:&nbsp;<b id="editor-stats-dynamic-obstacles">0</b>
                 </div>
             </div>
             <div id="editor-controls" class="gui-box edit-mode-box is-hidden">
@@ -216,7 +223,17 @@
                     </div>
                     <div class="field">
                         <p class="control">
-                            <span id="editor-save" class="button is-small is-info">Done</span>
+                            <span id="editor-save" class="button is-small is-success">Save&hellip;</span>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
+                            <span id="editor-load" class="button is-small is-link">Load&hellip;</span>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
+                            <span id="editor-finalize" class="button is-small is-info">Done</span>
                         </p>
                     </div>
                 </div>
@@ -244,6 +261,37 @@
                             <span id="camera-3D" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">3D</span>
                         </div>
                     </p>
+                </div>
+            </div>
+        </div>
+        <div id="scenarios-modal" class="modal">
+            <div id="scenarios-modal-background" class="modal-background" style="background-color: transparent;"></div>
+            <div class="modal-content">
+            <div class="gui-box has-text-grey-lighter allow-user-select" style="padding: 1rem;">
+                <button id="scenarios-modal-close" class="delete is-medium is-pulled-right"></button>
+                <div class="title is-5 has-text-grey-lighter">Load Scenario</div>
+                <div id="scenarios-modal-tabs" class="tabs is-small is-toggle">
+                    <ul>
+                        <li id="scenarios-modal-saved-tab-button" class="is-active"><a>Saved Scenarios</a></li>
+                        <li id="scenarios-modal-import-tab-button"><a>Import Scenario</a></li>
+                    </ul>
+                </div>
+                <div id="scenarios-modal-saved-tab" class="scenarios-modal-tab">
+                    <div class="columns">
+                        <div id="scenarios-sort-name" class="column is-7 is-size-7 scenario-sort-button">Name</div>
+                        <div id="scenarios-sort-saved-at" class="column is-4 is-size-7 scenario-sort-button is-underlined">Saved Date</div>
+                        <div class="column is-1"></div>
+                    </div>
+                    <div id="scenarios-modal-items"></div>
+                </div>
+                <div id="scenarios-modal-import-tab" class="scenarios-modal-tab is-hidden">
+                    <div class="field" style="flex: 1; display: flex; flex-direction: column;">
+                        <div class="control" style="flex: 1; display: flex; flex-direction: column;">
+                            <textarea id="scenario-import-box" class="textarea" type="text" placeholder="Paste exported scenario code here" style="flex: 1; resize: none; border-width: 2px;"></textarea>
+                        </div>
+                        <div id="scenario-import-info" class="is-size-7 is-hidden" style="margin-top: 1rem;">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

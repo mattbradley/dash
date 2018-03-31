@@ -60,6 +60,73 @@ canvas { width: 100%; height: 100% }
     position: absolute;
 }
 
+#editor-scenario-info {
+    position: absolute;
+    top: 0;
+    right: 0;
+    max-width: 50%;
+}
+
+#editor-scenario-name {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+#scenarios-modal .columns {
+    margin-bottom: 0;
+}
+
+#scenarios-modal-items {
+    flex: 1;
+    margin-bottom: -0.75rem;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+#scenarios-modal-tabs a {
+    color: #dbdbdb;
+}
+
+#scenarios-modal-tabs a:hover {
+    color: #4a4a4a;
+}
+
+#scenarios-modal-tabs .is-active a {
+    color: #fff;
+}
+
+.scenarios-modal-tab {
+    height: calc(50vh);
+    display: flex;
+    flex-direction: column;
+}
+
+.scenario-sort-button {
+    cursor: pointer;
+}
+
+.scenario-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.scenario-item-name {
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.scenario-item-name:hover {
+    cursor: pointer;
+    color: #fff;
+    text-decoration: underline;
+}
+
+.is-underlined {
+    text-decoration: underline;
+}
+
 .editor-dynamic-obstacle-form:last-child {
     margin-bottom: 0;
 }
@@ -92,6 +159,14 @@ canvas { width: 100%; height: 100% }
     -ms-user-select: none;
     user-select: none;
     border-radius: 2px;
+}
+
+.allow-user-select {
+    -webkit-touch-callout: auto !important;
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
+    -ms-user-select: auto !important;
+    user-select: auto !important;
 }
 
 #controls {

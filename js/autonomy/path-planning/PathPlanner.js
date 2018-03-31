@@ -155,6 +155,9 @@ export default class PathPlanner {
       }
     });
 
+    this.gpgpu._graphSearchCostTable = null;
+    this.gpgpu._dynamicObstacleGrid = null;
+
     let start = performance.now();
     const outputs = this.gpgpu.run();
     const costTable = this.gpgpu._graphSearchCostTable;

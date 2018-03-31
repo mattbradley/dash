@@ -189,8 +189,7 @@ export default {
     return {
       kernel: SOLVE_STATION_KERNEL,
       output: { name: 'graphSearch' },
-      uniforms: {
-        ...SHARED_UNIFORMS,
+      uniforms: Object.assign({}, SHARED_UNIFORMS, {
         lattice: { type: 'sharedTexture' },
         costTable: { type: 'sharedTexture', textureType: '2DArray' },
         cubicPaths: { type: 'outputTexture' },
@@ -215,7 +214,7 @@ export default {
         velocityRanges: { type: 'float', length: NUM_VELOCITY_RANGES + 1 },
         timeRanges: { type: 'float', length: NUM_TIME_RANGES + 1 },
         station: { type: 'int' } // Updated in `drawProxy`
-      },
+      }),
       drawProxy: (gpgpu, program, draw) => {
         const width = NUM_ACCELERATION_PROFILES * NUM_VELOCITY_RANGES * NUM_TIME_RANGES;
         const height = program.meta.lattice.numLatitudes;
@@ -243,8 +242,7 @@ export default {
       meta: {
         lattice: config.lattice
       },
-      uniforms: {
-        ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
+      uniforms: Object.assign({}, buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime), {
         firstLatticePoint: firstLatticePoint,
         secondLatticePoint: secondLatticePoint,
         velocityVehicle: pose.velocity,
@@ -263,7 +261,7 @@ export default {
         latitudeConnectivity: config.lattice.latitudeConnectivity,
         velocityRanges: [0, config.speedLimit / 3, config.speedLimit * 2 / 3, config.speedLimit, 1000000],
         timeRanges: [0, 10, 1000000]
-      }
+      })
     };
   }
 }

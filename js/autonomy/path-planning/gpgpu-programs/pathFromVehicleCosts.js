@@ -62,8 +62,7 @@ export default {
       {
         kernel: fromVehiclePathCostsKernel('cubic'),
         output: { name: 'cubicPathFromVehicleCosts' },
-        uniforms: {
-          ...SHARED_UNIFORMS,
+        uniforms: Object.assign({}, SHARED_UNIFORMS, {
           lattice: { type: 'sharedTexture' },
           pathsFromVehicle: { type: 'outputTexture', name: 'cubicPathsFromVehicle' },
           firstLatticePoint: { type: 'int' },
@@ -74,13 +73,12 @@ export default {
           cubicPathPenalty: { type: 'float' },
           hysteresisDiscount: { type: 'float' },
           accelerationChangePenalty: { type: 'float' }
-        }
+        })
       },
       {
         kernel: fromVehiclePathCostsKernel('quintic'),
         output: { name: 'quinticPathFromVehicleCosts' },
-        uniforms: {
-          ...SHARED_UNIFORMS,
+        uniforms: Object.assign({}, SHARED_UNIFORMS, {
           lattice: { type: 'sharedTexture' },
           pathsFromVehicle: { type: 'outputTexture', name: 'quinticPathsFromVehicle' },
           firstLatticePoint: { type: 'int' },
@@ -92,7 +90,7 @@ export default {
           numAccelerations: { type: 'int' },
           hysteresisDiscount: { type: 'float' },
           accelerationChangePenalty: { type: 'float' }
-        }
+        })
       }
     ];
   },
@@ -102,8 +100,7 @@ export default {
       {
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
-        uniforms: {
-          ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
+        uniforms: Object.assign({}, buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime), {
           firstLatticePoint: firstLatticePoint,
           secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,
@@ -112,13 +109,12 @@ export default {
           cubicPathPenalty: config.cubicPathPenalty,
           hysteresisDiscount: config.hysteresisDiscount,
           accelerationChangePenalty: config.accelerationChangePenalty
-        }
+        })
       },
       {
         width: config.lattice.numLatitudes,
         height: config.lattice.stationConnectivity * NUM_ACCELERATION_PROFILES,
-        uniforms: {
-          ...buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime),
+        uniforms: Object.assign({}, buildUniformValues(config, xyCenterPoint, slCenterPoint, dynamicFrameTime), {
           firstLatticePoint: firstLatticePoint,
           secondLatticePoint: secondLatticePoint,
           velocityVehicle: pose.velocity,
@@ -128,7 +124,7 @@ export default {
           numAccelerations: NUM_ACCELERATION_PROFILES,
           hysteresisDiscount: config.hysteresisDiscount,
           accelerationChangePenalty: config.accelerationChangePenalty
-        }
+        })
       }
     ];
   }

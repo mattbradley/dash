@@ -166,7 +166,7 @@ export default class DynamicObstacleEditor {
                   <div class="field has-text-right">
                       <div class="button is-small is-danger editor-remove-dynamic-obstacle" title="Remove Dynamic Obstacle">
                           <span class="icon is-small">
-                              <i class="fas fa-trash-alt"></i>
+                              <i class="fas fa-lg fa-trash-alt"></i>
                           </span>
                       </div>
                   </div>

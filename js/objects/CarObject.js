@@ -111,9 +111,12 @@ export default class CarObject extends THREE.Object3D {
     this.rotation.y = -this.car.rotation;
 
     const wheelAngle = this.car.wheelAngle;
-    this.lfWheel2D.rotation.z = -wheelAngle;
-    this.rfWheel2D.rotation.z = -wheelAngle;
-    this.lfWheel3D.rotation.y = wheelAngle;
-    this.rfWheel3D.rotation.y = wheelAngle;
+
+    // Adding the wheels to the car object can trigger this function in some browsers
+    // before the other wheels are added, so check them first.
+    if (this.lfWheel2D) this.lfWheel2D.rotation.z = -wheelAngle;
+    if (this.rfWheel2D) this.rfWheel2D.rotation.z = -wheelAngle;
+    if (this.lfWheel3D) this.lfWheel3D.rotation.y = wheelAngle;
+    if (this.rfWheel3D) this.rfWheel3D.rotation.y = wheelAngle;
   }
 }

@@ -46,7 +46,7 @@ out vec4 kernelOut;
 uniform ivec2 kernelSize;
 `;
 
-export default class {
+export default class GPGPU {
   static alloc(size, stride) {
     if (!Number.isInteger(stride) || stride < 1 || stride > 4)
       throw new Error("Data stride must be an integer between 1 and 4.");
@@ -69,7 +69,8 @@ export default class {
     this.programs = configs.map(c => this._prepareProgram(c));
 
     for (const name in shared) {
-      const { width, height, channels, data, ...options } = shared[name];
+      const options = shared[name];
+      const { width, height, channels, data } = options;
       this.sharedTextures[name] = this._createTexture(data, width, height, channels, options);
     }
   }
@@ -78,7 +79,8 @@ export default class {
     this.sharedTextures = {};
 
     for (const name in shared) {
-      const { width, height, channels, data, ...options } = shared[name];
+      const options = shared[name];
+      const { width, height, channels, data } = options;
       if (this.sharedTextures[name]) this.gl.deleteTexture(this.sharedTextures[name]);
       this.sharedTextures[name] = this._createTexture(data, width, height, channels, options);
     }
@@ -169,9 +171,9 @@ export default class {
         if (typeof(value) != 'object' || value.type != 'texture')
           throw new Error(`Expected texture type for uniform ${uniformName}.`);
 
-        const { width, height, channels, data, ...options } = uniform;
+        const { width, height, channels, data } = uniform;
         if (program.uniformTextures[uniformName].texture) this.gl.deleteTexture(program.uniformTextures[uniformName].texture);
-        program.uniformTextures[uniformName].texture = this._createTexture(data, width, height, channels, options);
+        program.uniformTextures[uniformName].texture = this._createTexture(data, width, height, channels, uniform);
       } else {
         throw new Error(`The uniform ${uniformName} does not exist in this program.`);
       }
@@ -311,15 +313,15 @@ export default class {
         };
         fragmentShaderConfig += `uniform ${type} ${uniformName};\n`;
       } else {
-        const { type, width, height, channels, data, value, length, name, ...options } = uniform;
+        const { type, width, height, channels, data, value, length, name } = uniform;
 
         if (type == 'texture' || type == 'outputTexture' || type == 'sharedTexture') {
           let target, type;
 
-          if (options.textureType == '3D') {
+          if (uniform.textureType == '3D') {
             target = this.gl.TEXTURE_3D;
             type = 'sampler3D';
-          } else if (options.textureType == '2DArray') {
+          } else if (uniform.textureType == '2DArray') {
             target = this.gl.TEXTURE_2D_ARRAY;
             type = 'sampler2DArray';
           } else {
@@ -328,7 +330,7 @@ export default class {
           }
 
           if (type == 'texture') {
-            program.uniformTextures[uniformName] = { target, texture: data ? this._createTexture(data, width, height, channels, options) : null };
+            program.uniformTextures[uniformName] = { target, texture: data ? this._createTexture(data, width, height, channels, uniform) : null };
           } else {
             program.uniformTextures[uniformName] = { target, texture: null, name: name || uniformName };
           }

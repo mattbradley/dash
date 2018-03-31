@@ -6,7 +6,13 @@ import StaticObstacle from "../js/autonomy/StaticObstacle.js";
 import DynamicObstacle from "../js/autonomy/DynamicObstacle.js";
 
 function init() {
-  const pathPlanner = new PathPlanner();
+  let pathPlanner;
+  try {
+    pathPlanner = new PathPlanner();
+  } catch (e) {
+    console.log(e);
+    return;
+  }
 
   self.onmessage = function(event) {
     const { config, vehiclePose, vehicleStation, lanePath, startTime, staticObstacles, dynamicObstacles, reset } = event.data;
