@@ -233,6 +233,11 @@
                     </div>
                     <div class="field">
                         <p class="control">
+                            <span id="editor-share" class="button is-small is-warning">Share&hellip;</span>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
                             <span id="editor-finalize" class="button is-small is-info">Done</span>
                         </p>
                     </div>
@@ -264,37 +269,80 @@
                 </div>
             </div>
         </div>
+
         <div id="scenarios-modal" class="modal">
             <div id="scenarios-modal-background" class="modal-background" style="background-color: transparent;"></div>
             <div class="modal-content">
-            <div class="gui-box has-text-grey-lighter allow-user-select" style="padding: 1rem;">
-                <button id="scenarios-modal-close" class="delete is-medium is-pulled-right"></button>
-                <div class="title is-5 has-text-grey-lighter">Load Scenario</div>
-                <div id="scenarios-modal-tabs" class="tabs is-small is-toggle">
-                    <ul>
-                        <li id="scenarios-modal-saved-tab-button" class="is-active"><a>Saved Scenarios</a></li>
-                        <li id="scenarios-modal-import-tab-button"><a>Import Scenario</a></li>
-                    </ul>
-                </div>
-                <div id="scenarios-modal-saved-tab" class="scenarios-modal-tab">
-                    <div class="columns">
-                        <div id="scenarios-sort-name" class="column is-7 is-size-7 scenario-sort-button">Name</div>
-                        <div id="scenarios-sort-saved-at" class="column is-4 is-size-7 scenario-sort-button is-underlined">Saved Date</div>
-                        <div class="column is-1"></div>
+                <div class="gui-box has-text-grey-lighter allow-user-select" style="padding: 1rem;">
+                    <button id="scenarios-modal-close" class="delete is-medium is-pulled-right"></button>
+                    <div class="title is-5 has-text-grey-lighter">Load Scenario</div>
+                    <div id="scenarios-modal-tabs" class="tabs is-small is-toggle">
+                        <ul>
+                            <li id="scenarios-modal-saved-tab-button" class="is-active"><a>Saved Scenarios</a></li>
+                            <li id="scenarios-modal-import-tab-button"><a>Import Scenario</a></li>
+                        </ul>
                     </div>
-                    <div id="scenarios-modal-items"></div>
-                </div>
-                <div id="scenarios-modal-import-tab" class="scenarios-modal-tab is-hidden">
-                    <div class="field" style="flex: 1; display: flex; flex-direction: column;">
-                        <div class="control" style="flex: 1; display: flex; flex-direction: column;">
-                            <textarea id="scenario-import-box" class="textarea" type="text" placeholder="Paste exported scenario code here" style="flex: 1; resize: none; border-width: 2px;"></textarea>
+                    <div id="scenarios-modal-saved-tab" class="scenarios-modal-tab">
+                        <div class="columns">
+                            <div id="scenarios-sort-name" class="column is-7 is-size-7 scenario-sort-button">Name</div>
+                            <div id="scenarios-sort-saved-at" class="column is-4 is-size-7 scenario-sort-button is-underlined">Saved Date</div>
+                            <div class="column is-1"></div>
                         </div>
-                        <div id="scenario-import-info" class="is-size-7 is-hidden" style="margin-top: 1rem;">
+                        <div id="scenarios-modal-items"></div>
+                    </div>
+                    <div id="scenarios-modal-import-tab" class="scenarios-modal-tab is-hidden">
+                        <div class="field" style="flex: 1; display: flex; flex-direction: column;">
+                            <div class="control" style="flex: 1; display: flex; flex-direction: column;">
+                                <textarea id="scenario-import-box" class="textarea" type="text" placeholder="Paste exported scenario code here" style="flex: 1; resize: none; border-width: 2px;"></textarea>
+                            </div>
+                            <div id="scenario-import-info" class="is-size-7 is-hidden" style="margin-top: 1rem;"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div id="scenario-share-modal" class="modal">
+            <div id="scenario-share-modal-background" class="modal-background" style="background-color: transparent;"></div>
+            <div class="modal-content">
+                <div class="gui-box has-text-grey-lighter" style="padding: 1rem;">
+                    <button id="scenario-share-modal-close" class="delete is-medium is-pulled-right"></button>
+                    <div class="title is-5 has-text-grey-lighter">Share Scenario</div>
+                    <div>This link will automatically start the scenario when loaded:</div>
+                    <div class="field has-addons">
+                        <div class="control has-icons-left is-expanded">
+                            <input id="scenario-share-link" class="input" type="text" readonly value="http://google.com" />
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </div>
+                        <div class="control">
+                            <div id="scenario-share-clipboard" class="button">
+                                <div>
+                                    <span id="scenario-share-clipboard-icon" class="icon is-small">
+                                        <i class="fas fa-clipboard"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span id="scenario-share-clipboard-success-icon" class="icon is-small is-hidden">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        This code can be imported using the Load menu:
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <textarea id="scenario-share-box" class="textarea" type="text" readonly style="height: calc(40vh); resize: none;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script defer src="vendor/fontawesome-all.js"></script>
         <script src="vendor/three.js"></script>
         <script src="vendor/THREE.MeshLine.js"></script>

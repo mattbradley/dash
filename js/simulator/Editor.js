@@ -2,6 +2,7 @@ import LanePath from "../autonomy/LanePath.js";
 import StaticObstacle from "../autonomy/StaticObstacle.js";
 import DynamicObstacleEditor from "./DynamicObstacleEditor.js";
 import ScenarioManager from "./ScenarioManager.js";
+import ShareManager from "./ShareManager.js";
 import { formatDate } from "../Helpers.js";
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0));
@@ -29,6 +30,7 @@ export default class Editor {
     this.obstacleIndex = 0;
     this.previousSavedName = null;
     this.scenarioManager = new ScenarioManager(this);
+    this.shareManager = new ShareManager();
 
     this.centerlineGeometry = new THREE.Geometry();
     this.leftBoundaryGeometry = new THREE.Geometry();
@@ -82,16 +84,18 @@ export default class Editor {
 
     document.getElementById('editor-save').addEventListener('click', this.saveClicked.bind(this));
     document.getElementById('editor-load').addEventListener('click', this.loadClicked.bind(this));
+    document.getElementById('editor-share').addEventListener('click', this.shareClicked.bind(this));
 
     document.addEventListener('keydown', this.keyDown.bind(this));
     document.addEventListener('keyup', this.keyUp.bind(this));
 
+    const resolution = new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight);
     this.centerlineObject = new THREE.Mesh(
       new THREE.Geometry(),
       new MeshLineMaterial({
         color: new THREE.Color(0x004488),
         lineWidth: 8,
-        resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
+        resolution: resolution,
         sizeAttenuation: false,
         near: camera.near,
         far: camera.far
@@ -106,7 +110,7 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
+        resolution: resolution
       })
     );
     this.leftBoundaryObject.rotation.x = Math.PI / 2;
@@ -118,12 +122,23 @@ export default class Editor {
       new MeshLineMaterial({
         color: new THREE.Color(0xff8800),
         lineWidth: 0.15,
-        resolution: new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight)
+        resolution: resolution
       })
     );
     this.rightBoundaryObject.rotation.x = Math.PI / 2;
     this.rightBoundaryObject.renderOrder = 1;
     this.group.add(this.rightBoundaryObject);
+
+    window.addEventListener('resize', () => {
+      // Use setTimeout to queue the resolution update after the canvas is reflowed.
+      // This gets around some weirdness noticed when opening and closing Chrome Developer Tools.
+      setTimeout(() => {
+        const resolution = new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight);
+        this.centerlineObject.material.uniforms.resolution.value = resolution;
+        this.leftBoundaryObject.material.uniforms.resolution.value = resolution;
+        this.rightBoundaryObject.material.uniforms.resolution.value = resolution;
+      }, 0);
+    });
   }
 
   get enabled() {
@@ -543,6 +558,10 @@ export default class Editor {
 
   loadClicked() {
     this.scenarioManager.showModal();
+  }
+
+  shareClicked() {
+    this.shareManager.showModal(this.scenarioToJSON());
   }
 
   _dimensionsFromRect(from, to) {
