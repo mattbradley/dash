@@ -79,27 +79,27 @@
                 <div id="config-box-content" class="is-hidden">
                     <div class="is-clearfix">
                         <div class="field is-grouped is-pulled-right">
-                            <p class="control">
+                            <div class="control">
                                 <button id="restore-defaults-config-button" class="button is-small is-danger" title="Restore Defaults">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-undo-alt"></i>
                                     </span>
                                 </button>
-                            </p>
-                            <p class="control">
+                            </div>
+                            <div class="control">
                                 <button id="save-config-button" class="button is-small is-success" title="Save Config">
                                     <span class="icon is-medium">
                                         <i class="far fa-lg fa-save"></i>
                                     </span>
                                 </button>
-                            </p>
-                            <p class="control">
+                            </div>
+                            <div class="control">
                                 <button id="hide-config-button" class="button is-small is-dark is-outlined is-inverted" title="Close">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-times"></i>
                                     </span>
                                 </button>
-                            </p>
+                            </div>
                         </div>
                         <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
                     </div>
@@ -115,7 +115,7 @@
                     </span>
                 </div>
                 <div class="field is-grouped" style="padding-left: 8px;">
-                    <p class="control">
+                    <div class="control">
                         <span id="scenario-play" class="button is-small is-dark is-outlined is-inverted is-hidden" title="Play Scenario">
                             <span class="icon is-medium">
                                 <i class="fas fa-lg fa-play"></i>
@@ -131,10 +131,10 @@
                                 <i class="fas fa-lg fa-undo-alt"></i>
                             </span>
                         </span>
-                    </p>
-                    <p class="control">
+                    </div>
+                    <div class="control">
                         <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
-                    </p>
+                    </div>
                 </div>
             </div>
             <div id="editor-scenario-info" class="gui-box edit-mode-box is-hidden has-text-right allow-user-select">
@@ -145,20 +145,71 @@
                 </div>
             </div>
             <div class="edit-mode-box is-hidden">
+                <div id="editor-road-box" class="gui-box is-hidden">
+                    <div class="field is-horizontal">
+                        <div class="field-label is-small" style="flex-grow: 100;">
+                            <label class="label has-text-grey-light" for="editor-initial-speed">Initial Speed</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field has-addons" style="width: 90px;">
+                                <div class="control" style="margin-right: 0.5rem;">
+                                    <input id="editor-initial-speed" class="input is-small" type="text" style="width: 60px;" />
+                                </div>
+                                <span class="is-size-7 has-text-grey" style="padding-top: 0.375rem;">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field is-horizontal">
+                        <div class="field-label is-small" style="flex-grow: 100;">
+                            <label class="label has-text-grey-light" for="editor-speed-limit">Speed Limit</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field has-addons" style="width: 90px;">
+                                <div class="control" style="margin-right: 0.5rem;">
+                                    <input id="editor-speed-limit" class="input is-small" type="text" style="width: 60px;" />
+                                </div>
+                                <span class="is-size-7 has-text-grey" style="padding-top: 0.375rem;">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field is-horizontal">
+                        <div class="field-label is-small" style="flex-grow: 100;">
+                            <label class="label has-text-grey-light">Lane Preference</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field has-addons" style="width: 90px;">
+                                <div class="control">
+                                    <div id="editor-lane-left" class="button is-small is-dark is-outlined is-inverted">
+                                        <span class="icon is-medium">
+                                            <i class="fas fa-lg fa-angle-left"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    <div id="editor-lane-right" class="button is-small is-dark is-outlined is-inverted">
+                                        <span class="icon is-medium">
+                                            <i class="fas fa-lg fa-angle-right"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="editor-dynamic-obstacles-box" class="gui-box is-hidden">
                     <div class="is-clearfix">
                         <div class="field is-pulled-right">
-                            <p class="control">
+                            <div class="control">
                                 <div id="editor-add-dynamic-obstacle" class="button is-small is-dark is-outlined is-inverted" title="Add Dynamic Obstacle">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-plus"></i>
                                     </span>
                                 </div>
-                            </p>
+                            </div>
                         </div>
                         <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Dynamic Obstacles</div>
                     </div>
-                    <div class="columns is-gapless">
+                    <div class="columns is-gapless has-text-weight-bold">
                         <div class="column is-1"></div>
                         <div class="column is-3">
                             <abbr class="is-size-7 has-text-grey-lighter" title="Determines the size and shape of the dynamic obstacle">Type</abbr>
@@ -198,18 +249,18 @@
                 </div>
                 <div class="field-body" style="padding-left: 8px;">
                     <div class="field has-addons">
-                        <p class="control">
+                        <div class="control">
                             <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Road</span>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             <span id="editor-obstacles" class="button is-small is-dark is-outlined is-inverted">Static Obstacles</span>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             <span id="editor-dynamic-obstacles" class="button is-small is-dark is-outlined is-inverted">Dynamic Obstacles</span>
-                        </p>
+                        </div>
                     </div>
                     <div class="field" style="position: relative;">
-                        <p class="control">
+                        <div class="control">
                             <span id="editor-clear" class="button is-small is-danger">Clear&hellip;</span>
                             <div id="editor-clear-options" class="gui-box is-hidden">
                                 <div class="buttons">
@@ -219,27 +270,27 @@
                                     <span id="editor-clear-path" class="button is-small is-warning">Road</span>
                                 </div>
                             </div>
-                        </p>
+                        </div>
                     </div>
                     <div class="field">
-                        <p class="control">
+                        <div class="control">
                             <span id="editor-save" class="button is-small is-success">Save&hellip;</span>
-                        </p>
+                        </div>
                     </div>
                     <div class="field">
-                        <p class="control">
+                        <div class="control">
                             <span id="editor-load" class="button is-small is-link">Load&hellip;</span>
-                        </p>
+                        </div>
                     </div>
                     <div class="field">
-                        <p class="control">
+                        <div class="control">
                             <span id="editor-share" class="button is-small is-warning">Share&hellip;</span>
-                        </p>
+                        </div>
                     </div>
                     <div class="field">
-                        <p class="control">
-                            <span id="editor-finalize" class="button is-small is-info">Done</span>
-                        </p>
+                        <div class="control">
+                            <span id="editor-finalize" class="button is-small is-info">Run</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -253,19 +304,19 @@
                     <span id="fps">&mdash;</span> fps
                 </div>
                 <div class="field is-grouped" style="padding-left: 8px;">
-                    <p class="control">
+                    <div class="control">
                         <div class="buttons has-addons" style="margin-bottom: 0;">
                             <span id="camera-chase" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">Chase</span>
                             <span id="camera-topDown" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">Top Down</span>
                             <span id="camera-free" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">Free</span>
                         </div>
-                    </p>
-                    <p class="control">
+                    </div>
+                    <div class="control">
                         <div class="buttons has-addons" style="margin-bottom: 0;">
                             <span id="camera-2D" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">2D</span>
                             <span id="camera-3D" class="button is-small is-dark is-outlined is-inverted" style="margin-bottom: 0;">3D</span>
                         </div>
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>

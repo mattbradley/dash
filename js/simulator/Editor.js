@@ -16,6 +16,10 @@ const HOVER_STATIC_OBSTACLE_COLOR = 0xdd3333;
 const NORMAL_DYNAMIC_OBSTACLE_COLOR = 0xff8800;
 const HOVER_DYNAMIC_OBSTACLE_COLOR = 0xffcc33;
 
+const INITIAL_SPEED_FALLBACK = 20;
+const SPEED_LIMIT_FALLBACK = 20;
+const LANE_PREFERENCE_FALLBACK = +1;
+
 export default class Editor {
   constructor(canvas, camera, scene) {
     this.canvas = canvas;
@@ -57,6 +61,19 @@ export default class Editor {
     this.editorDynamicObstaclesButton = document.getElementById('editor-dynamic-obstacles');
     this.editorDynamicObstaclesButton.addEventListener('click', e => this.changeEditMode('dynamicObstacles'));
 
+    this.editorRoadBox = document.getElementById('editor-road-box');
+    this.initialSpeedDom = document.getElementById('editor-initial-speed');
+    this.speedLimitDom = document.getElementById('editor-speed-limit');
+    this.laneLeftDom = document.getElementById('editor-lane-left');
+    this.laneRightDom = document.getElementById('editor-lane-right');
+
+    this.laneLeftDom.addEventListener('click', e => this._changeLanePreference(-1));
+    this.laneRightDom.addEventListener('click', e => this._changeLanePreference(+1));
+
+    this.initialSpeedDom.value = INITIAL_SPEED_FALLBACK;
+    this.speedLimitDom.value = SPEED_LIMIT_FALLBACK;
+    this._changeLanePreference(LANE_PREFERENCE_FALLBACK);
+
     this.statsRoadLength = document.getElementById('editor-stats-road-length');
     this.statsStaticObstacles = document.getElementById('editor-stats-static-obstacles');
     this.scenarioNameDom = document.getElementById('editor-scenario-name');
@@ -79,7 +96,7 @@ export default class Editor {
 
     document.getElementById('editor-clear-obstacles').addEventListener('click', this.clearStaticObstacles.bind(this));
     document.getElementById('editor-clear-dynamic-obstacles').addEventListener('click', this.dynamicObstacleEditor.clearDynamicObstacles.bind(this.dynamicObstacleEditor));
-    document.getElementById('editor-clear-path').addEventListener('click', this.clearPoints.bind(this));
+    document.getElementById('editor-clear-path').addEventListener('click', this.clearPath.bind(this));
     document.getElementById('editor-clear-all').addEventListener('click', this.clearAll.bind(this));
 
     document.getElementById('editor-save').addEventListener('click', this.saveClicked.bind(this));
@@ -158,6 +175,22 @@ export default class Editor {
     return this.dynamicObstacleEditor.collectDynamicObstacles();
   }
 
+  get initialSpeed() {
+    let speed = parseFloat(this.initialSpeedDom.value);
+    if (Number.isNaN(speed) || speed < 0)
+      speed = 0;
+
+    return Number.isNaN(speed) || speed < 0 ? INITIAL_SPEED_FALLBACK : speed;
+  }
+
+  get speedLimit() {
+    let limit = parseFloat(this.speedLimitDom.value);
+    if (Number.isNaN(limit) || limit < 0)
+      limit = 0;
+
+    return Number.isNaN(limit) || limit < 0 ? SPEED_LIMIT_FALLBACK : limit;
+  }
+
   scenarioToJSON() {
     const trunc = n => +n.toFixed(5);
 
@@ -166,6 +199,11 @@ export default class Editor {
       s: this.staticObstacles.map(o => o.toJSON()),
       d: this.dynamicObstacleEditor.toJSON(),
       l: Number(this.lanePath.arcLength.toFixed(3)),
+      c: {
+        s: this.initialSpeedDom.value,
+        sl: this.speedLimitDom.value,
+        lp: this.lanePreference
+      },
       v: 1
     };
 
@@ -192,6 +230,22 @@ export default class Editor {
     });
 
     this.dynamicObstacleEditor.loadJSON(json.d);
+
+    let initialSpeed = INITIAL_SPEED_FALLBACK;
+    let speedLimit = SPEED_LIMIT_FALLBACK;
+    try { initialSpeed = json.c.s; } catch (e) { }
+    try { speedLimit = json.c.sl; } catch (e) { }
+
+    this.initialSpeedDom.value = initialSpeed;
+    this.speedLimitDom.value = speedLimit;
+
+    let lanePreference = LANE_PREFERENCE_FALLBACK;
+    try {
+      if (typeof(json.c.lp) === 'number')
+        lanePreference = Math.sign(json.c.lp) || LANE_PREFERENCE_FALLBACK;
+    } catch (e) { }
+
+    this._changeLanePreference(lanePreference);
   }
 
   update() {
@@ -283,6 +337,7 @@ export default class Editor {
       this.editorObstaclesButton.classList.remove('is-selected');
       this.editorDynamicObstaclesButton.classList.add('is-outlined');
       this.editorDynamicObstaclesButton.classList.remove('is-selected');
+      this.editorRoadBox.classList.remove('is-hidden');
       this.dynamicObstacleEditor.disable();
     } else if (mode == 'staticObstacles') {
       this.editMode = 'staticObstacles';
@@ -292,6 +347,7 @@ export default class Editor {
       this.editorPathButton.classList.remove('is-selected');
       this.editorDynamicObstaclesButton.classList.add('is-outlined');
       this.editorDynamicObstaclesButton.classList.remove('is-selected');
+      this.editorRoadBox.classList.add('is-hidden');
       this.dynamicObstacleEditor.disable();
     } else {
       this.editMode = 'dynamicObstacles';
@@ -301,6 +357,7 @@ export default class Editor {
       this.editorPathButton.classList.remove('is-selected');
       this.editorObstaclesButton.classList.add('is-outlined');
       this.editorObstaclesButton.classList.remove('is-selected');
+      this.editorRoadBox.classList.add('is-hidden');
       this.dynamicObstacleEditor.enable();
     }
   }
@@ -334,7 +391,7 @@ export default class Editor {
   }
 
   clearAll() {
-    this.clearPoints();
+    this.clearPath();
     this.clearStaticObstacles();
     this.dynamicObstacleEditor.clearDynamicObstacles();
   }
@@ -395,7 +452,7 @@ export default class Editor {
     this.lanePath.removeAnchor(index);
   }
 
-  clearPoints() {
+  clearPath() {
     this.centerlineObject.geometry = new THREE.Geometry();
 
     this.group.remove(this.pointGroup);
@@ -406,6 +463,9 @@ export default class Editor {
 
     this.lanePath = new LanePath();
     this.rebuildPathGeometry();
+
+    this.initialSpeedDom.value = INITIAL_SPEED_FALLBACK;
+    this.speedLimitDom.value = SPEED_LIMIT_FALLBACK;
   }
 
   keyDown(event) {
@@ -535,6 +595,22 @@ export default class Editor {
     this.scenarioNameDom.textContent = name;
     this.scenarioNameDom.title = name;
     this.scenarioSavedAtDom.textContent = savedAt;
+  }
+
+  _changeLanePreference(pref) {
+    this.lanePreference = pref;
+
+    if (pref > 0) {
+      this.laneLeftDom.classList.add('is-outlined');
+      this.laneLeftDom.classList.remove('is-selected');
+      this.laneRightDom.classList.remove('is-outlined');
+      this.laneRightDom.classList.add('is-selected');
+    } else {
+      this.laneRightDom.classList.add('is-outlined');
+      this.laneRightDom.classList.remove('is-selected');
+      this.laneLeftDom.classList.remove('is-outlined');
+      this.laneLeftDom.classList.add('is-selected');
+    }
   }
 
   saveClicked() {

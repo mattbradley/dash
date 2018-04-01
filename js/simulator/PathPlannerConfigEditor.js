@@ -20,7 +20,7 @@ const internalConfig = {
 };
 
 const defaultConfig = {
-  spatialHorizon: 125, // meters
+  spatialHorizon: 120, // meters
   centerlineStationInterval: 0.5, // meters
 
   xyGridCellSize: 0.3, // meters
@@ -42,7 +42,6 @@ const defaultConfig = {
 
   laneCenterLatitude: internalConfig.roadWidth / 4,
   laneShoulderLatitude: internalConfig.roadWidth / 2 * 1.1 - Car.HALF_CAR_WIDTH,
-  lanePreference: +1,
   laneCostSlope: 20, // cost / meter
   lanePreferenceDiscount: 40,
 
@@ -51,8 +50,7 @@ const defaultConfig = {
 
   hysteresisDiscount: 50,
 
-  speedLimit: 20, // m/s
-  speedLimitPenalty: 50,
+  speedLimitPenalty: 200,
 
   hardAccelerationPenalty: 70,
   hardDecelerationPenalty: 50,

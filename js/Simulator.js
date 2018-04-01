@@ -260,11 +260,16 @@ export default class Simulator {
       const pos = centerline[0].clone();
       const dir = centerline[1].clone().sub(centerline[0]);
       const rot = Math.atan2(dir.y, dir.x);
+
       this.car.setPose(pos.x, pos.y, rot);
+      this.car.velocity = this.editor.initialSpeed;
 
       this.dynamicObstacles = this.editor.dynamicObstacles;
 
-      this.autonomousCarController = null;
+      // The `false` value means the controller is waiting to be created after the first planning cycle.
+      // This signals the simulator to use neutral controls instead of the hard brake used for the `null` value.
+      this.autonomousCarController = false;
+      this.enableAutonomousMode();
 
       if (!this.plannerRunning) {
         this.plannerReady = true;
@@ -281,7 +286,7 @@ export default class Simulator {
     this.recreateStaticObstacleObjects();
     this.recreateDynamicObstacleObjects();
 
-    this.dashboard.update({ steer: 0, brake: 0, gas: 0 }, 0, null, null, 0, this.averagePlanTime.average);
+    this.dashboard.update({ steer: 0, brake: 0, gas: 0 }, this.car.velocity, null, null, 0, this.averagePlanTime.average);
 
     if (replaceCamera) {
       this.camera = this.previousCamera;
@@ -473,7 +478,7 @@ export default class Simulator {
     this.plannerReset = false;
 
     this.lastPlanParams =  {
-      config: this.pathPlannerConfigEditor.config,
+      config: Object.assign({}, this.pathPlannerConfigEditor.config, { speedLimit: this.editor.speedLimit, lanePreference: this.editor.lanePreference }),
       vehiclePose: predictedPose,
       vehicleStation: predictedStation,
       lanePath: this.editor.lanePath,
@@ -515,7 +520,8 @@ export default class Simulator {
       });
     });
 
-    if (dynamicObstacleGrid) {
+    // TODO: clear this up or just remove it
+    if (false && dynamicObstacleGrid) {
       const dynamicGridTex = new THREE.DataTexture(dynamicObstacleGrid.data, dynamicObstacleGrid.width, dynamicObstacleGrid.height, THREE.RGBAFormat, THREE.FloatType);
       dynamicGridTex.flipY = true;
       dynamicGridTex.needsUpdate = true;
@@ -613,7 +619,11 @@ function step(timestamp) {
     if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
       this.enableManualMode();
 
-    const autonomousControls = this.autonomousCarController ? this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') : { steer: 0, brake: 1, gas: 0 };
+    let autonomousControls = { steer: 0, brake: 0, gas: 0};
+    if (this.autonomousCarController)
+      autonomousControls = this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') ;
+    else if (this.autonomousCarController === null)
+      autonomousControls = { steer: 0, brake: 1, gas: 0 };
 
     const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
 
