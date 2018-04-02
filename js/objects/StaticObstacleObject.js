@@ -17,11 +17,11 @@ export default class StaticObstacleObject extends THREE.Object3D {
       new THREE.BoxBufferGeometry(staticObstacle.width, HEIGHT, staticObstacle.height),
       new THREE.MeshToonMaterial({ color: COLOR, transparent: true, opacity: 0.5 })
     );
-    mesh3D.position.setY(0.5);
+    mesh3D.position.setY(HEIGHT / 2);
     mesh3D.layers.set(3);
     this.add(mesh3D);
 
     this.rotation.y = -staticObstacle.rot;
-    this.position.set(staticObstacle.pos.x, HEIGHT / 2, staticObstacle.pos.y);
+    this.position.set(staticObstacle.pos.x, 0, staticObstacle.pos.y);
   }
 }

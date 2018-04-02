@@ -220,7 +220,7 @@
                             <abbr class="is-size-7 has-text-grey-lighter" style="position: relative; left: -5px;" title="Check to align parallel to the road; uncheck to align perpendicular">Parallel</abbr>
                         </div>
                         <div class="column is-3 has-text-centered">
-                            <abbr class="is-size-7 has-text-grey-lighter" title="Initial station-latitude position; station is in meters, and latitude is normalized where -1 is the left shoulder and +1 is the right shoulder">SL Position</abbr>
+                            <abbr class="is-size-7 has-text-grey-lighter" title="Initial station-latitude position; station is in meters, and latitude is normalized where -1 is the left boundary and +1 is the right boundary">SL Position</abbr>
                         </div>
                         <div class="column is-3 has-text-centered">
                             <abbr class="is-size-7 has-text-grey-lighter" title="Station-latitude velocity in m/s">SL Velocity</abbr>
@@ -231,8 +231,17 @@
                 </div>
             </div>
             <div id="editor-stats" class="gui-box edit-mode-box is-hidden">
+                <div id="editor-stats-sl" class="gui-box">
+                    <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
+                        S:&nbsp;<b id="editor-stats-station">0</b>m
+                    </div>
+                    &nbsp;
+                    <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
+                        L:&nbsp;<b id="editor-stats-latitude">0</b>m
+                    </div>
+                </div>
                 <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
-                    Road Length:&nbsp;<b id="editor-stats-road-length">0</b>m
+                    Road Length:&nbsp;<b id="editor-stats-road-length">0.0</b>m
                 </div>
                 &nbsp;
                 <div class="button is-small is-static has-text-grey-light is-paddingless" style="background: transparent; border: none;">
@@ -244,6 +253,64 @@
                 </div>
             </div>
             <div id="editor-controls" class="gui-box edit-mode-box is-hidden">
+                <div id="editor-help" class="gui-box is-size-7 has-text-grey">
+                    <div id="editor-help-path" class="xis-hidden">
+                        <div class="gui-box flex">
+                            <div class="has-text-weight-bold has-text-right" style="margin-right: 0.75rem;">
+                                <div>Left-click</div>
+                                <div>Left-click + Drag</div>
+                                <div>Shift + Left-click</div>
+                                <div>Right-click + Drag</div>
+                            </div>
+                            <div>
+                                <div>Place road anchor</div>
+                                <div>Move road anchor</div>
+                                <div>Delete road anchor</div>
+                                <div>Pan view</div>
+                            </div>
+                        </div>
+                        <div>
+                            The <i>road</i> is two lanes wide and is
+                            represented by a spline curve controlled by anchor
+                            points. Road positions use station-latitude (SL)
+                            coordinates.  Station is the longitudinal distance
+                            along the arc-length of the road. Latitude is the
+                            lateral offset to the left (negative) or right
+                            (positive) of the road centerline.
+                        </div>
+                    </div>
+                    <div id="editor-help-static-obstacles" class="is-hidden">
+                        <div class="gui-box flex">
+                            <div class="has-text-weight-bold has-text-right" style="display: flex; flex-direction: column; margin-right: 0.75rem;">
+                                <div style="flex-grow: 2; display: flex; align-items: center; justify-content: flex-end;">Left-click + Drag</div>
+                                <div>Shift + Left-click</div>
+                                <div>Ctrl + Left-click + Drag</div>
+                                <div>Right-click + Drag</div>
+                            </div>
+                            <div>
+                                <div>Place new obstacle</div>
+                                <div><i>or</i> Move obstacle</div>
+                                <div>Delete obstacle</div>
+                                <div>Rotate obstacle</div>
+                                <div>Pan view</div>
+                            </div>
+                        </div>
+                        <div>
+                            <i>Static obstacles</i> do not move during the
+                            course of the simulation. They can be used to
+                            represent things like parked cars, road debris,
+                            construction zones, etc.
+                        </div>
+                    </div>
+                    <div id="editor-help-dynamic-obstacles" class="is-hidden">
+                        <i>Dynamic obstacles</i> will move along the road
+                        according to their velocities, starting from their
+                        initial station-latitude positions. The initial
+                        latitude is a normalized value between -1 and +1,
+                        corresponding to the latitudes of the left and right
+                        lane boundaries.
+                    </div>
+                </div>
                 <div class="button is-small is-static is-pulled-left" style="background: transparent; border: none;">
                     <span class="icon is-medium has-text-grey-lighter">
                         <i class="fas fa-lg fa-road"></i>

@@ -76,8 +76,14 @@ export default class Editor {
 
     this.statsRoadLength = document.getElementById('editor-stats-road-length');
     this.statsStaticObstacles = document.getElementById('editor-stats-static-obstacles');
+    this.statsStation = document.getElementById('editor-stats-station');
+    this.statsLatitude = document.getElementById('editor-stats-latitude');
     this.scenarioNameDom = document.getElementById('editor-scenario-name');
     this.scenarioSavedAtDom = document.getElementById('editor-scenario-saved-at');
+
+    this.helpPath = document.getElementById('editor-help-path');
+    this.helpStaticObstacles = document.getElementById('editor-help-static-obstacles');
+    this.helpDynamicObstacles = document.getElementById('editor-help-dynamic-obstacles');
 
     this.changeEditMode('path');
     this.removeMode = false;
@@ -115,7 +121,8 @@ export default class Editor {
         resolution: resolution,
         sizeAttenuation: false,
         near: camera.near,
-        far: camera.far
+        far: camera.far,
+        depthWrite: false
       })
     );
     this.centerlineObject.rotation.x = Math.PI / 2;
@@ -125,9 +132,11 @@ export default class Editor {
     this.leftBoundaryObject = new THREE.Mesh(
       new THREE.Geometry(),
       new MeshLineMaterial({
-        color: new THREE.Color(0xff8800),
+        color: new THREE.Color(0xff40ff),
         lineWidth: 0.15,
-        resolution: resolution
+        resolution: resolution,
+        transparent: true,
+        opacity: 0.7
       })
     );
     this.leftBoundaryObject.rotation.x = Math.PI / 2;
@@ -137,9 +146,11 @@ export default class Editor {
     this.rightBoundaryObject = new THREE.Mesh(
       new THREE.Geometry(),
       new MeshLineMaterial({
-        color: new THREE.Color(0xff8800),
+        color: new THREE.Color(0xff40ff),
         lineWidth: 0.15,
-        resolution: resolution
+        resolution: resolution,
+        transparent: true,
+        opacity: 0.7
       })
     );
     this.rightBoundaryObject.rotation.x = Math.PI / 2;
@@ -252,15 +263,18 @@ export default class Editor {
     if (!this.isEnabled) return;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
+
+    const [station, latitude, _around] = this.lanePath.stationLatitudeFromPosition(new THREE.Vector2(intersection.x, intersection.z));
+    this.statsStation.textContent = (station || 0).toFixed(1);
+    this.statsLatitude.textContent = (latitude || 0).toFixed(1);
 
     if (this.draggingPoint) {
-      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection != null) {
-        this.updatePoint(this.draggingPoint, intersection.add(this.dragOffset));
+        this.updatePoint(this.draggingPoint, intersection.clone().add(this.dragOffset));
         this.rebuildPathGeometry();
       }
     } else if (this.draggingObstacle) {
-      const intersection = this.raycaster.ray.intersectPlane(GROUND_PLANE);
       if (intersection !== null) {
         if (this.draggingObstacle === true) {
           if (this.draggingObstaclePreview) this.group.remove(this.draggingObstaclePreview);
@@ -275,7 +289,7 @@ export default class Editor {
           this.draggingObstaclePreview.position.copy(center);
           this.group.add(this.draggingObstaclePreview);
         } else {
-          this.draggingObstacle.position.copy(intersection.add(this.dragOffset));
+          this.draggingObstacle.position.copy(intersection.clone().add(this.dragOffset));
         }
       }
     } else if (this.rotatingObstacle) {
@@ -329,35 +343,35 @@ export default class Editor {
   }
 
   changeEditMode(mode) {
+    this.editorPathButton.classList.add('is-outlined');
+    this.editorObstaclesButton.classList.add('is-outlined');
+    this.editorDynamicObstaclesButton.classList.add('is-outlined');
+    this.editorPathButton.classList.remove('is-selected');
+    this.editorObstaclesButton.classList.remove('is-selected');
+    this.editorDynamicObstaclesButton.classList.remove('is-selected');
+    this.editorRoadBox.classList.add('is-hidden');
+    this.helpPath.classList.add('is-hidden');
+    this.helpStaticObstacles.classList.add('is-hidden');
+    this.helpDynamicObstacles.classList.add('is-hidden');
+
     if (mode == 'path') {
       this.editMode = 'path';
       this.editorPathButton.classList.remove('is-outlined');
       this.editorPathButton.classList.add('is-selected');
-      this.editorObstaclesButton.classList.add('is-outlined');
-      this.editorObstaclesButton.classList.remove('is-selected');
-      this.editorDynamicObstaclesButton.classList.add('is-outlined');
-      this.editorDynamicObstaclesButton.classList.remove('is-selected');
       this.editorRoadBox.classList.remove('is-hidden');
+      this.helpPath.classList.remove('is-hidden');
       this.dynamicObstacleEditor.disable();
     } else if (mode == 'staticObstacles') {
       this.editMode = 'staticObstacles';
       this.editorObstaclesButton.classList.remove('is-outlined');
       this.editorObstaclesButton.classList.add('is-selected');
-      this.editorPathButton.classList.add('is-outlined');
-      this.editorPathButton.classList.remove('is-selected');
-      this.editorDynamicObstaclesButton.classList.add('is-outlined');
-      this.editorDynamicObstaclesButton.classList.remove('is-selected');
-      this.editorRoadBox.classList.add('is-hidden');
+      this.helpStaticObstacles.classList.remove('is-hidden');
       this.dynamicObstacleEditor.disable();
     } else {
       this.editMode = 'dynamicObstacles';
       this.editorDynamicObstaclesButton.classList.remove('is-outlined');
       this.editorDynamicObstaclesButton.classList.add('is-selected');
-      this.editorPathButton.classList.add('is-outlined');
-      this.editorPathButton.classList.remove('is-selected');
-      this.editorObstaclesButton.classList.add('is-outlined');
-      this.editorObstaclesButton.classList.remove('is-selected');
-      this.editorRoadBox.classList.add('is-hidden');
+      this.helpDynamicObstacles.classList.remove('is-hidden');
       this.dynamicObstacleEditor.enable();
     }
   }

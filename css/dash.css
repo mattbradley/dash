@@ -42,6 +42,20 @@ canvas { width: 100%; height: 100% }
     bottom: 0;
 }
 
+#editor-help {
+    position: absolute;
+    bottom: 100%;
+    left: -8px;
+}
+
+#editor-help-path .flex, #editor-help-static-obstacles .flex {
+    position: absolute;
+    bottom: 100%;
+    left: -8px;
+    display: flex;
+    flex-direction: row;
+}
+
 #editor-clear-options {
     position: absolute;
     bottom: 100%;
@@ -145,6 +159,13 @@ canvas { width: 100%; height: 100% }
     position: absolute;
     right: 0;
     bottom: 0;
+}
+
+#editor-stats-sl {
+    position: absolute;
+    right: 100%;
+    top: -8px;
+    white-space: nowrap;
 }
 
 #cameras {

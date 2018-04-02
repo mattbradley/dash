@@ -80,6 +80,8 @@ export default class LanePath {
   stationLatitudeFromPosition(position, aroundAnchorIndex = null) {
     const [anchorIndex, sampleIndex, sampleStation, prevSampleStation] = this._findClosestSample(position, aroundAnchorIndex);
 
+    if (anchorIndex === undefined) return [0, 0, 0];
+
     let prevPoint;
     let nextPoint;
     let prevStation;
