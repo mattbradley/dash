@@ -16,7 +16,7 @@ TODO
 [x] Static obstacle rotation
 [ ] README
 [x] Two-lane roads? (Could be as easy as doubling the default lane width and having the desired latitude at +/- half lane width instead of 0)
-[ ] Save/load scenarios (maybe use querystring so that scenarios can be easily shared)
+[x] Save/load scenarios (maybe use querystring so that scenarios can be easily shared)
 [?] Add compass to dashboard
 [ ] On pause, show more detailed planner results (maybe top 10/100? best trajectories)
 [?] Configurable geolocation

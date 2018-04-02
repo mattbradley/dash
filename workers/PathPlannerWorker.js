@@ -10,6 +10,7 @@ function init() {
   try {
     pathPlanner = new PathPlanner();
   } catch (e) {
+    console.log('Error initializing path planner:');
     console.log(e);
     return;
   }

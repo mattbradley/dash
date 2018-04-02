@@ -397,20 +397,26 @@ export default class Editor {
   }
 
   rebuildPathGeometry() {
-    this.centerlineGeometry.setFromPoints(this.lanePath.centerline);
-    const centerline = new MeshLine();
-    centerline.setGeometry(this.centerlineGeometry);
-    this.centerlineObject.geometry = centerline.geometry;
+    if (this.lanePath.anchors.length > 1) {
+      this.centerlineGeometry.setFromPoints(this.lanePath.centerline);
+      const centerline = new MeshLine();
+      centerline.setGeometry(this.centerlineGeometry);
+      this.centerlineObject.geometry = centerline.geometry;
 
-    this.leftBoundaryGeometry.setFromPoints(this.lanePath.leftBoundary);
-    const leftBoundary = new MeshLine();
-    leftBoundary.setGeometry(this.leftBoundaryGeometry);
-    this.leftBoundaryObject.geometry = leftBoundary.geometry;
+      this.leftBoundaryGeometry.setFromPoints(this.lanePath.leftBoundary);
+      const leftBoundary = new MeshLine();
+      leftBoundary.setGeometry(this.leftBoundaryGeometry);
+      this.leftBoundaryObject.geometry = leftBoundary.geometry;
 
-    this.rightBoundaryGeometry.setFromPoints(this.lanePath.rightBoundary);
-    const rightBoundary = new MeshLine();
-    rightBoundary.setGeometry(this.rightBoundaryGeometry);
-    this.rightBoundaryObject.geometry = rightBoundary.geometry;
+      this.rightBoundaryGeometry.setFromPoints(this.lanePath.rightBoundary);
+      const rightBoundary = new MeshLine();
+      rightBoundary.setGeometry(this.rightBoundaryGeometry);
+      this.rightBoundaryObject.geometry = rightBoundary.geometry;
+    } else {
+      this.centerlineObject.geometry.setFromPoints([]);
+      this.leftBoundaryObject.geometry.setFromPoints([]);
+      this.rightBoundaryObject.geometry.setFromPoints([]);
+    }
 
     this.statsRoadLength.textContent = this.lanePath.arcLength.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   }
@@ -453,8 +459,6 @@ export default class Editor {
   }
 
   clearPath() {
-    this.centerlineObject.geometry = new THREE.Geometry();
-
     this.group.remove(this.pointGroup);
     this.pointGroup = new THREE.Group();
     this.pointGroup.renderOrder = 2;

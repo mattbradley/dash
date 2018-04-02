@@ -91,9 +91,14 @@ export default class Simulator {
     this.lastPlanTime = null;
     this.averagePlanTime = new MovingAverage(20);
 
-    window.addEventListener('resize', () => {
+    window.addEventListener('resize', e => {
       this._updateCameraAspects(domElement.clientWidth / domElement.clientHeight);
       this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
+    });
+
+    window.addEventListener('hashchange', e => {
+      if (window.location.hash.startsWith('#/s/'))
+        window.location.reload();
     });
 
     this.manualModeButton = document.getElementById('mode-manual');
@@ -123,6 +128,8 @@ export default class Simulator {
     this.staticObstacles = [];
     this.dynamicObstacles = [];
 
+    this._checkHashScenario();
+
     requestAnimationFrame(step.bind(this));
   }
 
@@ -143,8 +150,25 @@ export default class Simulator {
     this.staticObstacles.push(obstacle);
   }
 
+  _checkHashScenario() {
+    if (!window.location.hash.startsWith('#/s/')) return;
+
+    const [_hash, _s, code] = window.location.hash.split('/');
+
+    try {
+      const json = JSON.parse(atob(decodeURIComponent(code)));
+      this.editor.loadJSON(json);
+      this.finalizeEditor();
+      window.location.hash = '';
+    } catch (e) {
+      console.log('Error importing scenario code:');
+      console.log(code);
+      console.log(e);
+    }
+  }
+
   _setUpCameras(domElement) {
-    this.chaseCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.chaseCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
     this.chaseCameraControls.minDistance = 4;
     this.chaseCameraControls.maxDistance = 5000;
@@ -153,7 +177,7 @@ export default class Simulator {
     this.chaseCameraControls.enabled = false;
     this._resetChaseCamera();
 
-    this.freeCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.freeCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
     this.freeCameraControls.minDistance = 5;
     this.freeCameraControls.maxDistance = 5000;
@@ -161,7 +185,7 @@ export default class Simulator {
     this.freeCameraControls.enabled = true;
     this._resetFreeCamera();
 
-    this.topDownCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
+    this.topDownCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
     this.topDownCamera.position.set(0, 50, 0);
     this.topDownCamera.lookAt(0, 0, 0);
     this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
@@ -210,7 +234,9 @@ export default class Simulator {
   }
 
   _resetTopDownCamera() {
-    this.topDownCamera.position.setY(50);
+    const carPosition = this.car.position;
+    this.topDownCamera.position.set(carPosition.x, 50, carPosition.y);
+    this.topDownCamera.rotation.z = -this.car.rotation - Math.PI / 2
   }
 
   _updateCameraAspects(aspect) {
@@ -255,7 +281,7 @@ export default class Simulator {
     this.simModeBoxes.forEach(el => el.classList.remove('is-hidden'));
     this.editModeBoxes.forEach(el => el.classList.add('is-hidden'));
 
-    if (this.editor.lanePath.anchors.length > 0) {
+    if (this.editor.lanePath.anchors.length > 1) {
       const centerline = this.editor.lanePath.centerline;
       const pos = centerline[0].clone();
       const dir = centerline[1].clone().sub(centerline[0]);
@@ -278,6 +304,10 @@ export default class Simulator {
       this.plannerReset = true;
       this.simulatedTime = 0;
       this.carStation = 0;
+
+      this.pauseScenario();
+      this.autonomousModeButton.classList.add('is-loading');
+      this.waitingForFirstPlan = true;
     } else {
       this.dynamicObstacles = [];
     }
@@ -326,6 +356,8 @@ export default class Simulator {
       const obstacleObject = new DynamicObstacleObject(o, this.editor.lanePath);
       this.dynamicObstaclesGroup.add(obstacleObject);
     });
+
+    this.updateDynamicObjects(this.simulatedTime);
   }
 
   updateDynamicObjects(time) {
@@ -492,6 +524,12 @@ export default class Simulator {
   }
 
   receivePlannedPath(event) {
+    if (this.waitingForFirstPlan && !this.plannerReset) {
+      this.waitingForFirstPlan = false;
+      this.autonomousModeButton.classList.remove('is-loading');
+      this.playScenario();
+    }
+
     if (this.editor.enabled) return;
 
     const { fromVehicleParams, vehiclePose, vehicleStation, latticeStartStation, config, dynamicObstacleGrid } = event.data;

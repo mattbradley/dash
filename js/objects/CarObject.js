@@ -18,7 +18,7 @@ export default class CarObject extends THREE.Object3D {
   buildCar2D() {
     const carMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(Car.HALF_CAR_LENGTH * 2, Car.HALF_CAR_WIDTH * 2),
-      new THREE.MeshBasicMaterial({ color: CAR_COLOR, depthTest: false, transparent: true, opacity: 0.5 })
+      new THREE.MeshBasicMaterial({ color: CAR_COLOR, depthTest: false, transparent: true, opacity: 0.7 })
     );
     carMesh.rotation.x = -Math.PI / 2;
     carMesh.layers.set(2);
