@@ -108,6 +108,7 @@ export default class Simulator {
 
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-finalize').addEventListener('click', this.finalizeEditor.bind(this));
+    document.getElementById('simulator-load').addEventListener('click', this.loadScenario.bind(this));
 
     this.scenarioPlayButton = document.getElementById('scenario-play');
     this.scenarioPlayButton.addEventListener('click', this.playScenario.bind(this));
@@ -383,6 +384,12 @@ export default class Simulator {
       this.scene.remove(this.plannedPathGroup);
 
     this.finalizeEditor(false);
+  }
+
+  loadScenario() {
+    if (this.editor.enabled) return;
+
+    this.editor.scenarioManager.showModal(this.finalizeEditor.bind(this));
   }
 
   enableManualMode() {

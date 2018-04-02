@@ -89,7 +89,7 @@
                             <div class="control">
                                 <button id="save-config-button" class="button is-small is-success" title="Save Config">
                                     <span class="icon is-medium">
-                                        <i class="far fa-lg fa-save"></i>
+                                        <i class="fas fa-lg fa-save"></i>
                                     </span>
                                 </button>
                             </div>
@@ -132,8 +132,10 @@
                             </span>
                         </span>
                     </div>
+                    <div class="control"></div>
                     <div class="control">
                         <span id="editor-enable" class="button is-small is-dark is-outlined is-inverted">Edit Scenario</span>
+                        <span id="simulator-load" class="button is-small is-dark is-outlined is-inverted">Load Scenario</span>
                     </div>
                 </div>
             </div>
@@ -248,6 +250,45 @@
                     </span>
                 </div>
                 <div class="field-body" style="padding-left: 8px;">
+                    <div class="field">
+                        <div class="control">
+                            <span id="editor-load" class="button is-small is-info" title="Load Scenario">
+                                <span class="icon is-medium">
+                                    <i class="fas fa-lg fa-folder-open"></i>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <span id="editor-save" class="button is-small is-success" title="Save Scenario">
+                                <span class="icon is-medium">
+                                    <i class="fas fa-lg fa-save"></i>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <span id="editor-share" class="button is-small is-warning" title="Share Scenario">
+                                <span class="icon is-medium">
+                                    <i class="fas fa-lg fa-link"></i>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field"></div>
+                    <div class="field">
+                        <div class="control">
+                            <span id="editor-finalize" class="button is-small is-link">
+                                <span class="icon">
+                                    <i class="fas fa-play"></i>
+                                </span>
+                                <span>Run</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field"></div>
                     <div class="field has-addons">
                         <div class="control">
                             <span id="editor-path" class="button is-small is-dark is-outlined is-inverted">Road</span>
@@ -270,26 +311,6 @@
                                     <span id="editor-clear-path" class="button is-small is-warning">Road</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="control">
-                            <span id="editor-save" class="button is-small is-success">Save&hellip;</span>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="control">
-                            <span id="editor-load" class="button is-small is-link">Load&hellip;</span>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="control">
-                            <span id="editor-share" class="button is-small is-warning">Share&hellip;</span>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="control">
-                            <span id="editor-finalize" class="button is-small is-info">Run</span>
                         </div>
                     </div>
                 </div>
@@ -359,7 +380,7 @@
                 <div class="gui-box has-text-grey-lighter" style="padding: 1rem;">
                     <button id="scenario-share-modal-close" class="delete is-medium is-pulled-right"></button>
                     <div class="title is-5 has-text-grey-lighter">Share Scenario</div>
-                    <div>This link will automatically start the scenario when loaded:</div>
+                    <div>This link will automatically run the scenario when loaded:</div>
                     <div class="field has-addons">
                         <div class="control has-icons-left is-expanded">
                             <input id="scenario-share-link" class="input" type="text" readonly value="http://google.com" />

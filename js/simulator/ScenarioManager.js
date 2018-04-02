@@ -81,7 +81,9 @@ export default class ScenarioManager {
     return scenarios;
   }
 
-  showModal() {
+  showModal(onLoadScenario = null) {
+    this.onLoadScenario = onLoadScenario;
+
     this.modal.classList.add('is-active');
     this.switchTab(this.savedTab);
 
@@ -93,6 +95,7 @@ export default class ScenarioManager {
   }
 
   _closeModal() {
+    this.onLoadScenario = null;
     this.modal.classList.remove('is-active');
   }
 
@@ -179,6 +182,9 @@ export default class ScenarioManager {
   _loadScenario(scenario) {
     this.editor.loadJSON(scenario.data);
     this.editor.updateSavedInfo(scenario.name, formatDate(scenario.savedAt));
+
+    if (this.onLoadScenario) this.onLoadScenario();
+
     this._closeModal();
   }
 
