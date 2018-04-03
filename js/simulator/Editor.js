@@ -427,9 +427,14 @@ export default class Editor {
       rightBoundary.setGeometry(this.rightBoundaryGeometry);
       this.rightBoundaryObject.geometry = rightBoundary.geometry;
     } else {
-      this.centerlineObject.geometry.setFromPoints([]);
-      this.leftBoundaryObject.geometry.setFromPoints([]);
-      this.rightBoundaryObject.geometry.setFromPoints([]);
+      this.centerlineObject.geometry.dispose();
+      this.centerlineObject.geometry = new THREE.Geometry();
+
+      this.leftBoundaryObject.geometry.dispose();
+      this.leftBoundaryObject.geometry = new THREE.Geometry();
+
+      this.rightBoundaryObject.geometry.dispose();
+      this.rightBoundaryObject.geometry = new THREE.Geometry();
     }
 
     this.statsRoadLength.textContent = this.lanePath.arcLength.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });

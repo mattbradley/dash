@@ -21,6 +21,7 @@ import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
 const FRAME_TIMESTEP = 1 / 60;
+const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
 
 export default class Simulator {
   constructor(domElement) {
@@ -117,6 +118,26 @@ export default class Simulator {
     this.scenarioRestartButton = document.getElementById('scenario-restart');
     this.scenarioRestartButton.addEventListener('click', this.restartScenario.bind(this));
 
+    this.welcomeModal = document.getElementById('welcome-modal');
+    document.getElementById('show-welcome-modal').addEventListener('click', e => this.welcomeModal.classList.add('is-active'));
+
+    if (window.localStorage.getItem(WELCOME_MODAL_KEY) !== 'hide') {
+      this.welcomeModal.classList.add('is-active');
+    }
+
+    document.getElementById('welcome-modal-background').addEventListener('click', this.hideWelcomeModal.bind(this));
+    document.getElementById('welcome-modal-close').addEventListener('click', this.hideWelcomeModal.bind(this));
+
+    document.getElementById('welcome-modal-examples').addEventListener('click', e => {
+      this.welcomeModal.classList.remove('is-active');
+      this.loadScenario();
+    });
+
+    document.getElementById('welcome-modal-create').addEventListener('click', e => {
+      this.welcomeModal.classList.remove('is-active');
+      this.enableEditor();
+    });
+
     this.simModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('sim-mode-box'), 0);
     this.editModeBoxes = Array.prototype.slice.call(document.getElementsByClassName('edit-mode-box'), 0);
 
@@ -131,7 +152,7 @@ export default class Simulator {
 
     this._checkHashScenario();
 
-    requestAnimationFrame(step.bind(this));
+    requestAnimationFrame(this.step.bind(this));
   }
 
   toss() {
@@ -160,6 +181,7 @@ export default class Simulator {
       const json = JSON.parse(atob(decodeURIComponent(code)));
       this.editor.loadJSON(json);
       this.finalizeEditor();
+      this.welcomeModal.classList.remove('is-active');
       window.location.hash = '';
     } catch (e) {
       console.log('Error importing scenario code:');
@@ -287,8 +309,10 @@ export default class Simulator {
       const pos = centerline[0].clone();
       const dir = centerline[1].clone().sub(centerline[0]);
       const rot = Math.atan2(dir.y, dir.x);
+      const perpindicular = rot + Math.PI / 2 * (Math.sign(this.editor.lanePreference) || 0);
+      const latitude = this.pathPlannerConfigEditor.config.roadWidth / 4;
 
-      this.car.setPose(pos.x, pos.y, rot);
+      this.car.setPose(pos.x + Math.cos(perpindicular) * latitude, pos.y + Math.sin(perpindicular) * latitude, rot);
       this.car.velocity = this.editor.initialSpeed;
 
       this.dynamicObstacles = this.editor.dynamicObstacles;
@@ -305,6 +329,7 @@ export default class Simulator {
       this.plannerReset = true;
       this.simulatedTime = 0;
       this.carStation = 0;
+      this.aroundAnchorIndex = null;
 
       this.pauseScenario();
       this.autonomousModeButton.classList.add('is-loading');
@@ -492,6 +517,11 @@ export default class Simulator {
     this.freeCamera.layers.disable(2);
   }
 
+  hideWelcomeModal() {
+    this.welcomeModal.classList.remove('is-active');
+    window.localStorage.setItem(WELCOME_MODAL_KEY, 'hide');
+  }
+
   startPlanner(pose, station) {
     this.plannerReady = false;
     this.lastPlanTime = performance.now();
@@ -639,86 +669,86 @@ export default class Simulator {
     pathObject.renderOrder = 1;
     this.plannedPathGroup.add(pathObject);
   }
-}
 
-function step(timestamp) {
-  if (this.prevTimestamp == null) {
-    this.prevTimestamp = timestamp;
-    requestAnimationFrame(step.bind(this));
-    return;
-  }
-
-  this.editor.update();
-
-  if (!this.editor.enabled && !this.paused) {
-    const dt = FRAME_TIMESTEP;
-    this.simulatedTime += dt;
-
-    const prevCarPosition = this.car.position;
-    const prevCarRotation = this.car.rotation;
-
-    const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
-    if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
-      this.enableManualMode();
-
-    let autonomousControls = { steer: 0, brake: 0, gas: 0};
-    if (this.autonomousCarController)
-      autonomousControls = this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') ;
-    else if (this.autonomousCarController === null)
-      autonomousControls = { steer: 0, brake: 1, gas: 0 };
-
-    const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
-
-    this.car.update(controls, dt);
-    this.physics.step(dt);
-
-    this.updateDynamicObjects(this.simulatedTime);
-
-    const carPosition = this.car.position;
-    const carRotation = this.car.rotation;
-    const carRearAxle = this.car.rearAxlePosition;
-    const carVelocity = this.car.velocity;
-
-    const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
-    this.chaseCamera.position.add(positionOffset);
-    this.chaseCameraControls.target.set(carPosition.x, 0, carPosition.y);
-    this.chaseCameraControls.rotateLeft(carRotation - prevCarRotation);
-    this.chaseCameraControls.update();
-
-    this.topDownCamera.position.setX(carPosition.x);
-    this.topDownCamera.position.setZ(carPosition.y);
-    this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
-
-    let latitude = null;
-
-    if (this.editor.lanePath.anchors.length > 1) {
-      const [s, l, aroundAnchorIndex] = this.editor.lanePath.stationLatitudeFromPosition(carRearAxle, this.aroundAnchorIndex);
-      this.aroundAnchorIndex = aroundAnchorIndex;
-
-      this.carStation = s;
-      latitude = l;
+  step(timestamp) {
+    if (this.prevTimestamp == null) {
+      this.prevTimestamp = timestamp;
+      requestAnimationFrame(this.step.bind(this));
+      return;
     }
 
-    this.dashboard.update(controls, carVelocity, this.carStation, latitude, this.simulatedTime, this.averagePlanTime.average);
+    this.editor.update();
+
+    if (!this.editor.enabled && !this.paused) {
+      const dt = FRAME_TIMESTEP;
+      this.simulatedTime += dt;
+
+      const prevCarPosition = this.car.position;
+      const prevCarRotation = this.car.rotation;
+
+      const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
+      if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
+        this.enableManualMode();
+
+      let autonomousControls = { steer: 0, brake: 0, gas: 0};
+      if (this.autonomousCarController)
+        autonomousControls = this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') ;
+      else if (this.autonomousCarController === null)
+        autonomousControls = { steer: 0, brake: 1, gas: 0 };
+
+      const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
+
+      this.car.update(controls, dt);
+      this.physics.step(dt);
+
+      this.updateDynamicObjects(this.simulatedTime);
+
+      const carPosition = this.car.position;
+      const carRotation = this.car.rotation;
+      const carRearAxle = this.car.rearAxlePosition;
+      const carVelocity = this.car.velocity;
+
+      const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
+      this.chaseCamera.position.add(positionOffset);
+      this.chaseCameraControls.target.set(carPosition.x, 0, carPosition.y);
+      this.chaseCameraControls.rotateLeft(carRotation - prevCarRotation);
+      this.chaseCameraControls.update();
+
+      this.topDownCamera.position.setX(carPosition.x);
+      this.topDownCamera.position.setZ(carPosition.y);
+      this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
+
+      let latitude = null;
+
+      if (this.editor.lanePath.anchors.length > 1) {
+        const [s, l, aroundAnchorIndex] = this.editor.lanePath.stationLatitudeFromPosition(carRearAxle, this.aroundAnchorIndex);
+        this.aroundAnchorIndex = aroundAnchorIndex;
+
+        this.carStation = s;
+        latitude = l;
+      }
+
+      this.dashboard.update(controls, carVelocity, this.carStation, latitude, this.simulatedTime, this.averagePlanTime.average);
+    }
+
+    if (!this.editor.enabled && this.plannerReady) {
+      this.startPlanner(this.car.pose, this.carStation || 0);
+      this.dashboard.updatePlanTime(this.averagePlanTime.average);
+    }
+
+    this.frameCounter++;
+    this.fpsTime += timestamp - this.prevTimestamp;
+    if (this.fpsTime >= 1000) {
+      this.fps = this.frameCounter / (this.fpsTime / 1000);
+      this.frameCounter = 0;
+      this.fpsTime = 0;
+      this.fpsBox.textContent = this.fps.toFixed(1);
+    }
+
+    this.renderer.render(this.scene, this.camera);
+
+    this.prevTimestamp = timestamp;
+
+    requestAnimationFrame(this.step.bind(this));
   }
-
-  if (!this.editor.enabled && this.plannerReady) {
-    this.startPlanner(this.car.pose, this.carStation || 0);
-    this.dashboard.updatePlanTime(this.averagePlanTime.average);
-  }
-
-  this.frameCounter++;
-  this.fpsTime += timestamp - this.prevTimestamp;
-  if (this.fpsTime >= 1000) {
-    this.fps = this.frameCounter / (this.fpsTime / 1000);
-    this.frameCounter = 0;
-    this.fpsTime = 0;
-    this.fpsBox.textContent = this.fps.toFixed(1);
-  }
-
-  this.renderer.render(this.scene, this.camera);
-
-  this.prevTimestamp = timestamp;
-
-  requestAnimationFrame(step.bind(this));
 }

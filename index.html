@@ -70,35 +70,41 @@
             </div>
             <div id="config-box" class="gui-box sim-mode-box">
                 <div id="show-config-box">
-                    <button id="show-config-button" class="button is-small is-dark is-outlined is-inverted" title="Planner Config">
+                    <div id="show-welcome-modal" class="button is-small is-dark is-outlined is-inverted" title="About Dash">
+                        <span class="icon is-medium">
+                            <i class="fas fa-lg fa-info"></i>
+                        </span>
+                    </div>
+                    &nbsp;
+                    <div id="show-config-button" class="button is-small is-dark is-outlined is-inverted" title="Planner Config">
                         <span class="icon is-medium">
                             <i class="fas fa-lg fa-cog"></i>
                         </span>
-                    </button>
+                    </div>
                 </div>
                 <div id="config-box-content" class="is-hidden">
                     <div class="is-clearfix">
                         <div class="field is-grouped is-pulled-right">
                             <div class="control">
-                                <button id="restore-defaults-config-button" class="button is-small is-danger" title="Restore Defaults">
+                                <div id="restore-defaults-config-button" class="button is-small is-danger" title="Restore Defaults">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-undo-alt"></i>
                                     </span>
-                                </button>
+                                </div>
                             </div>
                             <div class="control">
-                                <button id="save-config-button" class="button is-small is-success" title="Save Config">
+                                <div id="save-config-button" class="button is-small is-success" title="Save Config">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-save"></i>
                                     </span>
-                                </button>
+                                </div>
                             </div>
                             <div class="control">
-                                <button id="hide-config-button" class="button is-small is-dark is-outlined is-inverted" title="Close">
+                                <div id="hide-config-button" class="button is-small is-dark is-outlined is-inverted" title="Close">
                                     <span class="icon is-medium">
                                         <i class="fas fa-lg fa-times"></i>
                                     </span>
-                                </button>
+                                </div>
                             </div>
                         </div>
                         <div class="title is-5 has-text-grey-lighter" style="padding-top: 2px; padding-right: 8px; background: transparent; border: none;">Planner Config</div>
@@ -140,7 +146,7 @@
                 </div>
             </div>
             <div id="editor-scenario-info" class="gui-box edit-mode-box is-hidden has-text-right allow-user-select">
-                <div id="editor-scenario-name" class="title is-5 has-text-grey-lighter" title="Untitled">Untitled</div>
+                <div id="editor-scenario-name" class="title is-5 has-text-grey-lighter" title="Untitled" style="line-height: 1.4;">Untitled</div>
                 <div class="subtitle is-7">
                     <span class="has-text-grey">Last Saved:</span>
                     <span id="editor-scenario-saved-at" class="has-text-grey-lighter">Unsaved</span>
@@ -254,7 +260,7 @@
             </div>
             <div id="editor-controls" class="gui-box edit-mode-box is-hidden">
                 <div id="editor-help" class="gui-box is-size-7 has-text-grey">
-                    <div id="editor-help-path" class="xis-hidden">
+                    <div id="editor-help-path" class="is-hidden">
                         <div class="gui-box flex">
                             <div class="has-text-weight-bold has-text-right" style="margin-right: 0.75rem;">
                                 <div>Left-click</div>
@@ -409,10 +415,62 @@
             </div>
         </div>
 
+        <div id="welcome-modal" class="modal">
+            <div id="welcome-modal-background" class="modal-background" style="background-color: transparent;"></div>
+            <div class="modal-content content">
+                <div class="modal-box has-text-grey-lighter">
+                    <div class="hero is-dark is-bold" style="position: relative;">
+                        <button id="welcome-modal-close" class="delete is-medium" style="position: absolute; top: 0.5rem; right: 0.5rem;"></button>
+                        <div class="hero-body" style="padding: 1.5rem;">
+                            <div class="title is-4"><b>Dash</b> Self-driving Car Simulator</div>
+                            <div class="subtitle is-6">Built with WebGL and Three.js</div>
+                        </div>
+                    </div>
+                    <p></p>
+                    <p>
+                        This project demonstrates a real-time, on-road,
+                        lattice-based autonomous vehicle motion planner in the
+                        browser.  Many autonomous vehicle motion planners are
+                        implemented close to the metal in C or C++, or they
+                        utilize computing platforms like CUDA or OpenCL to
+                        generate plans in a highly parallel fashion on the GPU.
+                        Using WebGL, we can implement similar parallel planning
+                        algorithms right in the browser that can run on a
+                        variety of moderately-powerful consumer graphics cards.
+                        With Three.js, the motion planner can be executed in
+                        real-time 3D simulated scenarios.
+                    </p>
+                    <p>
+                        This simulator is still a work-in-progress. You may see
+                        bugs, WebGL crashes, strange vehicle behavior, and any
+                        number of other failures. Currently, it is functional
+                        only in <a href="https://www.google.com/chrome/" target="_blank">Google Chrome</a>
+                        with <a href="#">hardware acceleration enabled</a> and
+                        <a href="chrome://flags#enable-experimental-canvas-features">experimental canvas features</a>
+                        enabled. The target frame rate is 60fps, but it may run
+                        slower depending on how long planning takes on your
+                        hardware.
+                    </p>
+                    <p>
+                        Next steps: try out several
+                        <a id="welcome-modal-examples">example scenarios</a>
+                        or <a id="welcome-modal-create">create your own</a>.
+                    </p>
+                    <p>
+                        The source code and more information can be found in the
+                        <a href="https://github.com/mattbradley/dash" target="_blank">README</a>.
+                    </p>
+                    <p class="is-size-7 has-text-grey">
+                        &copy; 2018 Matt Bradley &bull; <a href="https://github.com/mattbradley/dash/blob/master/LICENSE" target="_blank">MIT License</a> &bull; <a href="https://github.com/mattbradley/dash" target="_blank">GitHub</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <div id="scenarios-modal" class="modal">
             <div id="scenarios-modal-background" class="modal-background" style="background-color: transparent;"></div>
             <div class="modal-content">
-                <div class="gui-box has-text-grey-lighter allow-user-select" style="padding: 1rem;">
+                <div class="modal-box has-text-grey-lighter">
                     <button id="scenarios-modal-close" class="delete is-medium is-pulled-right"></button>
                     <div class="title is-5 has-text-grey-lighter">Load Scenario</div>
                     <div id="scenarios-modal-tabs" class="tabs is-small is-toggle">
@@ -434,7 +492,7 @@
                             <div class="control" style="flex: 1; display: flex; flex-direction: column;">
                                 <textarea id="scenario-import-box" class="textarea" type="text" placeholder="Paste exported scenario code here" style="flex: 1; resize: none; border-width: 2px;"></textarea>
                             </div>
-                            <div id="scenario-import-info" class="is-size-7 is-hidden" style="margin-top: 1rem;"></div>
+                            <div id="scenario-import-info" class="is-size-7 is-hidden" style="margin-top: 1.5rem;"></div>
                         </div>
                     </div>
                 </div>
@@ -444,7 +502,7 @@
         <div id="scenario-share-modal" class="modal">
             <div id="scenario-share-modal-background" class="modal-background" style="background-color: transparent;"></div>
             <div class="modal-content">
-                <div class="gui-box has-text-grey-lighter" style="padding: 1rem;">
+                <div class="modal-box has-text-grey-lighter">
                     <button id="scenario-share-modal-close" class="delete is-medium is-pulled-right"></button>
                     <div class="title is-5 has-text-grey-lighter">Share Scenario</div>
                     <div>This link will automatically run the scenario when loaded:</div>
