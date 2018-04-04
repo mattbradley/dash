@@ -15,6 +15,6 @@
     "wrapper-webpack-plugin": "1.0.0"
   },
   "dependencies": {
-    "npm": "^5.7.1"
+    "npm": "^5.8.0"
   }
 }
