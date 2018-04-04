@@ -443,11 +443,11 @@
                     <p>
                         This simulator is still a work-in-progress. You may see
                         bugs, WebGL crashes, strange vehicle behavior, and any
-                        number of other failures. Currently, it is functional
+                        number of other failures. Currently, it is fully functional
                         only in <a href="https://www.google.com/chrome/" target="_blank">Google Chrome</a>
                         with <a href="#">hardware acceleration enabled</a> and
-                        <a href="chrome://flags#enable-experimental-canvas-features">experimental canvas features</a>
-                        enabled. The target frame rate is 60fps, but it may run
+                        <a href="chrome://flags#enable-experimental-canvas-features">experimental canvas features enabled</a>.
+                        The target frame rate is 60fps, but it may run
                         slower depending on how long planning takes on your
                         hardware.
                     </p>
@@ -475,11 +475,70 @@
                     <div class="title is-5 has-text-grey-lighter">Load Scenario</div>
                     <div id="scenarios-modal-tabs" class="tabs is-small is-toggle">
                         <ul>
-                            <li id="scenarios-modal-saved-tab-button" class="is-active"><a>Saved Scenarios</a></li>
+                            <!--<li id="scenarios-modal-examples-tab-button"><a>Example Scenarios</a></li>-->
+                            <li id="scenarios-modal-saved-tab-button"><a>Saved Scenarios</a></li>
                             <li id="scenarios-modal-import-tab-button"><a>Import Scenario</a></li>
                         </ul>
                     </div>
-                    <div id="scenarios-modal-saved-tab" class="scenarios-modal-tab">
+                    <div id="scenarios-modal-examples-tab" class="scenarios-modal-tab is-hidden">
+                        <div class="columns">
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/one_car_overtake.png" />
+                                </div>
+                                <div class="name">One-car overtake</div>
+                            </div>
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/two_car_overtake.png" />
+                                </div>
+                                <div class="name">Two-car overtake</div>
+                            </div>
+                        </div>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/rough_road.png" />
+                                </div>
+                                <div class="name">Rough road</div>
+                            </div>
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/dodging_a_speeder.png" />
+                                </div>
+                                <div class="name">Dodging a speeder</div>
+                            </div>
+                        </div>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/lane_blockage.png" />
+                                </div>
+                                <div class="name">Lane blockage with oncoming traffic</div>
+                            </div>
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/merging.png" />
+                                </div>
+                                <div class="name">Merging into slower traffic</div>
+                            </div>
+                        </div>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/crosswalks.png" />
+                                </div>
+                                <div class="name">Negotiating crosswalks</div>
+                            </div>
+                            <div class="column">
+                                <div class="image">
+                                    <img src="images/examples/peloton.png" />
+                                </div>
+                                <div class="name">Chasing the peloton</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="scenarios-modal-saved-tab" class="scenarios-modal-tab is-hidden">
                         <div class="columns">
                             <div id="scenarios-sort-name" class="column is-7 is-size-7 scenario-sort-button">Name</div>
                             <div id="scenarios-sort-saved-at" class="column is-4 is-size-7 scenario-sort-button is-underlined">Saved Date</div>

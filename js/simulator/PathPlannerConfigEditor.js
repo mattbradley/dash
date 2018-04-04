@@ -43,7 +43,7 @@ const defaultConfig = {
   laneCenterLatitude: internalConfig.roadWidth / 4,
   laneShoulderLatitude: internalConfig.roadWidth / 2 * 1.1 - Car.HALF_CAR_WIDTH,
   laneCostSlope: 20, // cost / meter
-  lanePreferenceDiscount: 50,
+  lanePreferenceDiscount: 55,
 
   stationReachDiscount: 400,
   extraTimePenalty: 1000,
