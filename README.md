@@ -2,39 +2,39 @@
 
 Real-time motion planner and autonomous vehicle simulator in the browser, built with WebGL and Three.js.
 
-![Dash](./images/dash.gif)
+![Dash](./readme/dash.gif)
 
 This project demonstrates a real-time, on-road, lattice-based autonomous vehicle motion planner in the browser. Many autonomous vehicle motion planners are implemented close to the metal in C or C++, or they utilize computing platforms like CUDA or OpenCL to generate plans in a highly parallel fashion on the GPU. Using WebGL, we can implement similar parallel planning algorithms right in the browser that can run on a variety of moderately-powerful consumer graphics cards. With Three.js, the motion planner can be executed in real-time 3D simulated scenarios.
 
-This simulator is still a work-in-progress. You may see bugs, WebGL crashes, strange vehicle behavior, and any number of other failures. Currently, it is functional only in [Google Chrome](https://www.google.com/chrome/) with hardware acceleration enabled and experimental canvas features enabled. The target frame rate is 60fps, but it may run slower depending on how long planning takes on your hardware.
+This simulator is still a work-in-progress. You may see bugs, WebGL crashes, strange vehicle behavior, and any number of other failures. Currently, it is functional only in [Google Chrome](https://www.google.com/chrome/) with [hardware acceleration enabled](#enable-hardware-acceleration) and [experimental canvas features enabled](#enable-experimental-canvas-features). The target frame rate is 60fps, but it may run slower depending on how long planning takes on your hardware.
 
 ## How It Works
 
-This motion planner is mainly based on two PhD theses on parallel lattice-based trajectory planning: _Parallel Algorithms for
+This motion planner is mainly based on two Ph.D. theses on parallel lattice-based trajectory planning: _Parallel Algorithms for
 Real-time Motion Planning_ by Matthew McNaughton and _State Lattice-based Motion Planning for
 Autonomous On-Road Driving_ by Shuiying Wang.
 
 ### SL Coordinates and the Lattice
 
-The simulation and the vehicle run in a standard XY coordinate system. However, for certain components, it is easier to work with a coordinate system that is influenced by the shape of the road. Where appropriate, the planner instead uses a station-latitude (SL) coordinate system. The station is the longitudinal distance along the road from some initial point, and the latitude is the lateral offset from the centerline (where negative latitudes are to the left and positive latitudes are to the right).
+The simulation and the vehicle run in a standard XY Cartesian coordinate system. However, for certain components, it is easier to work with a coordinate system that is influenced by the shape of the road. Where appropriate, the planner instead uses a station-latitude (SL) coordinate system. The station is the longitudinal distance along the road from some initial point, and the latitude is the lateral offset from the centerline (with negative latitudes to the left and positive latitudes to the right).
 
-![SL Coordinate System](#todo)
+![SL Coordinate System](./readme/sl_frame.png)
 
 Using the SL coordinate system, a lattice is built with equally-spaced points for some spatial horizon distance along the road from the vehicle's current position. Each lattice point has an SL position, a heading, and a curvature, all fully defined by the shape of the road. The lattice points and edges joining them form a graph of trajectories; the motion planner returns the best path through this graph as decided by a cost function made up of various terms.
 
-![Lattice Points](#todo)
+![Lattice Points](./readme/lattice.png)
 
 ### Polynomial Spiral Paths
 
-To allow for smooth driving, any path return by the motion planner must exhibit continuous curvature (meaning no discontinuous rotations of the steering wheel); it's obvious that straight edges cannot be used to connect the lattice points between stations. A polynomial spiral is a curve whose curvature is a polynomial function of it arc-length; it provides the planner with continuous curvature paths, and its coefficients can be quickly estimated using gradient descent. Edges between lattice points are created following some connectivity pattern, and the polynomial spiral coefficients for each edge are optimized in parallel using a WebGL kernel. Polynomial spiral edges are also created to connect the vehicle's current position to points on the lattice.
+To allow for smooth driving, any path return by the motion planner must guarantee continuous curvature (meaning no discontinuous rotations of the steering wheel); it's obvious that straight edges cannot be used to connect the lattice points between stations. A polynomial spiral is a curve whose curvature is a polynomial function of it arc-length; it provides the planner with continuous curvature paths, and its coefficients can be quickly estimated using gradient descent. Edges between lattice points are created following some connectivity pattern, and the polynomial spiral coefficients for each edge are optimized in parallel using a WebGL shader. Polynomial spiral edges are also created to connect the vehicle's current position to points on the lattice.
 
-![Polynomial Spiral](#todo)
+![Polynomial Spiral](./readme/polynomial_spiral.png)
 
 ### Obstacles
 
 Both static and dynamic obstacles are avoided by the motion planner. Static obstacles are considered motionless during the simulation, and dynamic obstacles have their future positions calculated using their velocities and current positions. Obstacles are drawn to an obstacle cost grid with WebGL, with the dynamic obstacle cost grid having multiple "frames" representing different ranges in time. To ensure safe movement around obstacles, their sizes on the grid are dilated into two zones: the smaller collision zone and the larger hazard zone. Paths traveling through the collision zone have infinite cost and are pruned during the graph search. Paths traveling through the hazard zone have an increased cost, but are still feasible. Additionally, the dilation size is larger along the longitudinal direction compared to the lateral direction. This allows the vehicle to have a smaller latitude distance from an obstacle but a higher station distance (i.e., it is safe to be only a few feet away from a vehicle in an adjacent lane on a highway, but it is not safe to be a few feet behind a vehicle on a highway).
 
-![Obstacle Dilation](#todo)
+![Obstacle Dilation](./readme/obstacle_dilation.png)
 
 ### Graph Search
 
@@ -42,9 +42,11 @@ Each 2D station-latitude lattice point is augmented into a graph vertex with thr
 
 Each graph vertex also has a corresponding acceleration profile dimension that determines the change in velocity that happens over the length of incoming trajectories. Several acceleration profiles are used, such as constant hard and soft acceleration/braking and computed accelerations to reach a target velocity like the configured speed limit or a complete stop.
 
+![Graph Search](./readme/graph_search.png)
+
 #### Cost Function
 
-Each trajectory edge that connects two graph vertices has an associated traversal cost. This cost is calculated by sampling the polynomial spiral path into distinct points (say every 0.5 meters) and summing up the cost terms of each individual point. Various cost terms are used, penalizing things like: proximity to static or dynamic obstacles, lateral offsets from the center of the lane, driving in the non-preferred lane, exceeding the speed limit, accelerating or braking too hard, high lateral accelerations, etc.
+Each trajectory edge that connects two graph vertices has an associated traversal cost. This cost is calculated by sampling the polynomial spiral path into distinct points (say every 0.5 meters) and summing the cost terms of each individual point. Various cost terms are used, penalizing things like: proximity to static or dynamic obstacles, lateral offsets from the center of the lane, driving in the non-preferred lane, exceeding the speed limit, accelerating or braking too hard, high lateral accelerations, etc.
 
 #### Dynamic Programming
 
@@ -52,7 +54,7 @@ The assumption is made that the vehicle will only drive forwards along the road,
 
 ### WebGL and Shaders
 
-WebGL 2 is based on OpenGL ES 3.0 (the slimmed down OpenGL version designed for embedded systems like smartphones and tablets). It provides only vertex shaders and fragment shaders, no geometry shaders or compute shaders or parallel programming frameworks. Implementing algorithms originally designed for CUDA within such constraints is certainly difficult. For example, in the original literature, the graph search algorithm uses a cost table to store the best trajectory (and its cost) found so far for each particular vertex in the graph. When expanding trajectories outgoing from a vertex, the resultant vertex (including whichever time range and velocity range it happens to fall into based on the initial time and velocity and the chosen acceleration profile) has its cost table entry updated atomically with the new trajectory if its cost is lower. This technique is impossible with GLSL shaders in WebGL. There is no shared mutable memory that a shader thread has access to that can be transferred back to the CPU. The only way to compute something in parallel in WebGL is to have each pixel in a fragment shader compute its own work item. To implement the dynamic programming graph search in GLSL, each pixel in the framebuffer is assigned a vertex of the station currently being processed. It finds the best trajectory that terminates at that vertex, and returns, as its color data, the (1) total cost, (2) final time, (3) final velocity, and (4) previous vertex. This color data is then returned back to the CPU as a texture, which is unpacked and processed to rebuild the least cost path through the graph.
+WebGL 2 is based on OpenGL ES 3.0 (the slimmed down OpenGL version designed for embedded systems like smartphones and tablets). It provides only vertex shaders and fragment shaders, no geometry shaders or compute shaders or parallel programming frameworks. Implementing algorithms originally designed for CUDA within such constraints is certainly difficult. For example, in the original literature, the graph search algorithm uses a cost table to store the best trajectory (and its cost) found so far for each particular vertex in the graph. When expanding trajectories outgoing from a vertex, the resultant vertex (including whichever time range and velocity range it happens to fall into based on the initial time and velocity and the chosen acceleration profile) has its cost table entry updated atomically with the new trajectory if its cost is lower. This technique is impossible with GLSL shaders in WebGL. There is no shared mutable memory that a shader thread has access to that can be transferred back to the CPU. The only way to compute something in parallel in WebGL is to have each fragment in a fragment shader compute its own work item. To implement the dynamic programming graph search in GLSL, each pixel in the framebuffer is assigned a vertex of the station currently being processed. It finds the best trajectory that terminates at that vertex, and returns, as its color data, the (1) total cost, (2) final time, (3) final velocity, and (4) previous vertex. This color data is then returned back to the CPU as a texture, which is unpacked and processed to rebuild the least cost path through the graph.
 
 Almost all of the motion planner is implemented in GLSL; you can find the shaders used for each component of the planner in the [`gpgpu-programs`](./js/autonomy/path-planning/gpgpu-programs) directory;
 
@@ -88,9 +90,13 @@ However, even with OffscreenCanvas available, Dash doesn't work in Firefox Quant
 
 Dash _does_ work in Firefox Quantum for MacOS, though. But the frame rate is so low compared to Chrome, that the simulation is barely runnable.
 
+### Edge
+
+The simulation is mostly broken in Microsoft Edge. It doesn't currently support WebGL 2 or OffscreenCanvas.
+
 ### Safari
 
-Safari 11.0.3 was tested on High Sierra (10.13.3), but WebGL isn't even supported on that pair of versions. Safari Technology Preview supports WebGL; but it doesn't support OffscreenCanvas, so the motion planner isn't functional.
+Safari 11.0.3 was tested on MacOS High Sierra (10.13.3), but WebGL isn't supported on that pair of versions. Safari Technology Preview supports WebGL; but it doesn't support OffscreenCanvas, so the motion planner isn't functional.
 
 ### Mobile Browsers
 
