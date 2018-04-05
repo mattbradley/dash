@@ -1,4 +1,5 @@
 import { formatDate } from "../Helpers.js";
+import EXAMPLES from "./examples.js";
 
 const LOCAL_STORAGE_KEY = 'dash_Scenarios';
 
@@ -10,11 +11,14 @@ export default class ScenarioManager {
     document.getElementById('scenarios-modal-background').addEventListener('click', this._closeModal.bind(this));
     document.getElementById('scenarios-modal-close').addEventListener('click', this._closeModal.bind(this));
 
+    this.examplesTab = document.getElementById('scenarios-modal-examples-tab');
     this.savedTab = document.getElementById('scenarios-modal-saved-tab');
     this.importTab = document.getElementById('scenarios-modal-import-tab');
 
+    this.examplesTabButton = document.getElementById('scenarios-modal-examples-tab-button');
     this.savedTabButton = document.getElementById('scenarios-modal-saved-tab-button');
     this.importTabButton = document.getElementById('scenarios-modal-import-tab-button');
+    this.examplesTabButton.addEventListener('click', e => this.switchTab(this.examplesTab));
     this.savedTabButton.addEventListener('click', e => this.switchTab(this.savedTab));
     this.importTabButton.addEventListener('click', e => this.switchTab(this.importTab));
 
@@ -29,15 +33,24 @@ export default class ScenarioManager {
     this.importInfo = document.getElementById('scenario-import-info');
 
     this.importBox.addEventListener('input', this._importBoxChanged.bind(this));
+
+    for (let i = 0; i < EXAMPLES.length; i++)
+      document.getElementById(`example-${i}`).addEventListener('click', e => this._loadScenario(EXAMPLES[i]));
   }
 
   switchTab(tab) {
+    this.examplesTab.classList.add('is-hidden')
     this.savedTab.classList.add('is-hidden')
     this.importTab.classList.add('is-hidden')
+    this.examplesTabButton.classList.remove('is-active');
     this.savedTabButton.classList.remove('is-active');
     this.importTabButton.classList.remove('is-active');
 
-    const button = tab == this.savedTab ? this.savedTabButton : this.importTabButton;
+    let button = this.savedTabButton;
+    if (tab == this.examplesTab)
+      button = this.examplesTabButton;
+    else if (tab == this.importTab)
+      button = this.importTabButton;
 
     tab.classList.remove('is-hidden');
     button.classList.add('is-active');

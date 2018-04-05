@@ -131,6 +131,7 @@ export default class Simulator {
     document.getElementById('welcome-modal-examples').addEventListener('click', e => {
       this.welcomeModal.classList.remove('is-active');
       this.loadScenario();
+      this.editor.scenarioManager.switchTab(this.editor.scenarioManager.examplesTab);
     });
 
     document.getElementById('welcome-modal-create').addEventListener('click', e => {
