@@ -12,6 +12,9 @@ function init() {
   } catch (e) {
     console.log('Error initializing path planner:');
     console.log(e);
+
+    self.postMessage({ error: true });
+
     return;
   }
 

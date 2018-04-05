@@ -561,6 +561,11 @@ export default class Simulator {
   }
 
   receivePlannedPath(event) {
+    if (event.data.error) {
+      document.getElementById('planner-error').classList.remove('is-hidden');
+      return;
+    }
+
     if (this.waitingForFirstPlan && !this.plannerReset) {
       this.waitingForFirstPlan = false;
       this.autonomousModeButton.classList.remove('is-loading');

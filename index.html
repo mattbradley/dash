@@ -8,6 +8,12 @@
 	<body>
         <div id="container">
             <div id="dashboard" class="gui-box sim-mode-box">
+                <div id="planner-error" class="gui-box is-size-7 is-hidden" style="background: #422b;">
+                    <span class="icon has-text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </span>
+                    <span class="has-text-grey-lighter" style="position: relative; top: -2px;">Error initializing motion planner. <a href="#todo">Check if your browser is supported</a>.</span>
+                </div>
                 <div id="controls" class="is-pulled-left">
                     <div id="brake"></div>
                     <div id="gas"></div>
@@ -445,8 +451,8 @@
                         bugs, WebGL crashes, strange vehicle behavior, and any
                         number of other failures. Currently, it is fully functional
                         only in <a href="https://www.google.com/chrome/" target="_blank">Google Chrome</a>
-                        with <a href="#">hardware acceleration enabled</a> and
-                        <a href="chrome://flags#enable-experimental-canvas-features">experimental canvas features enabled</a>.
+                        with <a href="#todo">hardware acceleration enabled</a> and
+                        <a href="#todo">experimental canvas features enabled</a>.
                         The target frame rate is 60fps, but it may run
                         slower depending on how long planning takes on your
                         hardware.
