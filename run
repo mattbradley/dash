@@ -1,0 +1,32 @@
+#!/bin/bash
+# WF 2020-01-14
+
+#
+# show usage
+#
+usage() {
+  echo "usage $0 [-h|--help] | [-w|--watch]"
+  exit 1
+}
+
+which webpack > /dev/null
+if [  $? -ne 0 ]
+then
+  echo "installing webpack ..."
+  npm install webpack
+  npm install webpack-cli
+  npm install --save-dev webpack
+fi
+option="build"
+for i in "$@"
+do
+  case $i in
+    -h|--help)
+      usage
+      ;;
+    -w|--watch)
+      option="watch"
+      ;;
+  esac
+done
+npm run $option 

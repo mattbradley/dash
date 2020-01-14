@@ -1,4 +1,5 @@
 // part of https://github.com/rc-dukes/dash
+import { EventEmitter } from "events";
 import Physics from "./physics/Physics.js";
 import Path from "./autonomy/Path.js";
 import CubicPath from "./autonomy/path-planning/CubicPath.js";
@@ -24,12 +25,15 @@ import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
 const FRAME_TIMESTEP = 1 / 60;
 const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
+// const http = require("http");
 
 export default class Simulator {
   constructor(domElement) {
     this.pathPlannerWorker = new Worker(URL.createObjectURL(new Blob([`(${dash_initPathPlannerWorker.toString()})()`], { type: 'text/javascript' })));
     this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
     this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
+    // video serving
+    this.videoServer=null;
 
     this.physics = new Physics();
     // the car to be used
@@ -120,6 +124,9 @@ export default class Simulator {
     this.scenarioPauseButton.addEventListener('click', this.pauseScenario.bind(this));
     this.scenarioRestartButton = document.getElementById('scenario-restart');
     this.scenarioRestartButton.addEventListener('click', this.restartScenario.bind(this));
+
+    this.serveMJpeg=document.getElementById('serve-mjpeg');
+    this.serveMJpeg.addEventListener('click',this.serveVideo.bind(this));
 
     this.welcomeModal = document.getElementById('welcome-modal');
     document.getElementById('show-welcome-modal').addEventListener('click', e => this.welcomeModal.classList.add('is-active'));
@@ -359,6 +366,40 @@ export default class Simulator {
     this.scenarioPauseButton.classList.add('is-hidden');
   }
 
+  // video Server
+  // see https://gist.github.com/cecilemuller/c8e746a5cb828e83e55892d4742b8a5c
+  serveVideo() {
+    if (this.videoServer===null) {
+      this.setColorAndTitle('serve-mjpeg','red','stop serving video');
+      /* this.emitter = new EventEmitter();
+      this.videoServer = http.createServer((req, res) => {
+      	res.writeHead(200, {
+      		'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
+      		Pragma: 'no-cache',
+      		Connection: 'close',
+      		'Content-Type': 'multipart/x-mixed-replace; boundary=--myboundary'
+      	});
+
+      	const writeFrame = () => {
+      		const buffer = buffers[bufferIndex];
+      		res.write(`--myboundary\nContent-Type: image/jpg\nContent-length: ${buffer.length}\n\n`);
+      		res.write(buffer);
+      	};
+
+      	writeFrame();
+      	emitter.addListener('frame', writeFrame);
+      	res.addListener('close', () => {
+      		emitter.removeListener('frame', writeFrame);
+      	});
+       });
+       server.listen(8234); */
+       this.videoServer="running";
+    } else {
+      this.videoServer=null;
+      this.setColorAndTitle('serve-mjpeg','white','start serving video');
+    }
+  }
+
   restartScenario() {
     if (this.editor.enabled) return;
 
@@ -411,6 +452,19 @@ export default class Simulator {
   hideWelcomeModal() {
     this.welcomeModal.classList.remove('is-active');
     window.localStorage.setItem(WELCOME_MODAL_KEY, 'hide');
+  }
+
+  /**
+   * set the color of the element with the given id
+   *
+   * @param id
+   * @param color
+   * @param title
+   */
+  setColorAndTitle(id, color,title) {
+  	var el=document.getElementById(id);
+    el.style.color = color;
+    el.title=title;
   }
 
   startPlanner(pose, station) {
