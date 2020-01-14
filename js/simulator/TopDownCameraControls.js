@@ -1,3 +1,4 @@
+// part of https://github.com/rc-dukes/dash
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
 let panning = false;
 

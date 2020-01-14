@@ -6,3 +6,5 @@ node_modules
 dist
 # package lock
 package-lock.json
+# MAC
+.DS_Store

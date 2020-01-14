@@ -1,3 +1,4 @@
+// part of https://github.com/rc-dukes/dash
 import Physics from "./physics/Physics.js";
 import Path from "./autonomy/Path.js";
 import CubicPath from "./autonomy/path-planning/CubicPath.js";
@@ -9,7 +10,8 @@ import CarObject from "./objects/CarObject.js";
 import StaticObstacleObject from "./objects/StaticObstacleObject.js";
 import DynamicObstacleObject from "./objects/DynamicObstacleObject.js";
 import Editor from "./simulator/Editor.js";
-import OrbitControls from "./simulator/OrbitControls.js";
+import Camera from "./simulator/Camera.js";
+import Cameras from "./simulator/Camera.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
 import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";
@@ -30,6 +32,7 @@ export default class Simulator {
     this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
 
     this.physics = new Physics();
+    // the car to be used
     this.car = this.physics.createCar();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -52,7 +55,7 @@ export default class Simulator {
     this.scene.fog = this.sceneFog;
     this.scene.background = new THREE.Color(0x111111);
 
-    this.editor = new Editor(this.renderer.domElement, this.editorCamera, this.scene);
+    this.editor = new Editor(this.renderer.domElement, this.editorCamera.pcam, this.scene);
 
     const geolocation = null;//[33.523900, -111.908756];
     const map = new MapObject(geolocation);
@@ -93,7 +96,7 @@ export default class Simulator {
     this.averagePlanTime = new MovingAverage(20);
 
     window.addEventListener('resize', e => {
-      this._updateCameraAspects(domElement.clientWidth / domElement.clientHeight);
+      this.cameras.updateAspects(domElement.clientWidth / domElement.clientHeight);
       this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
     });
 
@@ -144,7 +147,8 @@ export default class Simulator {
     this.fpsBox = document.getElementById('fps');
 
     this.enableManualMode();
-    this.changeCamera('chase');
+    // default camera mode
+    this.cameras.changeCamera(this.driverCamera);
 
     this.aroundAnchorIndex = null;
     this.staticObstacles = [];
@@ -190,49 +194,48 @@ export default class Simulator {
     }
   }
 
+  // set up the different cameras
   _setUpCameras(domElement) {
-    this.chaseCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.chaseCameraControls = new OrbitControls(this.chaseCamera, domElement);
-    this.chaseCameraControls.minDistance = 4;
-    this.chaseCameraControls.maxDistance = 5000;
-    this.chaseCameraControls.maxPolarAngle = Math.PI / 2.02;
-    this.chaseCameraControls.enablePan = false;
-    this.chaseCameraControls.enabled = false;
-    this._resetChaseCamera();
+    // create the list of cameras
+    this.cameras=new Cameras(this.car, domElement);
+    this.chaseCamera=this.cameras.add('chase',55);
+    this.chaseCamera.addControls(4,5000);
+    this.chaseCamera.controls.enablePan = false;
+    this.chaseCamera.controls.enabled = false;
 
-    this.freeCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.freeCameraControls = new OrbitControls(this.freeCamera, domElement);
-    this.freeCameraControls.minDistance = 5;
-    this.freeCameraControls.maxDistance = 5000;
-    this.freeCameraControls.maxPolarAngle = Math.PI / 2.02;
-    this.freeCameraControls.enabled = true;
-    this._resetFreeCamera();
+    this.driverCamera=this.cameras.add('driver',55);
+    this.driverCamera.addControls(4,5000);
+    this.driverCamera.controls.enablePan = false;
+    this.driverCamera.controls.enabled = false;
 
-    this.topDownCamera = new THREE.PerspectiveCamera(55, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.topDownCamera.position.set(0, 50, 0);
-    this.topDownCamera.lookAt(0, 0, 0);
-    this.topDownControls = new TopDownCameraControls(domElement, this.topDownCamera);
-    this.topDownControls.enabled = false;
-    this.topDownControls.minAltitude = 5;
-    this.topDownControls.maxAltitude = 10000;
+    this.freeCamera=this.cameras.add('free',55);
+    this.freeCamera.addControls(5,5000);
+    this.freeCamera.controls.enabled = true;
 
-    this.editorCamera = new THREE.PerspectiveCamera(45, domElement.clientWidth / domElement.clientHeight, 1, 10000);
-    this.editorCamera.layers.enable(2);
-    this.editorCamera.position.set(0, 200, 0);
-    this.editorCamera.lookAt(0, 0, 0);
-    this.editorCameraControls = new TopDownCameraControls(domElement, this.editorCamera);
-    this.editorCameraControls.enabled = false;
-    this.editorCameraControls.enablePanning = true;
-    this.editorCameraControls.minAltitude = 10;
-    this.editorCameraControls.maxAltitude = 10000;
+    this.topDownCamera=this.cameras.add('topDown',55);
 
-    this.cameraButtons = {};
+    this.topDownCamera.pcam.position.set(0, 50, 0);
+    this.topDownCamera.pcam.lookAt(0, 0, 0);
 
-    ['free', 'chase', 'topDown'].forEach(c => {
-      const cameraButton = document.getElementById(`camera-${c}`);
-      cameraButton.addEventListener('click', () => this.changeCamera(c));
-      this.cameraButtons[c] = cameraButton;
-    });
+    this.topDownCamera.controls = new TopDownCameraControls(domElement, this.topDownCamera.pcam);
+    this.topDownCamera.controls.enabled = false;
+    this.topDownCamera.controls.minAltitude = 5;
+    this.topDownCamera.controls.maxAltitude = 10000;
+
+    this.editorCamera=this.cameras.add('editor',45,true);
+    this.editorCamera.pcam.layers.enable(2);
+    this.editorCamera.pcam.position.set(0, 200, 0);
+    this.editorCamera.pcam.lookAt(0, 0, 0);
+
+    this.editorCamera.controls = new TopDownCameraControls(domElement, this.editorCamera.pcam);
+    this.editorCamera.controls.enabled = false;
+    this.editorCamera.controls.enablePanning = true;
+    this.editorCamera.controls.minAltitude = 10;
+    this.editorCamera.controls.maxAltitude = 10000;
+
+    this.cameras.addButtonClickHandler();
+    // update all cameras
+    this.cameras.updateAll();
 
     this.switchTo2DButton = document.getElementById('camera-2D');
     this.switchTo2DButton.addEventListener('click', this.switchTo2D.bind(this));
@@ -242,48 +245,12 @@ export default class Simulator {
     this.switchTo3D();
   }
 
-  _resetFreeCamera() {
-    this.freeCameraControls.position0.copy(this.chaseCamera.position);
-    const carPosition = this.car.position;
-    this.freeCameraControls.target0.set(carPosition.x, 0, carPosition.y);
-    this.freeCameraControls.reset();
-  }
-
-  _resetChaseCamera() {
-    const pos = this.car.position;
-    const dirVector = THREE.Vector2.fromAngle(this.car.rotation).multiplyScalar(-20);
-    this.chaseCamera.position.set(pos.x + dirVector.x, 8, pos.y + dirVector.y);
-    this.chaseCamera.lookAt(pos.x, 0, pos.y);
-  }
-
-  _resetTopDownCamera() {
-    const carPosition = this.car.position;
-    this.topDownCamera.position.set(carPosition.x, 50, carPosition.y);
-    this.topDownCamera.rotation.z = -this.car.rotation - Math.PI / 2
-  }
-
-  _updateCameraAspects(aspect) {
-    this.freeCamera.aspect = aspect;
-    this.freeCamera.updateProjectionMatrix();
-    this.chaseCamera.aspect = aspect;
-    this.chaseCamera.updateProjectionMatrix();
-    this.topDownCamera.aspect = aspect;
-    this.topDownCamera.updateProjectionMatrix();
-    this.editorCamera.aspect = aspect;
-    this.editorCamera.updateProjectionMatrix();
-  }
-
   enableEditor() {
     this.editor.enabled = true;
     this.plannerRunning = false;
 
-    this.previousCamera = this.camera;
-    this.camera = this.editorCamera;
-    this.editorCameraControls.enabled = true;
-    this.chaseCameraControls.enabled = false;
-    this.topDownControls.enabled = false;
-    this.freeCameraControls.enabled = false;
-
+    this.previousCamera = this.cameras.current;
+    this.cameras.changeCamera(this.editorCamera);
     this.scene.fog = null;
     this.carObject.visible = false;
     if (this.plannedPathGroup) this.plannedPathGroup.visible = false;
@@ -296,7 +263,7 @@ export default class Simulator {
 
   finalizeEditor(replaceCamera = true) {
     this.editor.enabled = false;
-    this.editorCameraControls.enabled = false;
+    this.editorCamera.controls.enabled = false;
 
     this.scene.fog = this.sceneFog;
     this.carObject.visible = true;
@@ -345,21 +312,11 @@ export default class Simulator {
     this.dashboard.update({ steer: 0, brake: 0, gas: 0 }, this.car.velocity, null, null, 0, this.averagePlanTime.average);
 
     if (replaceCamera) {
-      this.camera = this.previousCamera;
-
-      if (this.previousCamera == this.chaseCamera)
-        this.chaseCameraControls.enabled = true;
-      else if (this.previousCamera == this.topDownCamera)
-        this.topDownControls.enabled = true;
-      else if (this.previousCamera == this.freeCamera)
-        this.freeCameraControls.enabled = true;
+      if (this.previousCamera)
+        this.cameras.changeCamera(this.previousCamera);
       else
-        this.changeCamera('chase');
+        this.cameras.changeCamera(this.driverCamera);
     }
-
-    this._resetFreeCamera();
-    this._resetChaseCamera();
-    this._resetTopDownCamera();
   }
 
   recreateStaticObstacleObjects() {
@@ -435,72 +392,12 @@ export default class Simulator {
     this.carControllerMode = 'autonomous';
   }
 
-  changeCamera(mode) {
-    if (this.editor.enabled) return;
-
-    switch (mode) {
-      case "free":
-        this.chaseCameraControls.enabled = false;
-        this.topDownControls.enabled = false;
-        this.freeCameraControls.enabled = true;
-
-        if (this.camera == this.freeCamera)
-          this._resetFreeCamera();
-        else
-          this.camera = this.freeCamera;
-
-        break;
-      case "chase":
-        this.freeCameraControls.enabled = false;
-        this.topDownControls.enabled = false;
-        this.chaseCameraControls.enabled = true;
-
-        if (this.camera == this.chaseCamera)
-          this._resetChaseCamera();
-        else
-          this.camera = this.chaseCamera;
-
-        break;
-      case "topDown":
-        this.freeCameraControls.enabled = false;
-        this.chaseCameraControls.enabled = false;
-        this.topDownControls.enabled = true;
-
-        if (this.camera == this.topDownCamera)
-          this._resetTopDownCamera();
-        else
-          this.camera = this.topDownCamera;
-
-        break;
-      default:
-        console.log(`Unknown camera mode: ${mode}`);
-        return;
-    }
-
-    for (const c in this.cameraButtons) {
-      const classes = this.cameraButtons[c].classList;
-      if (c == mode) {
-        classes.remove('is-outlined');
-        classes.add('is-selected');
-      } else {
-        classes.add('is-outlined');
-        classes.remove('is-selected');
-      }
-    }
-  }
-
   switchTo2D() {
     this.switchTo2DButton.classList.remove('is-outlined');
     this.switchTo2DButton.classList.add('is-selected');
     this.switchTo3DButton.classList.add('is-outlined');
     this.switchTo3DButton.classList.remove('is-selected');
-
-    this.chaseCamera.layers.enable(2);
-    this.topDownCamera.layers.enable(2);
-    this.freeCamera.layers.enable(2);
-    this.chaseCamera.layers.disable(3);
-    this.topDownCamera.layers.disable(3);
-    this.freeCamera.layers.disable(3);
+    this.cameras.switchToLayer(3,2);
   }
 
   switchTo3D() {
@@ -508,13 +405,7 @@ export default class Simulator {
     this.switchTo3DButton.classList.add('is-selected');
     this.switchTo2DButton.classList.add('is-outlined');
     this.switchTo2DButton.classList.remove('is-selected');
-
-    this.chaseCamera.layers.enable(3);
-    this.topDownCamera.layers.enable(3);
-    this.freeCamera.layers.enable(3);
-    this.chaseCamera.layers.disable(2);
-    this.topDownCamera.layers.disable(2);
-    this.freeCamera.layers.disable(2);
+    this.cameras.switchToLayer(2,3);
   }
 
   hideWelcomeModal() {
@@ -688,9 +579,6 @@ export default class Simulator {
       const dt = FRAME_TIMESTEP;
       this.simulatedTime += dt;
 
-      const prevCarPosition = this.car.position;
-      const prevCarRotation = this.car.rotation;
-
       const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
       if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
         this.enableManualMode();
@@ -713,15 +601,8 @@ export default class Simulator {
       const carRearAxle = this.car.rearAxlePosition;
       const carVelocity = this.car.velocity;
 
-      const positionOffset = { x: carPosition.x - prevCarPosition.x, y: 0, z: carPosition.y - prevCarPosition.y };
-      this.chaseCamera.position.add(positionOffset);
-      this.chaseCameraControls.target.set(carPosition.x, 0, carPosition.y);
-      this.chaseCameraControls.rotateLeft(carRotation - prevCarRotation);
-      this.chaseCameraControls.update();
-
-      this.topDownCamera.position.setX(carPosition.x);
-      this.topDownCamera.position.setZ(carPosition.y);
-      this.topDownCamera.rotation.z = -carRotation - Math.PI / 2
+      // update camera positions
+      this.cameras.currentCamera.update()
 
       let latitude = null;
 
@@ -749,11 +630,9 @@ export default class Simulator {
       this.fpsTime = 0;
       this.fpsBox.textContent = this.fps.toFixed(1);
     }
-
-    this.renderer.render(this.scene, this.camera);
-
+    if (this.cameras.currentCamera)
+      this.renderer.render(this.scene, this.cameras.currentCamera.pcam);
     this.prevTimestamp = timestamp;
-
     requestAnimationFrame(this.step.bind(this));
   }
 }

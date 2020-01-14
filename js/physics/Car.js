@@ -39,6 +39,10 @@ export default class Car {
     return new THREE.Vector2(x + Math.cos(rot) * Car.FRONT_AXLE_POS, y + Math.sin(rot) * Car.FRONT_AXLE_POS);
   }
 
+  vector(factor) {
+    return THREE.Vector2.fromAngle(this.rotation).multiplyScalar(factor);
+  }
+
   setPose(x, y, rotation) {
     // Translate so that x and y become the center of the vehicle (instead of the center of the rear axle)
     x -= Car.REAR_AXLE_POS * Math.cos(rotation);
