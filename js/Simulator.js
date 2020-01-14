@@ -118,9 +118,9 @@ export default class Simulator {
     this.scenarioRestartButton = document.getElementById('scenario-restart');
     this.scenarioRestartButton.addEventListener('click', this.restartScenario.bind(this));
 
+    document.getElementById('show-help-button').addEventListener('click',e=>window.open("http://wiki.bitplan.com/index.php/Dash"));
     this.welcomeModal = document.getElementById('welcome-modal');
     document.getElementById('show-welcome-modal').addEventListener('click', e => this.welcomeModal.classList.add('is-active'));
-
     if (window.localStorage.getItem(WELCOME_MODAL_KEY) !== 'hide') {
       this.welcomeModal.classList.add('is-active');
     }
