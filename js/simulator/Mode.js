@@ -28,6 +28,7 @@ export default class Modes {
    */
   addButtonClickHandler() {
     // add cameraButton to each Camera
+    // for each Mode
     Object.entries(this.modes).forEach(([name, mode]) => {
       mode.modeButton = document.getElementById(`mode-${mode.name}`);
       mode.modeButton.addEventListener('click', () => this.changeMode(mode));

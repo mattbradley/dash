@@ -391,7 +391,11 @@ export default class Simulator {
         // @TODO - make configurable
         self.remoteController=new SimulatorVerticle("http://localhost:8080/eventbus",self,self.onHeartBeat);
       }
-      self.remoteController.start()
+      if (self.remoteController.enabled) {
+        self.remoteController.stop();
+      } else {
+        self.remoteController.start()
+      }
     } else {
       if (self.remoteController)
         self.remoteController.stop();
@@ -496,6 +500,9 @@ export default class Simulator {
     this.pathPlannerWorker.postMessage(this.lastPlanParams);
   }
 
+  /**
+   * retrieve the current car Controller Mode
+   */
   carControllerMode() {
     var modeName=this.modes.currentMode.name;
     return modeName;
@@ -640,11 +647,15 @@ export default class Simulator {
       else if (this.autonomousCarController === null)
         autonomousControls = { steer: 0, brake: 1, gas: 0 };
 
-      const controls = this.carControllerMode() == 'autonomous' ? autonomousControls : manualControls;
+      var controls = this.carControllerMode() == 'autonomous' ? autonomousControls : manualControls;
       if (this.remoteController!=null) {
         this.setColor(this.remoteMode.modeButton.id,this.remoteController.stateColor());
+        if (this.remoteController.enabled) {
+          controls=this.remoteController.remoteControl;
+        }
       }
 
+      // update the car with the given controls
       this.car.update(controls, dt);
       this.physics.step(dt);
 

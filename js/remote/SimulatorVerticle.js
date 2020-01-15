@@ -21,24 +21,47 @@ export default class SimulatorVerticle {
     this.onHeartBeat=onHeartBeat;
     this.heartBeatCount=0;
     this.debugHeartBeat=true;
+    this.remoteControl=new RemoteControl();
     simulatorVerticle=this;
+    this.enabled=false;
   }
 
+  /**
+   * start the verticle and register the handlers
+   */
   start() {
-    this.eb = new EventBus(this.busUrl);
-    this.eb.onopen = function() {
-      simulatorVerticle.eb.registerHandler(CALLSIGN_FLASH,simulatorVerticle.heartBeatHandler);
-      simulatorVerticle.eb.registerHandler(CALLSIGN_BO,simulatorVerticle.carMessageHandler)
+    if (!this.eb) {
+      this.eb = new EventBus(this.busUrl);
+      this.eb.onopen = function() {
+        simulatorVerticle.eb.registerHandler(CALLSIGN_FLASH,simulatorVerticle.heartBeatHandler);
+        simulatorVerticle.eb.registerHandler(CALLSIGN_BO,simulatorVerticle.carMessageHandler)
+      };
     };
+    this.enabled=true;
   }
 
   stop() {
-
+    if (this.eb)
+      this.eb.close();
+    this.eb=null;
+    this.enabled=false;
   }
 
+  /**
+   * handle a car message
+   * @param err - potential errors
+   * @param msg - the vert.x message
+   */
   carMessageHandler(err,msg) {
-    var jo=msg.body;
-    console.log(JSON.stringify(jo));
+    var carjo=msg.body;
+    console.log(JSON.stringify(carjo));
+    var sv=simulatorVerticle;
+    if (carjo.position) {
+      // the position can be between -100 and 100
+      var pos=parseFloat(carjo.position);
+      // we need a value between -1 and +1
+      sv.remoteControl.steer=pos/100;
+    }
   }
 
   /**
@@ -79,4 +102,18 @@ export default class SimulatorVerticle {
     }
     return stateColor;
   }
+}
+
+export class RemoteControl {
+  /**
+   * @param gas
+   * @param brake
+   * @param steer
+   */
+  constructor(gas=0,brake=0,steer=0) {
+    this.gas=0;
+    this.brake=0;
+    this.steer=0;
+  }
+
 }

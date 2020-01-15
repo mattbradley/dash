@@ -1,5 +1,15 @@
 // part of https://github.com/rc-dukes/dash
+
+/**
+ * the car as the physical object of the simulation
+ */
 export default class Car {
+  /**
+   * construct me
+   * @param x - x coordinate
+   * @param y - y coordinate
+   * @param rotation -
+   */
   constructor(x = 0, y = 0, rotation = 0) {
     this.setPose(x, y, rotation);
   }
@@ -80,6 +90,9 @@ export default class Car {
     this.ddCurv = dist > 0.1 ? (this.dCurv - dCurvPrev) / dist : 0;
   }
 
+  /**
+   * update the car state using the given controls
+   */
   update(controls, dt) {
     const gas = Math.clamp(controls.gas, -1, +1);
     const brake = Math.clamp(controls.brake, 0, 1);
