@@ -113,6 +113,7 @@ export default class Simulator {
         window.location.reload();
     });
 
+    // setup the different control modes
     this.modes=new Modes();
     this.manualMode=this.modes.add('manual');
     this.autonomousMode=this.modes.add('autonomous');
@@ -369,6 +370,16 @@ export default class Simulator {
   }
 
   /**
+   * call back when a vert.x heartbeat is received
+   * @param self - the true this pointer
+   * @param heartBeatCount - the number of heart beats received so far
+   */
+  onHeartBeat(self,heartBeatCount) {
+    var color=heartBeatCount/3%2==0?"white":"purple";
+    self.setColorAndTitle("heartbeat-icon",color,heartBeatCount.toString());
+  }
+
+  /**
    * enable remote Control via vert.x
    * call back - this pointer is not within class as
    * @param self - the true this pointer
@@ -377,7 +388,8 @@ export default class Simulator {
   onEnableRemoteControl(self,enabled) {
     if (enabled) {
       if (self.remoteController===null) {
-        self.remoteController=new SimulatorVerticle("http://localhost:8080/eventbus")
+        // @TODO - make configurable
+        self.remoteController=new SimulatorVerticle("http://localhost:8080/eventbus",self,self.onHeartBeat);
       }
       self.remoteController.start()
     } else {
@@ -427,12 +439,23 @@ export default class Simulator {
    *
    * @param id
    * @param color
+   */
+  setColor(id,color) {
+     this.setColorAndTitle(id,color);
+  }
+
+  /**
+   * set the color and title of the element with the given id
+   *
+   * @param id
+   * @param color
    * @param title
    */
-  setColorAndTitle(id, color,title) {
+  setColorAndTitle(id, color,title=null) {
   	var el=document.getElementById(id);
     el.style.color = color;
-    el.title=title;
+    if (title)
+      el.title=title;
   }
 
   startPlanner(pose, station) {
@@ -619,7 +642,7 @@ export default class Simulator {
 
       const controls = this.carControllerMode() == 'autonomous' ? autonomousControls : manualControls;
       if (this.remoteController!=null) {
-        this.setColorAndTitle(this.remoteMode.modeButton.id,this.remoteController.stateColor(),this.remoteMode.name);
+        this.setColor(this.remoteMode.modeButton.id,this.remoteController.stateColor());
       }
 
       this.car.update(controls, dt);

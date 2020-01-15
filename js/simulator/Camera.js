@@ -37,6 +37,7 @@ export default class Cameras {
    */
   addButtonClickHandler() {
     // add cameraButton to each Camera
+    // forEach camera ...
     Object.entries(this.cameras).forEach(([name, camera]) => {
       if (!camera.isEditor) {
         camera.cameraButton = document.getElementById(`camera-${camera.name}`);
@@ -51,6 +52,7 @@ export default class Cameras {
    * @param toLayer - the layer to activate (e.g. for 3D = 3)
    */
   switchToLayer(fromLayer, toLayer) {
+    // forEach camera ...
     Object.entries(this.cameras).forEach(([name, camera]) => {
       camera.pcam.layers.enable(toLayer);
       camera.pcam.layers.disable(fromLayer);
@@ -62,6 +64,7 @@ export default class Cameras {
    * @param aspect - the new aspect ratio
    */
   updateAspects(aspect) {
+    // forEach camera ...
     Object.entries(this.cameras).forEach(([name, camera]) => camera.updateAspect(aspect));
   }
 
@@ -70,6 +73,7 @@ export default class Cameras {
    * @param newCurrentCamera - the camera to activate
    */
   changeCamera(newCurrentCamera) {
+    // forEach camera ...
     Object.entries(this.cameras).forEach(([name, camera]) => {
       camera.enable(camera == newCurrentCamera);
       if (camera !== newCurrentCamera || newCurrentCamera !== this.currentCamera)
@@ -82,6 +86,7 @@ export default class Cameras {
    * update the position and controls for all cameras
    */
   updateAll() {
+    // forEach camera ...
     Object.entries(this.cameras).forEach(([name, camera]) => camera.update());
   }
 }
