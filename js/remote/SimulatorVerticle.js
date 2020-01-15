@@ -56,11 +56,45 @@ export default class SimulatorVerticle {
     var carjo=msg.body;
     console.log(JSON.stringify(carjo));
     var sv=simulatorVerticle;
-    if (carjo.position) {
-      // the position can be between -100 and 100
-      var pos=parseFloat(carjo.position);
-      // we need a value between -1 and +1
-      sv.remoteControl.steer=pos/100;
+    switch (carjo.type) {
+      case 'servodirect':
+        if (carjo.position) {
+          // the position can be between -100 and 100
+          var pos=parseFloat(carjo.position);
+          // we need a value between -1 and +1
+          sv.remoteControl.steer=pos/100;
+        }
+      break;
+      case 'servo':
+         switch (carjo.position) {
+           case 'left':
+             sv.remoteControl.steer-=0.01;
+           break;
+           case 'right':
+             sv.remoteControl.steer+=0.01;
+           break;
+           case 'center':
+             sv.remoteControl.steer=0;
+           break;
+         }
+      break;
+      case 'motor':
+         switch (carjo.speed) {
+           case 'up':
+             sv.remoteControl.gas+=0.01;
+           break;
+           case 'down':
+             sv.remoteControl.gas-=0.01;
+           break;
+           case 'brake':
+             sv.remoteControl.break+=0.01;
+           break;
+           case 'stop':
+             sv.remoteControl.gas=0;
+             sv.remoteControl.break=1;
+           break;
+         }
+      break;
     }
   }
 

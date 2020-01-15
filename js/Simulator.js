@@ -309,7 +309,7 @@ export default class Simulator {
       this.aroundAnchorIndex = null;
 
       this.pauseScenario();
-      this.autonomousModeButton.classList.add('is-loading');
+      this.autonomousMode.modeButton.classList.add('is-loading');
       this.waitingForFirstPlan = true;
     } else {
       this.dynamicObstacles = [];
@@ -516,7 +516,7 @@ export default class Simulator {
 
     if (this.waitingForFirstPlan && !this.plannerReset) {
       this.waitingForFirstPlan = false;
-      this.autonomousModeButton.classList.remove('is-loading');
+      this.autonomousMode.modeButton.classList.remove('is-loading');
       this.playScenario();
     }
 
