@@ -1,5 +1,8 @@
+// part of https://github.com/rc-dukes/dash fork of https://github.com/mattbradley/dash
 import Car from "../../physics/Car.js"
-
+/**
+ *  * control the movement of the car autonomously (self-driven)
+ */
 export default class AutonomousController {
   constructor(path) {
     this.path = path;
@@ -121,7 +124,7 @@ export default class AutonomousController {
     /*
     const dPhiError = (phiError - this.prevPhiError) / dt;
     this.prevPhiError = phiError;
-    
+
     const steer = Math.clamp(12 * phiError + 0.8 * dPhiError, -1, 1);
     */
 
