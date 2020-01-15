@@ -2,6 +2,7 @@
 
 const CALLSIGN_FLASH = "Velvet ears"; // Watchdog
 const CALLSIGN_BO = "Lost sheep Bo";  // Car
+const CALLSIGN_ROSCO = "Red Dog"; // Debug ImageView server
 var simulatorVerticle = null;
 
 /**
@@ -24,6 +25,26 @@ export default class SimulatorVerticle {
     this.remoteControl=new RemoteControl();
     simulatorVerticle=this;
     this.enabled=false;
+  }
+
+  /**
+   * all publish messages should go thru this function
+   *
+   * @param address
+   * @param message
+   * @param headers
+   */
+  publish(address,message,headers) {
+    if (this.eb.state===EventBus.OPEN)
+  	  this.eb.publish(address, message, headers);
+  };
+
+  /**
+   * send the given image to the debug image server
+   * @param imgData
+   */
+  sendImage(imgData) {
+    this.publish(CALLSIGN_ROSCO+":SIMULATOR_IMAGE",imgData);
   }
 
   /**

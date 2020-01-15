@@ -41,7 +41,10 @@ export default class Simulator {
     // the car to be used
     this.car = this.physics.createCar();
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true
+    });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
@@ -371,12 +374,25 @@ export default class Simulator {
 
   /**
    * call back when a vert.x heartbeat is received
-   * @param self - the true this pointer
+   * @param self - the true this pointer for class Simulator
    * @param heartBeatCount - the number of heart beats received so far
    */
   onHeartBeat(self,heartBeatCount) {
     var color=heartBeatCount/3%2==0?"white":"purple";
     self.setColorAndTitle("heartbeat-icon",color,heartBeatCount.toString());
+    // reply with the current image
+    self.onSendImage(self);
+  }
+
+  /**
+   * call back to send current Three.js canvas over the vert.x wire
+   * @param self - the true this pointer for class Simulator
+   */
+  onSendImage(self) {
+    // https://stackoverflow.com/a/26197858/1497139
+    var strMime = "image/jpeg";
+    var imgData = this.renderer.domElement.toDataURL(strMime);
+    self.remoteController.sendImage(imgData);
   }
 
   /**
