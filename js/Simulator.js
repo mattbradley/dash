@@ -1,5 +1,4 @@
 // part of https://github.com/rc-dukes/dash
-import { EventEmitter } from "events";
 import Physics from "./physics/Physics.js";
 import Path from "./autonomy/Path.js";
 import CubicPath from "./autonomy/path-planning/CubicPath.js";
@@ -22,11 +21,14 @@ import StaticObstacle from "./autonomy/StaticObstacle.js";
 import DynamicObstacle from "./autonomy/DynamicObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
+// import WebServer from "./remote/WebServer"
 
 const FRAME_TIMESTEP = 1 / 60;
 const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
-// const http = require("http");
 
+/**
+ * Car Simulator
+ */
 export default class Simulator {
   constructor(domElement) {
     this.pathPlannerWorker = new Worker(URL.createObjectURL(new Blob([`(${dash_initPathPlannerWorker.toString()})()`], { type: 'text/javascript' })));
@@ -371,30 +373,11 @@ export default class Simulator {
   serveVideo() {
     if (this.videoServer===null) {
       this.setColorAndTitle('serve-mjpeg','red','stop serving video');
-      /* this.emitter = new EventEmitter();
-      this.videoServer = http.createServer((req, res) => {
-      	res.writeHead(200, {
-      		'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
-      		Pragma: 'no-cache',
-      		Connection: 'close',
-      		'Content-Type': 'multipart/x-mixed-replace; boundary=--myboundary'
-      	});
-
-      	const writeFrame = () => {
-      		const buffer = buffers[bufferIndex];
-      		res.write(`--myboundary\nContent-Type: image/jpg\nContent-length: ${buffer.length}\n\n`);
-      		res.write(buffer);
-      	};
-
-      	writeFrame();
-      	emitter.addListener('frame', writeFrame);
-      	res.addListener('close', () => {
-      		emitter.removeListener('frame', writeFrame);
-      	});
-       });
-       server.listen(8234); */
-       this.videoServer="running";
+      //this.videoServer=new WebServer(8234);
+      //this.videoServer.start()
+      this.videoServer="running";
     } else {
+      this.videoServer.stop();
       this.videoServer=null;
       this.setColorAndTitle('serve-mjpeg','white','start serving video');
     }

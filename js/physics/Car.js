@@ -1,3 +1,4 @@
+// part of https://github.com/rc-dukes/dash
 export default class Car {
   constructor(x = 0, y = 0, rotation = 0) {
     this.setPose(x, y, rotation);

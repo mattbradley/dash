@@ -1,3 +1,7 @@
+/**
+ * part of https://github.com/rc-dukes/dash fork of https://github.com/mattbradley/dash
+ * control the movement of the car with the keyboard
+ */
 export default class ManualController {
   constructor() {
     this.carKeys = { forward: false, backward: false, left: false, right: false, brake: false };
@@ -33,6 +37,7 @@ export default class ManualController {
 
     if (this.carKeys.forward) gas += 1;
     if (this.carKeys.backward) gas -= 1;
+
     if (this.carKeys.left) steer -= 1;
     if (this.carKeys.right) steer += 1;
     if (this.carKeys.brake) brake += 1;

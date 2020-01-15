@@ -1,8 +1,14 @@
-// part of https://github.com/rc-dukes/dash
+// part of https://github.com/rc-dukes/dash fork of https://github.com/mattbradley/dash
 // handles the different Tree.js Cameras and the corresponding OrbitControls
 import OrbitControls from "./OrbitControls.js";
 
+/**
+ * List / Manager of all cameras
+ */
 export default class Cameras {
+  /**
+   * we need to know the car and the domElement to work
+   */
   constructor(car, domElement) {
     this.car = car;
     this.aspect = domElement.clientWidth / domElement.clientHeight;
@@ -11,7 +17,12 @@ export default class Cameras {
     this.currentCamera = null;
   }
 
-  // add a camera with the given name, fov for the perspective Camera, and editor status
+  /**
+   * add a camera with the given name, fov for the perspective Camera, and editor status
+   * @param name - the name of this camera
+   * @fov - field of view for Three.js
+   * @isEditor - if this is the editor the camera will be static
+   */
   add(name, fov, isEditor = false) {
     var perspectiveCamera = new THREE.PerspectiveCamera(fov, this.aspect, 1, 10000);
     var camera = new Camera(this, name, perspectiveCamera, isEditor);
@@ -19,7 +30,11 @@ export default class Cameras {
     return camera;
   }
 
-  // add a button handler to the given camera
+  /**
+   * add a button click handler to the given camera
+   * by convention each non-editor camera has a button with id camera-<camera.name> that
+   * will activate the camera on click
+   */
   addButtonClickHandler() {
     // add cameraButton to each Camera
     Object.entries(this.cameras).forEach(([name, camera]) => {
@@ -30,7 +45,11 @@ export default class Cameras {
     });
   }
 
-  // switch Layers e.g. from 2D to 3D or vice versa
+  /**
+   * switch Layers e.g. from 2D to 3D or vice versa
+   * @param fromLayer - the layer to leave (e.g. for 2D = 2)
+   * @param toLayer - the layer to activate (e.g. for 3D = 3)
+   */
   switchToLayer(fromLayer, toLayer) {
     Object.entries(this.cameras).forEach(([name, camera]) => {
       camera.pcam.layers.enable(toLayer);
@@ -38,11 +57,18 @@ export default class Cameras {
     });
   }
 
-  // update the camera aspects
+  /**
+   * update the camera aspect ratio for all cameras
+   * @param aspect - the new aspect ratio
+   */
   updateAspects(aspect) {
     Object.entries(this.cameras).forEach(([name, camera]) => camera.updateAspect(aspect));
   }
 
+  /**
+   * change the current / active camera to the given camera
+   * @param newCurrentCamera - the camera to activate
+   */
   changeCamera(newCurrentCamera) {
     Object.entries(this.cameras).forEach(([name, camera]) => {
       camera.enable(camera == newCurrentCamera);
@@ -52,14 +78,26 @@ export default class Cameras {
     this.currentCamera = newCurrentCamera;
   }
 
+  /**
+   * update the position and controls for all cameras
+   */
   updateAll() {
     Object.entries(this.cameras).forEach(([name, camera]) => camera.update());
   }
 }
 
+/**
+ * a wrapper for single named Three.Js perspective camera
+ */
 export class Camera {
 
-  // construct me with the given name, perspective Camera, OrbitControls reset Function and editor status
+  /**
+   * construct me
+   * @param cameras - the list/set of cameras i belong to
+   * @param name - my name
+   * @param perspectiveCamera - the three JS perspective Camera to wrap
+   * @param isEditor - true if i am the camera for the editor
+   */
   constructor(cameras, name, perspectiveCamera, isEditor = false) {
     this.cameras = cameras;
     this.car = this.cameras.car;
@@ -72,12 +110,20 @@ export class Camera {
     this.controls = null;
   }
 
-  // update the camera aspect
+  /**
+   * update the aspect ratio of this camera
+   * @param aspect - the aspect ratio to apply
+   */
   updateAspect(aspect) {
     this.pcam.aspect = aspect;
     this.pcam.updateProjectionMatrix();
   }
 
+  /**
+   * add OrbitControls to the camera
+   * @param minDistance - frustum minimum maxDistance
+   * @param maxDistance - frustum maxium Distance
+   */
   addControls(minDistance, maxDistance) {
     this.controls = new OrbitControls(this.pcam, this.cameras.domElement);
     this.controls.minDistance = minDistance;
@@ -86,7 +132,10 @@ export class Camera {
     return this.controls;
   }
 
-  // enable me according to the enabled parameter
+  /**
+    * enable me -  make my enablement visible by changing the appearance of my button
+    * @param enabled - true if i should be activated
+    */
   enable(enabled) {
     this.controls.enabled = enabled;
     if (!this.isEditor) {
@@ -101,7 +150,10 @@ export class Camera {
     }
   }
 
-  // update my camera position
+  /**
+   * update my camera position
+   * the behavior is dependent / specialized on my name
+   */
   update() {
     const pos = this.car.position;
     switch (this.name) {
@@ -131,6 +183,6 @@ export class Camera {
         this.pcam.rotation.z = -this.car.rotation - Math.PI / 2
         break;
     }
-    // this.pcam.updateProjectionMatrix();
+    this.pcam.updateProjectionMatrix();
   }
 }
