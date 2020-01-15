@@ -68,6 +68,7 @@
                                 </div>
                                 <div class="buttons has-addons" style="padding-left: 8px;">
                                     <span id="mode-manual" class="button is-small is-dark is-outlined is-inverted">Manual</span>
+																		<span id="mode-remote" class="button is-small is-dark is-outlined is-inverted">Remote</span>
                                     <span id="mode-autonomous" class="button is-small is-dark is-outlined is-inverted">Autonomous</span>
                                 </div>
                             </div>
@@ -77,12 +78,6 @@
             </div>
             <div id="config-box" class="gui-box sim-mode-box">
                 <div id="show-config-box">
-									  <div id="serve-mjpeg" class="button is-small is-dark is-outlined is-inverted" title="starting serving video">
-											<span class="icon is-medium">
-													<i class="fas fa-lg fa-video"></i>
-											</span>
-									 </div>
-								 	 &nbsp;
                     <div id="show-welcome-modal" class="button is-small is-dark is-outlined is-inverted" title="About Dash">
                         <span class="icon is-medium">
                             <i class="fas fa-lg fa-info"></i>
@@ -593,6 +588,8 @@
         <script defer src="vendor/fontawesome-all.js"></script>
         <script src="vendor/three.js"></script>
         <script src="vendor/THREE.MeshLine.js"></script>
+				<script src="vendor/sockjs.0.3.4.min.js"></script>
+				<script src="vendor/vertx-eventbus.js"></script>
         <script src="js/Utils.js"></script>
         <script src="dist/PathPlannerWorker.js"></script>
         <script src="dist/Dash.js"></script>

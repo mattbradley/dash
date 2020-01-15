@@ -1,3 +1,5 @@
+// part of https://github.com/rc-dukes/dash fork of https://github.com/mattbradley/dash
+
 Math.clamp = (number, min, max) => Math.max(min, Math.min(number, max));
 
 Math.wrapAngle = (angle) => {

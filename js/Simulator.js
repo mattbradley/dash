@@ -12,6 +12,8 @@ import DynamicObstacleObject from "./objects/DynamicObstacleObject.js";
 import Editor from "./simulator/Editor.js";
 import Camera from "./simulator/Camera.js";
 import Cameras from "./simulator/Camera.js";
+import Mode from "./simulator/Mode.js";
+import Modes from "./simulator/Mode.js";
 import TopDownCameraControls from "./simulator/TopDownCameraControls.js";
 import Dashboard from "./simulator/Dashboard.js";
 import GPGPU from "./GPGPU.js";
@@ -21,7 +23,7 @@ import StaticObstacle from "./autonomy/StaticObstacle.js";
 import DynamicObstacle from "./autonomy/DynamicObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
-// import WebServer from "./remote/WebServer"
+import SimulatorVerticle from "./remote/SimulatorVerticle"
 
 const FRAME_TIMESTEP = 1 / 60;
 const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
@@ -34,8 +36,6 @@ export default class Simulator {
     this.pathPlannerWorker = new Worker(URL.createObjectURL(new Blob([`(${dash_initPathPlannerWorker.toString()})()`], { type: 'text/javascript' })));
     this.pathPlannerWorker.onmessage = this.receivePlannedPath.bind(this);
     this.pathPlannerConfigEditor = new PathPlannerConfigEditor();
-    // video serving
-    this.videoServer=null;
 
     this.physics = new Physics();
     // the car to be used
@@ -77,6 +77,8 @@ export default class Simulator {
 
     this.manualCarController = new ManualController();
     this.autonomousCarController = null;
+    // see onEnableRemoteControl for activation
+    this.remoteController=null;
 
     this.dashboard = new Dashboard(this.car);
 
@@ -111,10 +113,11 @@ export default class Simulator {
         window.location.reload();
     });
 
-    this.manualModeButton = document.getElementById('mode-manual');
-    this.manualModeButton.addEventListener('click', this.enableManualMode.bind(this));
-    this.autonomousModeButton = document.getElementById('mode-autonomous');
-    this.autonomousModeButton.addEventListener('click', this.enableAutonomousMode.bind(this));
+    this.modes=new Modes();
+    this.manualMode=this.modes.add('manual');
+    this.autonomousMode=this.modes.add('autonomous');
+    this.remoteMode=this.modes.add('remote',this,this.onEnableRemoteControl);
+    this.modes.addButtonClickHandler()
 
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-finalize').addEventListener('click', this.finalizeEditor.bind(this));
@@ -126,9 +129,6 @@ export default class Simulator {
     this.scenarioPauseButton.addEventListener('click', this.pauseScenario.bind(this));
     this.scenarioRestartButton = document.getElementById('scenario-restart');
     this.scenarioRestartButton.addEventListener('click', this.restartScenario.bind(this));
-
-    this.serveMJpeg=document.getElementById('serve-mjpeg');
-    this.serveMJpeg.addEventListener('click',this.serveVideo.bind(this));
 
     this.welcomeModal = document.getElementById('welcome-modal');
     document.getElementById('show-welcome-modal').addEventListener('click', e => this.welcomeModal.classList.add('is-active'));
@@ -155,7 +155,7 @@ export default class Simulator {
 
     this.fpsBox = document.getElementById('fps');
 
-    this.enableManualMode();
+    this.modes.changeMode(this.manualMode);
     // default camera mode
     this.cameras.changeCamera(this.driverCamera);
 
@@ -296,7 +296,7 @@ export default class Simulator {
       // The `false` value means the controller is waiting to be created after the first planning cycle.
       // This signals the simulator to use neutral controls instead of the hard brake used for the `null` value.
       this.autonomousCarController = false;
-      this.enableAutonomousMode();
+      this.modes.changeMode(this.autonomousMode);
 
       if (!this.plannerRunning) {
         this.plannerReady = true;
@@ -368,18 +368,21 @@ export default class Simulator {
     this.scenarioPauseButton.classList.add('is-hidden');
   }
 
-  // video Server
-  // see https://gist.github.com/cecilemuller/c8e746a5cb828e83e55892d4742b8a5c
-  serveVideo() {
-    if (this.videoServer===null) {
-      this.setColorAndTitle('serve-mjpeg','red','stop serving video');
-      //this.videoServer=new WebServer(8234);
-      //this.videoServer.start()
-      this.videoServer="running";
+  /**
+   * enable remote Control via vert.x
+   * call back - this pointer is not within class as
+   * @param self - the true this pointer
+   * @param enable - true if to be switched on
+   */
+  onEnableRemoteControl(self,enabled) {
+    if (enabled) {
+      if (self.remoteController===null) {
+        self.remoteController=new SimulatorVerticle("http://localhost:8080/eventbus")
+      }
+      self.remoteController.start()
     } else {
-      this.videoServer.stop();
-      this.videoServer=null;
-      this.setColorAndTitle('serve-mjpeg','white','start serving video');
+      if (self.remoteController)
+        self.remoteController.stop();
     }
   }
 
@@ -396,24 +399,6 @@ export default class Simulator {
     if (this.editor.enabled) return;
 
     this.editor.scenarioManager.showModal(this.finalizeEditor.bind(this));
-  }
-
-  enableManualMode() {
-    this.manualModeButton.classList.remove('is-outlined');
-    this.manualModeButton.classList.add('is-selected');
-    this.autonomousModeButton.classList.add('is-outlined', 'is-inverted');
-    this.autonomousModeButton.classList.remove('is-selected', 'is-link');
-
-    this.carControllerMode = 'manual';
-  }
-
-  enableAutonomousMode() {
-    this.autonomousModeButton.classList.remove('is-outlined', 'is-inverted');
-    this.autonomousModeButton.classList.add('is-selected', 'is-link');
-    this.manualModeButton.classList.add('is-outlined');
-    this.manualModeButton.classList.remove('is-selected');
-
-    this.carControllerMode = 'autonomous';
   }
 
   switchTo2D() {
@@ -464,7 +449,7 @@ export default class Simulator {
     let predictedStation = station;
     let startTime = this.simulatedTime;
 
-    if (!this.plannerReset && !this.paused && this.autonomousCarController && this.carControllerMode == 'autonomous') {
+    if (!this.plannerReset && !this.paused && this.autonomousCarController && this.carControllerMode() == 'autonomous') {
       const latency = this.averagePlanTime.average * this.fps * FRAME_TIMESTEP;
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, latency);
       let [predictedStation] = this.editor.lanePath.stationLatitudeFromPosition(predictedPose.pos, this.aroundAnchorIndex);
@@ -486,6 +471,11 @@ export default class Simulator {
     };
 
     this.pathPlannerWorker.postMessage(this.lastPlanParams);
+  }
+
+  carControllerMode() {
+    var modeName=this.modes.currentMode.name;
+    return modeName;
   }
 
   receivePlannedPath(event) {
@@ -603,6 +593,7 @@ export default class Simulator {
     this.plannedPathGroup.add(pathObject);
   }
 
+  // periodically called step
   step(timestamp) {
     if (this.prevTimestamp == null) {
       this.prevTimestamp = timestamp;
@@ -618,15 +609,18 @@ export default class Simulator {
 
       const manualControls = this.manualCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt);
       if (manualControls.steer != 0 || manualControls.brake != 0 || manualControls.gas != 0)
-        this.enableManualMode();
+        this.modes.changeMode(this.manualMode);
 
       let autonomousControls = { steer: 0, brake: 0, gas: 0};
       if (this.autonomousCarController)
-        autonomousControls = this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode == 'autonomous') ;
+        autonomousControls = this.autonomousCarController.control(this.car.pose, this.car.wheelAngle, this.car.velocity, dt, this.carControllerMode() == 'autonomous') ;
       else if (this.autonomousCarController === null)
         autonomousControls = { steer: 0, brake: 1, gas: 0 };
 
-      const controls = this.carControllerMode == 'autonomous' ? autonomousControls : manualControls;
+      const controls = this.carControllerMode() == 'autonomous' ? autonomousControls : manualControls;
+      if (this.remoteController!=null) {
+        this.setColorAndTitle(this.remoteMode.modeButton.id,this.remoteController.stateColor(),this.remoteMode.name);
+      }
 
       this.car.update(controls, dt);
       this.physics.step(dt);
