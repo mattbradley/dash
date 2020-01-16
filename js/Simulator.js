@@ -27,6 +27,7 @@ import SimulatorVerticle from "./remote/SimulatorVerticle"
 
 const FRAME_TIMESTEP = 1 / 60;
 const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
+var simulator;
 
 /**
  * Car Simulator
@@ -40,6 +41,7 @@ export default class Simulator {
     this.physics = new Physics();
     // the car to be used
     this.car = this.physics.createCar();
+    simulator=this;
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -126,6 +128,7 @@ export default class Simulator {
     document.getElementById('editor-enable').addEventListener('click', this.enableEditor.bind(this));
     document.getElementById('editor-finalize').addEventListener('click', this.finalizeEditor.bind(this));
     document.getElementById('simulator-load').addEventListener('click', this.loadScenario.bind(this));
+    document.getElementById('car-load').addEventListener('click', this.loadCar.bind(this));
 
     this.scenarioPlayButton = document.getElementById('scenario-play');
     this.scenarioPlayButton.addEventListener('click', this.playScenario.bind(this));
@@ -430,8 +433,28 @@ export default class Simulator {
 
   loadScenario() {
     if (this.editor.enabled) return;
-
     this.editor.scenarioManager.showModal(this.finalizeEditor.bind(this));
+  }
+
+  loadCar() {
+    if (this.editor.enabled) return;
+    var carmodelinput=document.getElementById('carmodelselector');
+    carmodelinput.addEventListener("change", function(){ simulator.onCarModelSelected(this);}, false);
+    carmodelinput.click();
+  }
+
+  /**
+   * call back for car model load
+   */
+  onCarModelSelected(carmodelinput) {
+    const selectedFile = carmodelinput.files[0]
+    var carModelReader = new FileReader();
+    carModelReader.onload=function(){ simulator.updateCarModel(carModelReader.result) };
+    carModelReader.readAsDataURL(selectedFile);
+  }
+
+  updateCarModel(base64Model) {
+    this.carObject.buildCar3D(base64Model);
   }
 
   switchTo2D() {

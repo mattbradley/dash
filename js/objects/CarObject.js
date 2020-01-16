@@ -1,32 +1,48 @@
 // part of https://github.com/rc-dukes/dash fork of https://github.com/mattbradley/dash
 import Car from "../physics/Car.js";
 import TDSLoader from "./TDSLoader.js";
-import suvModel from "../../models/suv.js";
+import TDSModel from "../../models/suv.js";
 
-const CAR_COLOR = 0x0088ff;
-const WHEEL_COLOR = 0xff8800;
-
+/**
+ * the visual representation of the car
+ */
 export default class CarObject extends THREE.Object3D {
+  /**
+   * construct me
+   * @param car - the physical car to assign me to
+   */
   constructor(car) {
     super();
 
     this.car = car;
-
+    // the default model to use
+    this.model = new TDSModel();
     this.buildCar2D();
-    this.buildCar3D();
+    // build the car with special wheel handling
+    this.buildCar3D(this.model.base64data,this.model);
   }
 
   buildCar2D() {
     const carMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(Car.HALF_CAR_LENGTH * 2, Car.HALF_CAR_WIDTH * 2),
-      new THREE.MeshBasicMaterial({ color: CAR_COLOR, depthTest: false, transparent: true, opacity: 0.7 })
+      new THREE.MeshBasicMaterial({
+        color: this.model.carColor,
+        depthTest: false,
+        transparent: true,
+        opacity: 0.7
+      })
     );
     carMesh.rotation.x = -Math.PI / 2;
     carMesh.layers.set(2);
     this.add(carMesh);
 
     const wheelGeometry = new THREE.PlaneGeometry(Car.HALF_WHEEL_LENGTH * 2, Car.HALF_WHEEL_WIDTH * 2);
-    const wheelMaterial = new THREE.MeshBasicMaterial({ color: WHEEL_COLOR, depthTest: false, transparent: true, opacity: 0.7 })
+    const wheelMaterial = new THREE.MeshBasicMaterial({
+      color: this.model.wheelColor,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.7
+    })
 
     this.lfWheel2D = new THREE.Mesh(wheelGeometry, wheelMaterial);
     this.lfWheel2D.renderOrder = 1;
@@ -57,11 +73,11 @@ export default class CarObject extends THREE.Object3D {
     this.add(rrWheel);
   }
 
-  buildCar3D() {
+  buildCar3D(base64data,skinner=null) {
     const loader = new TDSLoader();
     loader.skipMaps = true;
 
-    loader.load(suvModel, object => {
+    loader.load(base64data, object => {
       object.layers.set(3);
       object.rotation.z = Math.PI / 2;
       object.rotation.x = -Math.PI / 2;
@@ -74,30 +90,16 @@ export default class CarObject extends THREE.Object3D {
       box.setFromObject(object);
       object.position.setX(-(box.max.x + box.min.x) / 2);
       object.position.setY(-box.min.y);
-
+      const name="DashSimulatorCarObject";
+      var oldCarObject=this.getObjectByName(name);
+      if (oldCarObject) {
+         this.remove(oldCarObject);
+      }
+      object.name=name;
+      object.userData.name=name;
       this.add(object);
-
-      const carMaterial = new THREE.MeshToonMaterial({ color: 0x0088ff });
-      const wheelMaterial = new THREE.MeshToonMaterial({ color: 0xff8800 });
-
-      object.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          child.layers.set(3);
-          child.material = ['Toyota_RA7', 'Toyota_RA8', 'Toyota_RA9', 'Toyota_R10'].includes(child.name) ? wheelMaterial : carMaterial;
-
-          if (child.name == 'Toyota_RA7')
-            this.lfWheel3D = child;
-          else if (child.name == 'Toyota_RA8')
-            this.rfWheel3D = child;
-        }
-      });
-
-      [this.lfWheel3D, this.rfWheel3D].forEach(wheel => {
-        wheel.geometry.computeBoundingBox();
-        wheel.geometry.center();
-        wheel.position.setY(wheel.position.y - 36);
-        wheel.position.setZ(wheel.position.z + 36);
-      });
+      if (skinner)
+        skinner.skin(object);
     });
   }
 
