@@ -223,10 +223,11 @@ export default class Simulator {
 
     this.freeCamera=this.cameras.add('free',55);
     this.freeCamera.addControls(5,5000);
+    this.freeCamera.pcam.position.set(-20, 20, 20);
+    this.freeCamera.pcam.lookAt(0, 0, 0);
     this.freeCamera.controls.enabled = true;
 
     this.topDownCamera=this.cameras.add('topDown',55);
-
     this.topDownCamera.pcam.position.set(0, 50, 0);
     this.topDownCamera.pcam.lookAt(0, 0, 0);
 
