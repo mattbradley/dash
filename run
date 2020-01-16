@@ -12,10 +12,8 @@ usage() {
 which webpack > /dev/null
 if [  $? -ne 0 ]
 then
-  echo "installing webpack ..."
-  npm install webpack
-  npm install webpack-cli
-  npm install --save-dev webpack
+  echo "installing dependencies ..."
+  npm install --save-dev 
 fi
 option="build"
 for i in "$@"

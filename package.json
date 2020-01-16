@@ -13,7 +13,7 @@
     "script-loader": "^0.7.2",
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10",
-    "wrapper-webpack-plugin": "1.0.0"
+    "wrapper-webpack-plugin": "2.1.0"
   },
   "dependencies": {
     "npm": "^5.7.1"
