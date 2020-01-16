@@ -1,6 +1,7 @@
 # files to be ignored by git
 *.swp
 *.swo
+*.3ds
 node_modules
 # do not consider distribution results
 dist

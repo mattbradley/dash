@@ -1,0 +1,9 @@
+#!/bin/bash
+# WF 2020-01-16
+# decode the encoded content of suv.js
+name="suv"
+if [ ! -f $name.3ds ]
+then
+  cat $name.js | cut -d "'" -f2 | cut -c24- | base64 --decode > $name.3ds
+fi
+open https://viewer.autodesk.com
