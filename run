@@ -15,7 +15,8 @@ then
   echo "installing dependencies ..."
   npm install --save-dev 
 fi
-option="build"
+cmd="build"
+options="--mode=production"
 for i in "$@"
 do
   case $i in
@@ -23,8 +24,9 @@ do
       usage
       ;;
     -w|--watch)
-      option="watch"
+      cmd="watch" 
+      options="--mode=development"
       ;;
   esac
 done
-npm run $option 
+npm run $cmd $options

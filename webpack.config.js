@@ -15,8 +15,14 @@ module.exports = {
       footer: '} if (typeof(window) === undefined) dash_initPathPlannerWorker();'
     })
   ],
+  performance: {
+    hints: 'warning',
+    maxEntrypointSize: 5000000,
+    maxAssetSize: 5000000
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js'
-  }
+  },
+  mode: 'development'
 };
