@@ -20,7 +20,6 @@ import DynamicObstacle from "./autonomy/DynamicObstacle.js";
 import MovingAverage from "./autonomy/MovingAverage.js";
 import PathPlannerConfigEditor from "./simulator/PathPlannerConfigEditor.js";
 
-const FRAME_TIMESTEP = 1 / 60;
 const WELCOME_MODAL_KEY = 'dash_WelcomeModal';
 
 export default class Simulator {
@@ -87,7 +86,7 @@ export default class Simulator {
     this.prevTimestamp = null;
     this.frameCounter = 0;
     this.fpsTime = 0;
-    this.fps = 1 / FRAME_TIMESTEP;
+    this.fps = 0;
     this.simulatedTime = 0;
     this.lastPlanTime = null;
     this.averagePlanTime = new MovingAverage(20);
@@ -538,7 +537,7 @@ export default class Simulator {
     let startTime = this.simulatedTime;
 
     if (!this.plannerReset && !this.paused && this.autonomousCarController && this.carControllerMode == 'autonomous') {
-      const latency = this.averagePlanTime.average * this.fps * FRAME_TIMESTEP;
+      const latency = this.averagePlanTime.average;
       predictedPose = this.autonomousCarController.predictPoseAfterTime(pose, latency);
       let [predictedStation] = this.editor.lanePath.stationLatitudeFromPosition(predictedPose.pos, this.aroundAnchorIndex);
       startTime += latency;
@@ -683,10 +682,11 @@ export default class Simulator {
       return;
     }
 
+    const dt = (timestamp - this.prevTimestamp) / 1000;
+
     this.editor.update();
 
     if (!this.editor.enabled && !this.paused) {
-      const dt = FRAME_TIMESTEP;
       this.simulatedTime += dt;
 
       const prevCarPosition = this.car.position;
@@ -743,9 +743,9 @@ export default class Simulator {
     }
 
     this.frameCounter++;
-    this.fpsTime += timestamp - this.prevTimestamp;
-    if (this.fpsTime >= 1000) {
-      this.fps = this.frameCounter / (this.fpsTime / 1000);
+    this.fpsTime += dt;
+    if (this.fpsTime >= 1) {
+      this.fps = this.frameCounter / this.fpsTime;
       this.frameCounter = 0;
       this.fpsTime = 0;
       this.fpsBox.textContent = this.fps.toFixed(1);
